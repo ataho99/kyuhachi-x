@@ -138,6 +138,7 @@ static bool gh_do_load(const std::string & path) {
     bool ok = PC98_SaveState_FromFile(path.c_str(), gApp.disks, err);
     gh_log("LOAD %s <- %s %s", path.c_str(), ok ? "OK" : "FAIL", err.c_str());
     if (ok) { bool dk = gh_dsk_load(path); gh_log("LOAD-DSK %s", dk ? "OK" : "SKIP/FAIL"); }
+    pwr::to_hum();   /* B: load cancels seq */
     gh_state_diag("after-load");
     gApp.next_key = (unsigned)gApp.prof_.keys.size();   /* 자동 키 중단: 저장 시점 이후는 상태 그대로 */
     gApp.pic0 = PIC_Ticks;
@@ -201,11 +202,12 @@ static void gh_apply_settings(const ui::Settings & s, bool vol) {
       gApp.beamv = bvt[s.ph_beam()]; gApp.persms = pmt[s.ph_pers()]; gApp.breathv = rvt[s.ph_breath()]; gApp.glowpv = gvt[s.ph_glow()]; }   /* t662 (#635) */
     if (vol && gApp.boot_tick) gh_apply_volume(s);
     if (gApp.boot_tick) dsn::apply(s.dsnd, s.dvol, gApp.dsnd_override, gApp.exedir + "\\res\\disk-noises", gApp.dsn_log, gApp.dsn_wav, gApp.dsn_test);   /* 641 */
+    if (gApp.boot_tick) pwr::apply(s.pwrseq, s.hddhum, s.hvol, gApp.exedir + "\\res\\disk-noises");   /* B */
 }
 /* ---- 배속 */
 static void gh_boost_update(void) {
     const ui::Settings s = gApp.ui_.effective(gApp.cur_game);
-    bool want = !gApp.menu_open && ((gApp.boost_hold && s.bmode != 1) || (gApp.boost_tog && s.bmode != 0));
+    bool want = !gApp.menu_open && !pwr::active() && ((gApp.boost_hold && s.bmode != 1) || (gApp.boost_tog && s.bmode != 0));
     if (want == gApp.boost_on) return;
     gApp.boost_on = want;
     emulator_speed = want ? 100u * (unsigned)s.boost_x() : 100u;

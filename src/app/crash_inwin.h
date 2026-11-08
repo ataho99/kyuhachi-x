@@ -208,6 +208,7 @@ static bool gh_inwin_cycle(void) {
         gensei_out_sumsq = 0.0; gensei_out_n = 0ull;
         gApp.quit = false; gApp.boot_n++; gApp.inwin_n++;
         DispatchVMEvent(VM_EVENT_RESET_END);
+        pwr::on_game_start();   /* C1R3: same-window start fades */
         gApp.inwin_wait = true; gApp.inwin_t0 = SDL_GetTicks();
         gh_log("STAGE 창 안 전환: 같은 창에서 리셋 n=%d 작품='%s' 항목='%s' A=%s B=%s", gApp.inwin_n, sel_id.c_str(), prof::g_entry_req.c_str(), gApp.prof_.disk[0] ? gApp.prof_.disk[0] : "-", gApp.prof_.disk[1] ? gApp.prof_.disk[1] : "-");
         gh_inwin_stat("리셋 직후");

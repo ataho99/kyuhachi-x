@@ -10,6 +10,7 @@ static void gh_main_conf() {
         }
         {   /* 작품별 cycles / 글꼴 / extra (프로필 > 공통) */
             std::string c;
+            gh_log("CPUSPD eff=%d prof_cycles=[%s]", gApp.ui_.effective(gApp.cur_game).cpuspd, gApp.prof_.cycles.c_str());   /* t681 measure */
             if (!gApp.prof_.cycles.empty()) { bool num = true; for (char ch : gApp.prof_.cycles) if (ch < '0' || ch > '9') num = false; c += std::string("[cpu]\ncycles=") + (num ? "fixed " : "") + gApp.prof_.cycles + "\n"; }
             else { int ci = gApp.ui_.effective(gApp.cur_game).cpuspd;
                 if (ci < 0 || ci > 3) ci = 0;
@@ -194,6 +195,7 @@ static void gh_main_run() {
         if (!VM_PowerOn_gensei()) { gh_log("ERROR: power on failed"); gh_finish(3); }
         gh_log("powered on, running machine");
         gApp.pon_tick = SDL_GetTicks() | 1u; gApp.pon_pic = PIC_Ticks; gApp.loading = true;
+        pwr::on_game_start();   /* B: power seq (self-skip) */
         if (!gApp.ft_dir.empty() && !ov::g_font_ok) ov::font_load(gApp.exedir);
         for (;;) {   /* t51a: 창 안 전환이 요청되면 정리 · 디스크 교체 · 리셋 뒤 같은 창에서 RunMachine 재진입. 요청이 없으면 예전과 같이 한 번 돌고 끝 */
             try {

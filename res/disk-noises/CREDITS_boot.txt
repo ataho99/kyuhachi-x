@@ -1,0 +1,21 @@
+CREDITS_boot.txt — 부팅 감성 패키지 소리 샘플 출처
+
+[원본 녹음]
+- 파일: 353240_korndeftones123_dell-dimension-l600r.wav
+- 출처: freesound.org/people/korndeftones123/sounds/353240/ (sound ID 353240)
+- 작성자: korndeftones123 / 라이선스: CC0 (퍼블릭 도메인)
+- 내용: Dell Dimension L600r 케이스 내부 녹음(맥스터 HDD·3.5" FDD·팬·POST 비프), 전원 켬/끔 68.98 s
+- 원본: 44100 Hz stereo float / sha256: 8b362c8fbe1f345d06f72371ea33e0ca18b26b3749f4cf9cbfcdd68434360710
+- 원본 무수정. POST 비프 구간은 PC-98 소리가 아니므로 미사용.
+
+[잘라낸 구간 (원본 초 단위, mono 평균→22050 리샘플 후 컷)]
+- boot_click.wav (0.200 s, 피크 -6 dBFS): 0.60-0.80 s (전원 딸깍)
+- boot_spinup.wav (2.900 s, 피크 -6 dBFS): 0.60-3.50 s (딸깍+팬, 3.54 s FDD 클릭 직전 종료)
+- hum_loop.wav (3.250 s, 피크 -20 dBFS): 5.00-8.50 s를 0.25 s equal-power 크로스페이드로 이음 (3.5 s -> 3.25 s)
+
+[합성 (원본 아님)]
+- boot_noise.wav (0.800 s, 피크 -12 dBFS): 합성 — 분홍 잡음(Kellet 필터, seed 353240), 양끝 20 ms 페이드
+- boot_beep.wav (0.390 s, 피크 -9 dBFS): 합성 — kyuhachi src/app/menu_boot.h gh_beep 값
+  (2000.80 Hz 90 ms + 40 ms 무음 + 999.90 Hz 160 ms + 100 ms 꼬리, 사각파, 2 ms 램프)
+
+[처리] mono 평균 → 22050 리샘플(resample_poly 1/2) → 컷 → 피크 정규화 → 16bit. 스크립트: gen_boot.py.

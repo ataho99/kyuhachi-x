@@ -83,7 +83,11 @@ static bool gh_ui_main_(std::string & out_id) {
         gApp.cur_game = U.cur;
         if (U.lang_chg) { U.lang_chg = false; gh_reload_games(); gh_log("T52G 언어 바꿈 -> lang=%d, 목록 다시 만듦", U.lang); }   /* t52g (#133) */
         if (gApp.menushot && !gApp.headless && gApp.win && gh_menushot_tick(U)) return false;   /* t52f 시험 */
-        U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks(); U.now_s = (long long)time(NULL); U.draw(c); if (gApp.note_until && SDL_GetTicks() < gApp.note_until) ov::osd_draw(c, gApp.note, false, 336); gh_publish(buf, 640, 400); SDL_Delay(16);
+        U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks(); U.now_s = (long long)time(NULL); U.draw(c);
+        if (gApp.note_until && SDL_GetTicks() < gApp.note_until)
+            ov::osd_draw(c, gApp.note, false, 336);
+        pwr::menu_fade_apply(buf, 640, 400);   /* C10: 0.3s */
+        gh_publish(buf, 640, 400); SDL_Delay(16);
     }
 }
 

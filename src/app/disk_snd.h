@@ -156,7 +156,11 @@ static void hdd_ev(int slot, int cyl) {   /* one HDD move seen by poll; FDD stat
     S.ev[2]++;
     const uint64_t now = S.t;
     if (S.mode == 2) {
-        if (S.hhave_spinup && !S.hsup_on && (S.hfirst || now >= S.hlast + (uint64_t)ms(HDD_SPINUP_IDLE_MS))) {
+        int hum = 0;   /* t673 S3: hum>0이면 스핀업 억제 */
+#ifndef DSN_NO_MIXER
+        { const auto e_ = gApp.ui_.effective(gApp.cur_game); hum = e_.hddhum; }
+#endif
+        if (hum <= 0 && S.hhave_spinup && !S.hsup_on && (S.hfirst || now >= S.hlast + (uint64_t)ms(HDD_SPINUP_IDLE_MS))) {
             S.hsup_on = true; S.hsup_pos = 0; S.hsup_start = now; S.hst_up++;
         }
         S.hlast = now; S.hact = true; S.hfirst = false;

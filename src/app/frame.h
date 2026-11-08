@@ -93,6 +93,10 @@ static bool gh_evpre(SDL_Event & e, int tag) {
 }
 static void gh_frame_hook(void) {
     if (!gApp.pon_tick || gApp.fb.empty()) return;
+    pwr::tick();   /* B: seq step */
+    { static bool pa_ = false; static unsigned ps_ = 0; const bool na_ = pwr::active();
+      if (na_ != pa_) { if (na_) ps_ = SDL_GetTicks();
+        gh_log("PWR seq %s at %u ms (len %u ms)", na_ ? "START" : "END", SDL_GetTicks(), na_ ? 0u : SDL_GetTicks() - ps_); pa_ = na_; } }   /* t681 measure */
     unsigned wall = SDL_GetTicks() - gApp.pon_tick; unsigned game = (unsigned)(PIC_Ticks - gApp.pon_pic);
     size_t n = gApp.fb.size(), nbc = 0; for (size_t i = 0; i < n; i++) if (gApp.fb[i] & 0xFFFFFF) nbc++;
     unsigned nb = (unsigned)(nbc * 1000 / n); bool dbx = gh_text_has_dbx();
@@ -101,7 +105,12 @@ static void gh_frame_hook(void) {
         bool end = false; const char * why = "";
         if (gApp.boot_tick && nb >= 8 && !dbx) { end = true; why = phr_("첫 게임 화면"); }
         else if (wall > 20000) { end = true; why = phr_("시간 초과(20초)"); }
-        if (end) { gApp.loading = false; gApp.load_end_wall = wall; gApp.load_end_game = game; gh_log("LOADING end: %s wall=%u game=%u frame=%u nonblack=%u‰", why, wall, game, gApp.frames_seen, nb); }
+        if (end) {
+            pwr::note_first_frame();   /* C10: fade from ff+250 */
+            gApp.loading = false; gApp.load_end_wall = wall;
+            gApp.load_end_game = game;
+            gh_log("LOADING end: %s wall=%u game=%u frame=%u nonblack=%u‰", why, wall, game, gApp.frames_seen, nb);
+        }
     }
     bool shown_dbx = dbx && !(gApp.loading && !gApp.noload);
     if (!gApp.ft_dir.empty() && !gApp.ft_done) {
@@ -137,10 +146,17 @@ void RENDER_EndUpdate(bool abort) {
         else if (!gApp.menu_open) { if (gApp.kbshader) { ov::Canvas oc = { gApp.pub.data(), gApp.fbw, gApp.fbh }; kbov::draw(gApp.pub.data(), gApp.fbw, gApp.fbh); gh_boost_osd_draw(oc, gApp.osd, gApp.osd_until && SDL_GetTicks() < gApp.osd_until); gh_ovl_off(); } else gh_ovl_update(gApp.fbw, gApp.fbh); }
         else gh_ovl_off();
 
+        pwr::draw_pub(gApp.pub.data(), gApp.pub_w, gApp.pub_h);   /* B */
         SDL_UnlockMutex(gApp.fb_mtx);
     } else if (!gApp.headless && gApp.ren && gApp.tex && !gApp.fb.empty()) {
-        if (gApp.loading && !gApp.noload) { static std::vector<uint32_t> lv; lv.assign(gApp.fb.size(), 0); gh_loading_draw(lv.data(), gApp.fbw, gApp.fbh); SDL_UpdateTexture(gApp.tex, NULL, lv.data(), gApp.fbw * 4); } else { const uint32_t * sp = gApp.fb.data(); static std::vector<uint32_t> ob; bool osd_on = gApp.osd_until && SDL_GetTicks() < gApp.osd_until;
+        if (gApp.loading && !gApp.noload) { static std::vector<uint32_t> lv; lv.assign(gApp.fb.size(), 0); gh_loading_draw(lv.data(), gApp.fbw, gApp.fbh);
+            pwr::draw_overlay(lv.data(), gApp.fbw, gApp.fbh);   /* B */
+            SDL_UpdateTexture(gApp.tex, NULL, lv.data(), gApp.fbw * 4); } else { const uint32_t * sp = gApp.fb.data(); static std::vector<uint32_t> ob; bool osd_on = gApp.osd_until && SDL_GetTicks() < gApp.osd_until;
             if (!gApp.menu_open && (kbov::active() || gApp.fps_on || osd_on || (gApp.boost_on && gApp.bosd_on) || !gApp.bk_osd.empty())) { ob = gApp.fb; ov::Canvas oc = { ob.data(), gApp.fbw, gApp.fbh }; kbov::draw(ob.data(), gApp.fbw, gApp.fbh); gh_boost_osd_draw(oc, gApp.osd, osd_on); sp = ob.data(); }
+            if (pwr::overlay_on()) { static std::vector<uint32_t> pwrov;
+            pwrov.assign(sp, sp + (size_t)gApp.fbw * gApp.fbh);
+            pwr::draw_overlay(pwrov.data(), gApp.fbw, gApp.fbh);
+            sp = pwrov.data(); }   /* B */
             SDL_UpdateTexture(gApp.tex, NULL, sp, gApp.fbw * 4); }
         SDL_RenderClear(gApp.ren);
 

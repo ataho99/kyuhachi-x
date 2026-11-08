@@ -144,6 +144,12 @@ static void kha_seed_assets(void) {
         { "kha/dsn/hdd_seek1.wav", "res\\disk-noises\\hdd_seek1.wav" }, { "kha/dsn/hdd_seek2.wav", "res\\disk-noises\\hdd_seek2.wav" },
         { "kha/dsn/CREDITS.txt", "res\\disk-noises\\CREDITS.txt" },
         { "kha/dsn/CREDITS_hdd.txt", "res\\disk-noises\\CREDITS_hdd.txt" },
+        { "kha/dsn/boot_click.wav", "res\\disk-noises\\boot_click.wav" },
+        { "kha/dsn/boot_spinup.wav", "res\\disk-noises\\boot_spinup.wav" },
+        { "kha/dsn/hum_loop.wav", "res\\disk-noises\\hum_loop.wav" },
+        { "kha/dsn/boot_noise.wav", "res\\disk-noises\\boot_noise.wav" },
+        { "kha/dsn/boot_beep.wav", "res\\disk-noises\\boot_beep.wav" },
+        { "kha/dsn/CREDITS_boot.txt", "res\\disk-noises\\CREDITS_boot.txt" },
         { "kha/flags.ini", "res\\flags.ini" }, { "kha/gamecontrollerdb.txt", "res\\gamecontrollerdb.txt" },
         { "kha/strings_ko.txt", "strings_ko.txt" }, { "kha/strings_en.txt", "strings_en.txt" }, { "kha/strings_ja.txt", "strings_ja.txt" },
         { "kha/gamedb.ini", "gamedb.ini" }, { "kha/gamedb_nk.tsv", "gamedb_nk.tsv" } };

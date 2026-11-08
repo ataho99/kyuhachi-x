@@ -12,6 +12,7 @@ void GFX_Events(void) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (gh_evpre(e, -1)) continue;
+            pwr::shorten(e);   /* C1R4: input passes, fade shortens */
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) kbov::release_all();   /* t46x: 창 포커스를 잃으면 잠긴 키 포함 전부 해제 */
             if (e.type == SDL_KEYDOWN && (e.key.keysym.mod & KMOD_ALT) && !gApp.headless && gApp.win) {   /* r010 화면 단축키(Alt+…): PC-98 에는 Alt 가 없어 게임 키와 겹치지 않음 */
                 SDL_Keycode k = e.key.keysym.sym; bool hit = true;

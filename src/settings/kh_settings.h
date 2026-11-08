@@ -37,6 +37,9 @@ struct Settings {
     int bsound = 2;     /* r017 배속 중 소리: 0 끔 1 빠르게(음높이 상승) 2 음높이 유지 */
     int dsnd = 0;       /* #641: disk drive sound 0 off 1 seek only 2 on (default off) */
     int dvol = 4;       /* #641: disk sound volume 0..8 */
+    int pwrseq = 1;   /* t667: 0 끔 1 켬(기본 켬) */
+    int hddhum = 1;   /* t673: 0 끔 1 게임 중만 2 메뉴 포함(기본 1) */
+    int hvol = 3;     /* t667: 0..8(기본 3) */
     int shim = 2;       /* build 7: menu text shimmer 0 off 1 per letter 2 per dot (global only) */
     int shim_amp = 4, shim_spd = 3, shim_glow = 6, shim_col = 0;   /* strength 1..10, speed 1..10, glow 0..10, color 0 green 1 amber 2 white 3 cyan */
     bool lmode = false, lseen = false; int l_sh = 0, l_scan = 5, l_mask = 1, l_bleed = 0, l_curve = 4;   /* t48c: 옛 형식(fx=1 표지 없음) 파일을 읽는 동안만 쓰는 칸. 끝나면 fx_finish 가 새 칸으로 옮긴다 */
@@ -67,6 +70,7 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "sk_l=%d\nsk_r=%d\ndz_l=%d\ndz_r=%d\nsk_sp=%d\n", s.stk_l, s.stk_r, s.dz_l, s.dz_r, s.stk_sp);
     fprintf(f, "phos=%d\n", s.phos);
     fprintf(f, "dsnd=%d\ndvol=%d\n", s.dsnd, s.dvol);
+    fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
     fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* t665 */
     fprintf(f, "fpsdisp=%d\n", s.fpsd ? 1 : 0);   /* 0 도 쓴다: 작품 구역은 전역 값을 먼저 복사하므로 줄이 없으면 전역 켬이 새어 든다 */
 }
@@ -95,6 +99,9 @@ static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587
     if (m & (1u << 22)) fprintf(f, "phos=%d\n", s.phos);   /* t662 (#635) */
     if (m & (1u << 23)) fprintf(f, "dsnd=%d\n", s.dsnd);   /* #641 */
     if (m & (1u << 24)) fprintf(f, "dvol=%d\n", s.dvol);
+    if (m & (1u << 26)) fprintf(f, "pwrseq=%d\n", s.pwrseq);
+    if (m & (1u << 27)) fprintf(f, "hddhum=%d\n", s.hddhum);
+    if (m & (1u << 28)) fprintf(f, "hvol=%d\n", s.hvol);
     if (m & (1u << 16)) fprintf(f, "fpsdisp=%d\n", s.fpsd ? 1 : 0);
     if (m & (1u << 25)) fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* 0 도 쓴다 (T252) */
 }
@@ -102,6 +109,9 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "phos") { s.phos = v < 0 ? 0 : v > 255 ? 255 : v; return true; }   /* t662 (#635) */
     if (k == "dsnd") { s.dsnd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* #641 */
     if (k == "dvol") { s.dvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
+    if (k == "pwrseq") { s.pwrseq = v ? 1 : 0; return true; }
+    if (k == "hddhum") { s.hddhum = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
+    if (k == "hvol") { s.hvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
     if (k == "shim") { s.shim = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* build 7: menu text shimmer keys (before the long chain) */
     if (k == "shim_amp") { s.shim_amp = v < 1 ? 1 : v > 10 ? 10 : v; return true; }
     if (k == "shim_spd") { s.shim_spd = v < 1 ? 1 : v > 10 ? 10 : v; return true; }
