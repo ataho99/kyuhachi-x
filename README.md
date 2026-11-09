@@ -17,6 +17,8 @@ English · [한국어](README.ko.md)
 
 **[⬇ Download v0.6.6 (Windows zip · Android APK · manual)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
 
+**[💖 Sponsor](https://litt.ly/smash99)** — Supports tool development. Game files are not distributed.
+
 </div>
 
 ---

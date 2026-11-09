@@ -17,6 +17,8 @@
 
 **[⬇ v0.6.6 내려받기 (윈도 zip · 안드로이드 APK · 설명서)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
 
+**[💖 후원](https://litt.ly/smash99)** — 도구 개발 후원입니다. 게임 파일은 배포하지 않습니다.
+
 </div>
 
 ---
