@@ -4,6 +4,9 @@
 
 # 九八 · Kyuhachi X
 
+[![Downloads](https://img.shields.io/github/downloads/ataho99/kyuhachi-x/total?label=downloads)](https://github.com/ataho99/kyuhachi-x/releases)
+[![Latest](https://img.shields.io/github/downloads/ataho99/kyuhachi-x/latest/total?label=latest)](https://github.com/ataho99/kyuhachi-x/releases/latest)
+
 ### A PC-98 game launcher for Windows and Android
 
 **Pick a game. Play.** No config files, no mapper menus.

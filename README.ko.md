@@ -4,6 +4,9 @@
 
 # 九八 · 큐하치 X (Kyuhachi X)
 
+[![Downloads](https://img.shields.io/github/downloads/ataho99/kyuhachi-x/total?label=downloads)](https://github.com/ataho99/kyuhachi-x/releases)
+[![Latest](https://img.shields.io/github/downloads/ataho99/kyuhachi-x/latest/total?label=latest)](https://github.com/ataho99/kyuhachi-x/releases/latest)
+
 ### 윈도우·안드로이드용 PC-98 게임 런처
 
 **게임을 고르고 바로 시작.** 설정 파일도, 매퍼 메뉴도 없습니다.
