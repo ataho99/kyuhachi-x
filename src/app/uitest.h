@@ -53,6 +53,7 @@ static bool gh_ui_main_(std::string & out_id) {
 #endif
             ui::UKey k = gh_ev2uk(e, NULL); if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) gh_log("DIAG btn -> ev2uk=%d none=%d", (int)k, k == ui::UK_NONE ? 1 : 0); if (k == ui::UK_NONE) continue;
             ui::Act a = U.key(k);
+            pwr::mclk::key(k);   /* E1R: main-menu click */
             switch (a.t) {
             case ui::A_START: if (U.games[a.game].id.empty()) break; if (!gh_font_guard()) break; if (!gh_disk_guard(U.games[a.game].id)) break; gh_launch_note(U, a); U.cur = a.game; gApp.cur_game = a.game; gApp.resume_slot = a.resume && U.games[a.game].lastslot >= 0 ? U.games[a.game].lastslot + 1 : 0; gh_chain_start(U, a.game); out_id = U.games[a.game].id; ui::settings_save(U, gApp.cfgpath); return true;
             case ui::A_LOAD: if (U.games[a.game].id.empty() || !U.blk_id(U.games[a.game].id).empty()) break; if (!gh_font_guard()) break; if (!gh_disk_guard(U.games[a.game].id)) break; gh_launch_note(U, a); U.cur = gApp.cur_game = a.game; gApp.resume_slot = a.slot + 1; out_id = U.games[a.game].id; ui::settings_save(U, gApp.cfgpath); return true;
@@ -109,7 +110,7 @@ static void gh_uitest(void) {
     auto shot = [&](const char * nm) { U.draw(c); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } char p[700]; if (!gApp.uikeys_file.empty()) snprintf(p, sizeof p, "%s\\ui_%02d_%s_s%02dt%dc%d.png", gApp.uitest_dir.c_str(), ++n, nm, (int)U.scr, (int)U.tab, U.sel); else snprintf(p, sizeof p, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm);   /* t39ui4: 스크립트 캡처 이름에 화면 번호·탭·선택 줄을 붙인다 */ gh_png(p, buf, 640, 400); };
     auto boot = [&](const char * nm, int stage, bool cells) {
         c.rect(0, 0, 640, 400, ov::K);
-        if (stage >= 1) ov::text(c, 40, 112, std::string(KH_FULLNAME), ov::WH, ov::K);
+        if (stage >= 1) ov::text(c, 40, 112, std::string(KH_DISPNAME), ov::WH, ov::K); /*E1R*/
         if (stage >= 2) ov::text(c, 40, 144, std::string("Now Loading") + std::string((size_t)(stage - 1 > 3 ? 3 : stage - 1), '.'), ov::WH, ov::K);
         if (cells) ov::fncells_boot(c);   /* t52a (#49) */
         char p[700]; snprintf(p, sizeof p, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm); gh_png(p, buf, 640, 400);

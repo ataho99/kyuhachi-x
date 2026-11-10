@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. t696: 시작 때 흰 화면이 안 보이게 검정 배경 -->
+    <style name="AppTheme" parent="android:Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

@@ -19,6 +19,65 @@ static void gh_android_fontdiag(void) {
     gh_log("FONTDIR opendir=%s errno=%d entries=%d", d ? "ok" : "fail", d ? 0 : en, n);
 }
 #endif
+static void gh_main_gamefile(std::string & id) {   /* p684: ES-DE/Daijisho --gamefile */
+    if (gApp.gamefile_cli.empty() || !id.empty()) return;   /* positional id wins */
+    std::string p = gApp.gamefile_cli;
+    for (size_t i = 0; i < p.size(); i++) if (p[i] == '\\') p[i] = '/';
+    size_t sl = p.find_last_of('/');
+    std::string bn = (sl == std::string::npos) ? p : p.substr(sl + 1);
+    size_t dd = bn.find_last_of('.');
+    std::string stem = (dd == std::string::npos) ? bn : bn.substr(0, dd);
+    for (size_t i = 0; i < stem.size(); i++) stem[i] = (char)tolower((unsigned char)stem[i]);
+    std::string par;   /* p689: parent folder name of the file */
+    if (sl != std::string::npos && sl > 0) {
+        size_t s2 = p.find_last_of('/', sl - 1);
+        par = p.substr(s2 == std::string::npos ? 0 : s2 + 1, sl - (s2 == std::string::npos ? 0 : s2 + 1));
+        for (size_t i = 0; i < par.size(); i++) par[i] = (char)tolower((unsigned char)par[i]);
+    }
+    std::string pl = p;
+    for (size_t i = 0; i < pl.size(); i++) pl[i] = (char)tolower((unsigned char)pl[i]);
+    std::string hit; int mp = 0;
+    /* v0.6.7: 3 passes in priority order (id > disk-file > folder name) so one game's weak match cannot beat another game's strong one.
+       Generic folder names (disk, disks, game, games, hdd, fd, ...) are never a match key. */
+    auto lc = [](std::string t) { for (size_t i = 0; i < t.size(); i++) t[i] = (char)tolower((unsigned char)t[i]); return t; };
+    auto generic = [](const std::string & n) { static const char * const G[] = { "disk", "disks", "game", "games", "hdd", "hd", "fd", "fdd", "floppy", "roms", "rom", "pc98", "pc-98", "saves", "data", "image", "images" }; for (const char * x : G) if (n == x) return true; return false; };
+    for (size_t gi = 0; gi < gApp.ui_.games.size() && hit.empty(); gi++) {   /* pass 1: id (file stem, or parent folder name when not generic) */
+        const ui::UiGame & g = gApp.ui_.games[gi]; if (g.id.empty()) continue;
+        std::string t = lc(g.id);
+        if (t == stem || (!par.empty() && !generic(par) && t == par)) { hit = g.id; mp = 1; } }
+    for (size_t gi = 0; gi < gApp.ui_.games.size() && hit.empty(); gi++) {   /* pass 2: disk-file name or full path (swap list + the profile's A-D images) */
+        const ui::UiGame & g = gApp.ui_.games[gi]; if (g.id.empty()) continue;
+        std::vector<std::string> cand;
+        { auto ff = gApp.fdfiles.find(g.id); if (ff != gApp.fdfiles.end()) cand = ff->second; }
+        { decltype(gApp.prof_) pq; if (gh_profile(g.id, pq, true)) for (int di = 0; di < 4; di++) if (pq.disk[di] && pq.disk[di][0]) cand.push_back(std::string(pq.disk[di])); }
+        for (size_t fi = 0; fi < cand.size(); fi++) {
+            std::string f = cand[fi]; size_t fs = f.find_last_of("\\/");
+            std::string fb = (fs == std::string::npos) ? f : f.substr(fs + 1); size_t fd = fb.find_last_of('.');
+            std::string dn = lc((fd == std::string::npos) ? fb : fb.substr(0, fd));
+            std::string fl = lc(f); for (size_t i = 0; i < fl.size(); i++) if (fl[i] == '\\') fl[i] = '/';
+            if (dn == stem || fl == pl) { hit = g.id; mp = 2; break; } } }
+    for (size_t gi = 0; gi < gApp.ui_.games.size() && hit.empty(); gi++) {   /* pass 3: game folder name (generic names excluded) */
+        const ui::UiGame & g = gApp.ui_.games[gi]; if (g.id.empty()) continue;
+        size_t ds = g.dir.find_last_of("\\/"); std::string db = lc((ds == std::string::npos) ? g.dir : g.dir.substr(ds + 1));
+        if (!db.empty() && !generic(db) && (db == stem || (!par.empty() && db == par))) { hit = g.id; mp = 3; } }
+    if (!hit.empty() && gApp.log) gh_log("GAMEFILE match pass=%d stem='%s' par='%s' -> %s", mp, stem.c_str(), par.c_str(), hit.c_str());
+    if (hit.empty()) {
+        if (gApp.log) {
+            gh_log("GAMEFILE no match '%s' par='%s' games=%d -> menu", gApp.gamefile_cli.c_str(), par.c_str(), (int)gApp.ui_.games.size());
+            for (size_t gi = 0; gi < gApp.ui_.games.size() && gi < 6; gi++)
+                gh_log("GAMEFILE cand id='%s' dir='%s'", gApp.ui_.games[gi].id.c_str(), gApp.ui_.games[gi].dir.c_str());
+        }
+        return;
+    }
+    if (!gh_profile(hit, gApp.prof_)) { if (gApp.log) gh_log("GAMEFILE profile missing '%s' -> menu", hit.c_str()); return; }
+    id = hit; gApp.id_given = true;
+    { std::string md = gApp.exedir + "\\logs\\menu";   /* p684: auto menu log -> game log */
+      if (gApp.outdir == md) { std::string d = gApp.exedir + "\\logs\\" + id; plat::mkdir(d.c_str());
+        FILE * nlg = fopen((d + "\\kyuhachi_log.txt").c_str(), "w");
+        if (nlg) { if (gApp.log) { fflush(gApp.log); fclose(gApp.log); }   /* p684 */
+          gApp.outdir = d; gApp.log = nlg; gApp.log_t0 = SDL_GetTicks(); } } }
+    if (gApp.log) gh_log("GAMEFILE '%s' -> id '%s' (direct boot)", gApp.gamefile_cli.c_str(), id.c_str());
+}
 static void gh_main_input_init(std::string & id) {
     gh_crash_install();
     kh_db_dir = gApp.exedir;   /* t48e (#651 2): <exe>\res\gamecontrollerdb.txt */
@@ -49,6 +108,7 @@ static void gh_main_input_init(std::string & id) {
         if (!gApp.ui_.gamefolder.empty() && (!gApp.headless || gApp.scanonly)) gh_scan_gamefolder(phr_("시작"));
         if (gApp.scanonly || (!gApp.addwork_cli.empty() && gApp.headless && id.empty())) { gApp.shacache.save(); gh_finish(0); }
     }
+    gh_main_gamefile(id);   /* p684 */
 }
 
 static void gh_main_tests(const std::string & exedir) {
@@ -113,7 +173,7 @@ static void gh_main_window(const std::string & exedir) {
 #endif
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1); SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
         Uint32 wf = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | (gApp.windowed ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) | (gApp.hidewin ? SDL_WINDOW_HIDDEN : 0);
-        gApp.win = SDL_CreateWindow(KH_FULLNAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, gApp.winw, gApp.winh, wf);
+        gApp.win = SDL_CreateWindow(KH_DISPNAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, gApp.winw, gApp.winh, wf); /*E1R*/
         if (gApp.win) {
             gApp.glctx = SDL_GL_CreateContext(gApp.win);
             if (gApp.glctx) {
@@ -129,7 +189,7 @@ static void gh_main_window(const std::string & exedir) {
             } else gh_log("GL: context create FAIL: %s", SDL_GetError());
             if (!gApp.use_gl) {   /* 폴백: 소프트웨어 렌더러(nearest, 비율 유지 논리 크기) */
                 SDL_DestroyWindow(gApp.win);
-                gApp.win = SDL_CreateWindow(KH_FULLNAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, gApp.winw, gApp.winh, SDL_WINDOW_RESIZABLE | (gApp.windowed ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) | (gApp.hidewin ? SDL_WINDOW_HIDDEN : 0));
+                gApp.win = SDL_CreateWindow(KH_DISPNAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, gApp.winw, gApp.winh, SDL_WINDOW_RESIZABLE | (gApp.windowed ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) | (gApp.hidewin ? SDL_WINDOW_HIDDEN : 0)); /*E1R*/
                 SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
                 if (gApp.win) { gApp.ren = SDL_CreateRenderer(gApp.win, -1, 0); }
             }
@@ -144,7 +204,7 @@ static void gh_main_window(const std::string & exedir) {
 }
 
 static void gh_main_select(std::string & id, const bool & ui_mode, const bool & outdir_auto, const std::string & exedir) {
-    if (ui_mode) {
+    if (ui_mode && id.empty()) {   /* p689: --gamefile hit fills id -> direct boot */
         std::string chosen; if (!gh_ui_main(chosen)) { gh_log("ui: quit"); gh_finish(0); }
         id = chosen;
         if (!gh_profile(id, gApp.prof_)) { gh_log("ERROR: unknown profile '%s'", id.c_str()); gh_msgbox(phr_("알 수 없는 작품입니다.")); gh_finish(1); }
@@ -166,6 +226,9 @@ static void gh_main_select(std::string & id, const bool & ui_mode, const bool & 
 static void gh_main_prep(std::string & id, const std::string & exedir) {
     if (gApp.uitest_dir.empty() && !gh_any_font_bmp(NULL)) {   /* #500 (t52b #127 대체): 글꼴 BMP 0개여도 막지 않는다 — gh_default_font_path 가 빈 글꼴(res\.nofont.bin)을 건네고 화면 안내만 한다 */
         gh_log("WARN: 글꼴 BMP(anex86 형식 524,350 B) 없음: %s\\res\\fonts -> 빈 글꼴로 시작", exedir.c_str());
+#if defined(__ANDROID__)
+        gh_log("KHA fontdiag: fontdir=%s (E3R)", ov::g_kha_fontdir.empty() ? "(auto)" : ov::g_kha_fontdir.c_str());
+#endif
         gApp.osd = phr_("글꼴 없음: 앱 기본 글꼴로 실행합니다 (글자가 다르게 보일 수 있음)"); gApp.osd_until = SDL_GetTicks() + 8000u;
     }
     gApp.pid = id;   /* t51a: 창 안 전환이 프로필을 다시 읽을 때 쓰는 작품 id */

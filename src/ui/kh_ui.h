@@ -6,6 +6,8 @@
 #define KH_SUBTITLE "PC-98 BOOTLOADER"
 #include "kh_version.h"   /* t52a (#53): 버전 단일 소스 */
 #define KH_FULLNAME KH_PRODUCT " v" KH_VERSION " - " KH_SUBTITLE
+#define KH_VER_DISP "v" KH_VER_BASE   /* E1R: tag-free menu display */
+#define KH_DISPNAME KH_PRODUCT " v" KH_VER_BASE " - " KH_SUBTITLE   /* E1R */
 #endif
 #include "ui/kh_draw.h"
 #include <stdlib.h>
@@ -22,6 +24,11 @@
 
 #include "ui/kh_ui_types.h"   /* S7: ui data types */
 #include "settings/kh_share.h"   /* build 5b-2: share code */
+#if defined(__ANDROID__)
+static bool kha_fontdir_pick(void);   /* E3R: 폴더 고르기 → fontdir 저장 */
+static void kha_fontdir_set(const std::string & d);   /* E3R: fontdir 저장 → 다시 찾기 */
+static void kha_font_rescan(void);   /* E3R: 글꼴 목록 다시 찾기 */
+#endif
 namespace ui {
 using namespace ov;
 
@@ -78,9 +85,18 @@ struct Ui {
             if (scope == 0) { r.push_back(8); r.push_back(9); }
 #endif
             r.push_back(13); if (scope == 1) r.push_back(11); }   /* t662: 13 = phosphor page */
-        else { for (int i = 0; i <= 13; i++) { const bool skip = (scope == 1 && (i == 3 || i >= 11)) || (conf_grp && i != 0 && conf_grp_of(i) != conf_grp); if (!skip) r.push_back(i); if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); } }   /* #641: 16/17 = disk sound mode / volume */
+        else { for (int i = 0; i <= 13; i++) { const bool skip = (scope == 1 && (i == 3   /* E2R */
+            || i >= 11)) || (conf_grp && i != 0 && conf_grp_of(i) != conf_grp); if (!skip) r.push_back(i);
+            if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) r.push_back(26); /*E1R*/ }
+            if (i == 10 && scope == 0 && (!conf_grp || conf_grp == 2)) {   /* E2R */
+                if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
+                else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
             if (scope == 0 && (!conf_grp || conf_grp == 2)) r.push_back(15); if (scope == 1) r.push_back(14);
-            if (!conf_grp || conf_grp == 3) r.push_back(18); }   /* #639: 15 = FPS display (global only, after the overlay rows) */
+            if (!conf_grp || conf_grp == 3) r.push_back(18);
+#if defined(__ANDROID__)
+            if (scope == 0 && (!conf_grp || conf_grp == 3)) r.push_back(27);   /* E3R: 글꼴 폴더(전역만, 27; E2R 22와 분리) */
+#endif
+            }   /* #639: 15 = FPS display (global only, after the overlay rows) */
         return r; }
     static unsigned indiv_bit(Scr s, int id);   /* build 9: own-value bit of a settings line (0 = none) */
     int rowidx(Scr sc, int id) const { std::vector<int> r = rowids(sc); for (size_t i = 0; i < r.size(); i++) if (r[i] == id) return (int)i; return 0; }
@@ -223,7 +239,8 @@ struct Ui {
     void shr_open_make(int g, int menu_i); void shr_open_import(); void shr_preview(const std::string & code);
     void d_share(Canvas & c); void k_share(UKey k, Act & a); void d_shimp(Canvas & c); void k_shimp(UKey k, Act & a);
     void d_shprev(Canvas & c); void k_shprev(UKey k, Act & a);
-    static int conf_grp_of(int i) { return (i >= 1 && i <= 3) || i == 16 || i == 17 || i == 19 || i == 20 || i == 21 ? 1 : (i == 8 || (i >= 11 && i != 15)) ? 3 : 2; }
+    static int conf_grp_of(int i) { if (i >= 22) return 2;   /* E2R: overlay pos rows */
+        return (i >= 1 && i <= 3) || i == 16 || i == 17 || i == 19 || i == 20 || i == 21 || i == 26 /*E1R*/ ? 1 : (i == 8 || (i >= 11 && i != 15)) ? 3 : 2; }
     void leave_cfg() {   /* leaving S_SCREEN / S_CONF: back to the settings hub when it was opened from there */
         const bool sc = scr == S_SCREEN;
         if (sc && scr_from == S_SET) go(S_SET, 0);
@@ -319,7 +336,7 @@ struct Ui {
 
     /* ---- 그리기 공통 */
     void titlebar(Canvas & c, const char * name) {
-        (void)name; text(c, 40, 0, KH_FULLNAME, WH, K);   /* 맨 윗줄은 제품명만 (화면 이름은 창 제목에) */
+        (void)name; text(c, 40, 0, KH_DISPNAME, WH, K); /*E1R*/   /* 맨 윗줄은 제품명만 (화면 이름은 창 제목에) */
         std::string b = build; int w = tw(b); text(c, 640 - w - 24, 0, b, WH, K);
     }
     struct Hit { int x, y, w, h, i, sel; };   /* t55a: touch hit-test rows (rect, index, selection at draw time) */

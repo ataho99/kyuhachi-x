@@ -85,7 +85,7 @@ static void gh_logo_draw(ov::Canvas & c) {   /* build 11: embedded 4-color logo;
 static void gh_logo_frame(void) { static uint32_t buf[640 * 400]; ov::Canvas c = { buf, 640, 400 }; gh_logo_draw(c); gh_publish(buf, 640, 400); }
 static void gh_boot_frame(int stage, bool cells, unsigned t) {   /* C6: t=elapsed, 0u=short no POST */
     static uint32_t buf[640 * 400]; ov::Canvas c = { buf, 640, 400 }; c.rect(0, 0, 640, 400, ov::K);
-    if (stage >= 1) ov::text(c, 40, 112, std::string(KH_FULLNAME), ov::WH, ov::K);
+    if (stage >= 1) ov::text(c, 40, 112, std::string(KH_DISPNAME), ov::WH, ov::K); /*E1R*/
     if (stage >= 2 && (t == 0u || t >= SND_T1))   /* C8: full 6600+, 0u=short */
         ov::text(c, 40, 144, std::string("Now Loading") + std::string(
             (size_t)(stage - 1 > 3 ? 3 : stage - 1), '.'), ov::WH, ov::K);
@@ -219,6 +219,7 @@ static void gh_menu_run(void) {
 #endif
             ui::UKey k = gh_ev2uk(e, NULL); if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) gh_log("DIAG btn -> ev2uk=%d none=%d", (int)k, k == ui::UK_NONE ? 1 : 0); if (k == ui::UK_NONE) continue;
             ui::Act a = U.key(k);
+            pwr::mclk::key(k);   /* E1R: in-game menu click */
             switch (a.t) {
             case ui::A_RESUME: done = true; break;
             case ui::A_NEXTSTAGE: if (!gApp.stage_next.empty()) { gh_log("STAGE F12 menu '%s' -> %s", U.stage_next_label.c_str(), gApp.stage_next.c_str()); if (gApp.inwin_enabled && !gApp.headless && gApp.use_gl) { gApp.inwin_req = 1; gApp.inwin_target = gApp.stage_next; } else gApp.stage_go = true; GH_QUITSET(); done = true; } break;   /* t49a (#847) · t51a: 창 안 전환 먼저, 안 되면 gh_inwin_cycle 이 g_stage_go 로 폴백 */

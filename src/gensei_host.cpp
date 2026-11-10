@@ -191,12 +191,13 @@ int main(int argc, char * argv[]) {
     /* t52g (#133): 화면 문구 파일은 설정(언어)을 읽은 뒤 phr_set_lang() 이 읽는다 (strings_ko/en/ja.txt · 한국어는 strings.txt 가 덮어씀) */
     const std::string & exedir = gApp.exedir;
     if (!plat::exists("res\\fonts\\kyuhachi_font.bmp") && !plat::exists("kyuhachi_font.bmp") && !plat::exists("res\\fonts\\pc98player_font.bmp") && !plat::exists("pc98player_font.bmp")) plat::set_cwd(exedir);   /* t52g: 새·옛 이름 모두 */
-    const bool ui_mode = id.empty() && !gApp.headless;   /* r012: 인자 없음 = 이 실행기의 UI 로 시작 */
+    bool ui_mode = id.empty() && !gApp.headless;   /* r012: 인자 없음 = 이 실행기의 UI 로 시작 */   /* p684 */
     gh_main_env(exedir);   /* S9c */
     const bool outdir_auto = (gApp.outdir == ".");
     gh_main_logsdl(exedir, ui_mode, id, outdir_auto);   /* S9c */
     { int rc = gh_main_audio_prof(id, ui_mode); if (rc >= 0) return rc; }   /* S9c */
     gh_main_input_init(id);   /* S9c */
+    ui_mode = id.empty() && !gApp.headless;   /* p684: --gamefile hit = direct boot */
     gh_main_tests(exedir);   /* S9c */
     gh_main_window(exedir);   /* S9c */
     gh_main_select(id, ui_mode, outdir_auto, exedir);   /* S9c */

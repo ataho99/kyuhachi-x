@@ -160,6 +160,7 @@ struct AppState {
     aw::ShaCache shacache;
     std::string addwork_cli;
     std::string gamefolder_cli;
+    std::string gamefile_cli;   /* p684: ES-DE/Daijisho --gamefile */
     std::string report_dir;
     bool scanonly = false;
     ui::Ui ui_;

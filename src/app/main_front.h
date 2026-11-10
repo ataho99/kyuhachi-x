@@ -95,6 +95,7 @@ static int gh_main_args(int argc, char * argv[], std::string & id) {
         else if (a == "--nkdb" && i + 1 < argc) gApp.nkdb_path = argv[++i];
         else if (a == "--addwork" && i + 1 < argc) gApp.addwork_cli = argv[++i];
         else if (a == "--gamefolder" && i + 1 < argc) gApp.gamefolder_cli = argv[++i];
+        else if (a == "--gamefile" && i + 1 < argc) gApp.gamefile_cli = argv[++i];   /* p684 */
         else if (a == "--scanonly") gApp.scanonly = true;
         else if (a == "--dry") gApp.aw_dry = true;
         else if (a == "--report" && i + 1 < argc) gApp.report_dir = argv[++i];

@@ -6,9 +6,21 @@ inline void Ui::d_conf(Canvas & c) {
     rbox(c, 16, 24, 288, 296, WH, phr_("동작 환경 설정"));
     const std::vector<int> ri = rowids(S_CONF);
     const bool own = scope == 1 && cur >= 0 && cur < MAXG; const bool ind = own && ovm[cur] != 0u;
-    static const unsigned rb[22] = { 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17), 1u << 10, 1u << 11, 1u << 14, 1u << 12, 1u << 13, 1u << 15,  0u, 0u, 0u, 0u, 0u, 1u << 23, 1u << 24, 1u << 25, 1u << 26, 1u << 27, 1u << 28 };
+    static const unsigned rb[28] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
+        1u << 10, 1u << 11,   /* E3R */ 1u << 14, 1u << 12, 1u << 13, 1u << 15,
+        0u, 0u, 0u, 0u, 0u, 1u << 23,   /* E3R */ 1u << 24, 1u << 25, 1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u,
+        0u }; /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */
     std::vector<std::string> n;
-    { const std::string nm[22] = { phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"), KH_SNDLABEL, phr_("조작 설정"), phr_("배속 배율"), phr_("배속 방식"), phr_("배속 중 소리"), phr_("부팅 시퀀스"), phr_("배속 표시"), phr_("오버레이 버튼 표시"), phr_("한글 글꼴"), phr_("일본어 글꼴"), phr_("언어 / Language / 言語"), phr_("indiv_reset"), "", phr_("snd_disk"), phr_("snd_dvol"), phr_("CPU 속도"), phr_("기동 시퀀스"), phr_("HDD 회전음"), phr_("회전음 음량") };
+    { const std::string nm[28] = { /*E1R*/ /* E3R */ phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"),   /* E2R */
+      KH_SNDLABEL,   /* E3R */
+        phr_("조작 설정"), phr_("배속 배율"), phr_("배속 방식"), phr_("배속 중 소리"),
+      phr_("부팅 시퀀스"), phr_("배속 표시"), phr_("오버레이 버튼 표시"),
+        phr_("한글 글꼴"),   /* E3R */
+      phr_("일본어 글꼴"), phr_("언어 / Language / 言語"), phr_("indiv_reset"), "",
+        phr_("snd_disk"),   /* E3R */ phr_("snd_dvol"), phr_("CPU 속도"), phr_("기동 시퀀스"),
+      phr_("HDD 회전음"), phr_("회전음 음량"), phr_("오버레이 위치 모드"), phr_("오버레이 변"),
+      phr_("오버레이 정렬"), phr_("오버레이 직접 위치"), phr_("메뉴 클릭음"),
+        phr_("글꼴 폴더") };   /* E3R */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
       for (int id : ri) n.push_back(id == 15 ? std::string("FPS / Speed") : ((own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id])); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
     items(c, 40, 44, 256, n, sel, 19);
@@ -37,21 +49,44 @@ inline void Ui::d_conf(Canvas & c) {
     { const char * pw[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(19), pw, 2, s.pwrseq, WH, row(19)); }
     { const char * hh[] = { phr_("끔"), phr_("게임 중만"), phr_("메뉴 포함") }; choices(c, 344, ry(20), hh, 3, s.hddhum, WH, row(20)); }
     { char b3[8]; snprintf(b3, sizeof b3, "%d", s.hvol); barv(c, 340, ry(21), 232, s.hvol / 8.0, "OFF", "MAX", WH, row(21)); text(c, 590, ry(21), b3, WH, K); }
+    { const char * mc[] = { phr_("끔"), phr_("켬") }; /*E1R*/
+      choices(c, 344, ry(26), mc, 2, s.mclick, WH, row(26)); } /*E1R*/
     const char * bt[] = { phr_("켬"), phr_("끔") }; choices(c, 344, ry(8), bt, 2, s.boot, WH, row(8));
     { const char * bo[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(9), bo, 2, s.bosd, WH, row(9)); }
     { const char * ob[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(10), ob, 2, s.ovbtn, WH, row(10)); }   /* t52f (#132) */
+    { const char * om[] = { phr_("정렬 배치"), phr_("직접 지정") };   /* E2R */
+      choices(c, 344, ry(22), om, 2, s.ovpos_mode, WH, row(22)); }
+    { const char * oe[] = { phr_("하"), phr_("상"), phr_("좌"), phr_("우") };   /* E2R */
+      choices(c, 344, ry(23), oe, 4, s.ovpos_edge, WH, row(23)); }
+    if (s.ovpos_mode == 0) {   /* E2R */
+      if (s.ovpos_edge <= 1) { const char * oa[] = { phr_("왼쪽"), phr_("가운데"), phr_("오른쪽") };
+        choices(c, 344, ry(24), oa, 3, s.ovpos_align, WH, row(24)); }
+      else { const char * oa[] = { phr_("위쪽"), phr_("가운데"), phr_("아래쪽") };
+        choices(c, 344, ry(24), oa, 3, s.ovpos_align, WH, row(24)); } }
+    else { char b4[8]; snprintf(b4, sizeof b4, "%d", s.ovpos_free);   /* E2R */
+      barv(c, 340, ry(25), 232, s.ovpos_free / 100.0, "0", "100", WH, row(25));
+      text(c, 590, ry(25), b4, WH, K); }
     if (scope == 0) { const char * fp[] = { "OFF", "ON" }; choices(c, 344, ry(15), fp, 2, g.fpsd ? 1 : 0, WH, row(15)); }   /* #639 */
     if (scope == 0) {
     text(c, 344, ry(11), fit(font_kr.empty() ? std::string(phr_("기본 (kyuhachi_font)")) : font_kr, 250), row(11) ? K : WH, row(11) ? WH : K);
     text(c, 344, ry(12), fit(font_jp.empty() ? std::string(phr_("기본 (jp_default)")) : font_jp, 250), row(12) ? K : WH, row(12) ? WH : K);
     { const char * lg[] = { "한국어", "English", "にほんご" }; choices(c, 344, ry(13), lg, 3, lang, WH, row(13)); }   /* t52g (#133): 언어 */
+#if defined(__ANDROID__)
+    { std::string fdv = ov::g_kha_fontdir.empty() ? std::string(phr_("글꼴 폴더: 자동")) : ov::g_kha_fontdir;   /* E3R */
+      text(c, 344, ry(27), fit(fdv, 250), row(27) ? K : WH, row(27) ? WH : K); }
+#endif   /* E3R */
     }
 #if defined(__ANDROID__)
     static const char * dd[] = { "desc_scope", "desc_bgm", "desc_se", "desc_sndbuf", "desc_pad", "desc_bmult", "desc_bmode", "desc_bsound", "desc_boot", "desc_bosd", "desc_ovbtn", "desc_fontkr", "desc_fontjp", "desc_lang", "desc_indiv_reset", "desc_fps", "desc_dsnd", "desc_dvol" };
 #else
     static const char * dd[] = { "desc_scope", "desc_bgm", "desc_se", "desc_snddev", "desc_pad", "desc_bmult", "desc_bmode", "desc_bsound", "desc_boot", "desc_bosd", "desc_ovbtn", "desc_fontkr", "desc_fontjp", "desc_lang", "desc_indiv_reset", "desc_fps", "desc_dsnd", "desc_dvol" };
 #endif
-    std::string dt = dkey(phr_(rs == 19 ? "desc_pwrseq" : rs == 20 ? "desc_hddhum" : rs == 21 ? "desc_hvol" : rs == 18 ? "desc_cpuspd" : rs == 15 ? "desc_fps" : dd[rs]));
+    std::string dt = dkey(phr_(rs == 27   /* E3R */
+        ? "desc_fontdir" : rs == 22 ? "desc_ovpos_mode" : rs == 23 ?   /* E2R */
+      "desc_ovpos_edge" : rs == 24 ? "desc_ovpos_align" : rs == 25 ? "desc_ovpos_free" :
+      rs == 19 ? "desc_pwrseq" : rs == 20 ? "desc_hddhum" : rs == 21 ? "desc_hvol" :
+      rs == 26 ? "desc_mclick" /*E1R*/ : rs == 18 ? "desc_cpuspd" :
+        rs == 15 ? "desc_fps" : dd[rs]));   /* E3R */
     if (ind) dt = std::string(phr_("indiv_has")) + "  ·  " + dt;
     desc_mq(c, 328, 44, dt, phr_("↑↓:선택, ←→:값, ○:결정, ×:뒤로, △:출하 시 설정"));
     if (scope == 0 && (rs == 11 || rs == 12)) { const std::string & fl = font_now(); if (!fl.empty()) text(c, 344, 288, fit(fl, 270), CY, K); }   /* build 5b-3: font now applied to the current work */

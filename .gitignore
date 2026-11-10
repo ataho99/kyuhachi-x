@@ -58,3 +58,8 @@ font.bmp
 
 # 시험 기준 샷·세이브(게임 파생물) — 저장소에 올리지 않음
 tests/golden/
+
+# bundled SDL source (zlib); keep out of the repo
+/android/template/app/jni/SDL/
+/docs/frontends_new.md
+/android/template/build_out/

@@ -410,4 +410,64 @@ static void shorten(SDL_Event & e) {
         S.skip_smp = S.t;
     }
 }
+/* E1R: menu click (move/confirm/hotkey tick, direct audio, no samples) */
+namespace mclk {
+static SDL_AudioDeviceID dev = 0;   /* E1R: lazy click device */
+static unsigned last_ms = 0;   /* E1R: 60ms repeat gate */
+static unsigned mute_until = 0;   /* E1R: touch input stays silent */
+static uint32_t lcg = 0xE1C4u;   /* E1R: fixed seed, 3 variants */
+static void note_touch(void) { mute_until = SDL_GetTicks() + 350u; }   /* E1R */
+static void play(bool enter) {   /* E1R */
+    if (gApp.headless) return;   /* E1R: no audio in tests */
+    if (gApp.boot_tick != 0 && !gApp.menu_open) return;   /* E1R */
+    const ui::Settings st = gApp.ui_.effective(gApp.cur_game);   /* E1R */
+    if (!st.mclick) return;   /* E1R: setting off */
+    unsigned now = SDL_GetTicks();   /* E1R */
+    if (now < mute_until) return;   /* E1R: touch silent */
+    if (now - last_ms < 60u) return;   /* E1R: hold repeat gate */
+    last_ms = now;   /* E1R */
+    float g = st.se_gain() * 0.25f;   /* E1R: half of boot tick */
+    if (g <= 0.0f) return;   /* E1R: se=0 silent */
+    lcg = lcg * 1664525u + 1013904223u;   /* E1R: fixed LCG */
+    uint32_t seed = 0xE1C4u + (uint32_t)((lcg >> 16) % 3u) * 7919u;   /* E1R */
+    size_t n = enter ? 88u : 55u;   /* E1R: enter lower+longer */
+    std::vector<int16_t> pcm(n, 0);   /* E1R */
+    uint32_t s = seed; int32_t prev = 0;   /* E1R */
+    for (size_t j = 0; j < n; j++) {   /* E1R */
+        s = s * 1664525u + 1013904223u;   /* E1R */
+        int32_t r = (int32_t)((s >> 9) & 0xFFFFu) - 32768;   /* E1R */
+        int32_t v = r;   /* E1R */
+        if (enter) { v = (r + 3 * prev) / 4; prev = r; }   /* E1R */
+        float env = 1.0f - (float)j / (float)n;   /* E1R */
+        float y = (float)v * (1.0f / 32768.0f) * env * 0.35f * g;   /* E1R */
+        if (y > 1.0f) y = 1.0f; else if (y < -1.0f) y = -1.0f;   /* E1R */
+        pcm[j] = dsn::to16(y);   /* E1R */
+    }   /* E1R */
+    if (!dev) {   /* E1R: lazy open once */
+        SDL_AudioSpec w; SDL_zero(w);   /* E1R */
+        w.freq = dsn::RATE; w.format = AUDIO_S16SYS; w.channels = 1;   /* E1R */
+        w.samples = 1024; w.callback = NULL;   /* E1R */
+        SDL_AudioSpec got; SDL_zero(got);   /* E1R */
+        dev = SDL_OpenAudioDevice(NULL, 0, &w, &got, 0);   /* E1R */
+        if (!dev) return;   /* E1R: no log (log may be shut) */
+    }   /* E1R */
+    SDL_QueueAudio(dev, pcm.data(), (Uint32)(pcm.size() * 2));   /* E1R */
+    SDL_PauseAudioDevice(dev, 0);   /* E1R */
+}   /* E1R: play */
+static void key(ui::UKey k) {   /* E1R: menu input to tick kind */
+    int kind = -1;   /* E1R: 0 light tick, 1 low enter tick */
+    switch (k) {   /* E1R */
+    case ui::UK_OK: kind = 1; break;   /* E1R */
+    case ui::UK_UP: case ui::UK_DOWN: kind = 0; break;   /* E1R */
+    case ui::UK_LEFT: case ui::UK_RIGHT: kind = 0; break;   /* E1R */
+    case ui::UK_CANCEL: kind = 0; break;   /* E1R */
+    case ui::UK_SQ: case ui::UK_TRI: kind = 0; break;   /* E1R */
+    case ui::UK_L: case ui::UK_R: kind = 0; break;   /* E1R */
+    case ui::UK_SELECT: kind = 0; break;   /* E1R */
+    default: break;   /* E1R */
+    }   /* E1R */
+    if (kind < 0) return;   /* E1R: unmapped input silent */
+    play(kind == 1);   /* E1R: nav/back/hotkey light, OK low */
+}   /* E1R: key */
+}   /* E1R: namespace mclk */
 }   /* namespace pwr */

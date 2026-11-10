@@ -1044,3 +1044,30 @@ desc_hddhum=Plays a very quiet spin sound while a machine with an HDD is powered
 desc_hvol=HDD spin sound volume (0-8). Higher is louder.
 게임 중만=In game only
 메뉴 포함=Also in menu
+# E3R: fontdir keys (must match ko/ja key sets)
+글꼴 폴더=Font folder
+글꼴 폴더: 자동=Font folder: auto
+글꼴 폴더 고르기=Choose font folder
+desc_fontdir=Font search folder. {○}: rescan when auto, choose folder when custom. Left/Right: switch auto/custom.
+SD카드에서 글꼴 찾음: =Found font on SD card: 
+글꼴 폴더를 못 찾음 — 직접 지정하세요=Font folder not found — set it manually
+메뉴 클릭음=Menu click
+desc_mclick=Turns the small menu move/confirm/hotkey clicks on or off (silent in game).
+오버레이 위치 모드=Overlay position mode
+오버레이 변=Overlay edge
+오버레이 정렬=Overlay alignment
+오버레이 직접 위치=Overlay free position
+정렬 배치=Aligned
+하=Bottom
+상=Top
+좌=Left
+우=Right
+왼쪽=Left
+가운데=Center
+오른쪽=Right
+위쪽=Top
+아래쪽=Bottom
+desc_ovpos_mode=Position mode of the overlay button row. Aligned = snap to edge and alignment, free = place with a 0-100 value.
+desc_ovpos_edge=Edge for the overlay button row. Bottom/Top = one horizontal row, left/right = one vertical column.
+desc_ovpos_align=Alignment inside the row in aligned mode. Horizontal edges: left/center/right, vertical edges: top/center/bottom.
+desc_ovpos_free=Position along the edge in free mode (0-100).

@@ -28,7 +28,7 @@ set(R4  "Y:/dbx_ws/r004b/src/src")
 math(EXPR KH_VER_BUILD_N "${KH_VER_BUILD}")
 file(WRITE ${GEN}/kh_version.h.tmp "/* kh_version.h -- single source of the version (ASCII only: also read by rc.exe).
  * Used by: window title, about screen, boot screen, top-right label, exe VERSIONINFO, README, zip name.
- * Not changeable from strings.txt. Display string = public version + \"-\" + internal build name. */
+ * Not changeable from strings.txt. Display = KH_VER_DISP (no tag); internal KH_VERSION keeps + \"-\" + build. E1R */
 #ifndef KH_VERSION_H
 #define KH_VERSION_H
 #define KH_VER_MAJOR 0
@@ -36,7 +36,8 @@ file(WRITE ${GEN}/kh_version.h.tmp "/* kh_version.h -- single source of the vers
 #define KH_VER_PATCH 2
 #define KH_VER_BUILD ${KH_VER_BUILD_N}
 #define KH_BUILD \"${KH_BUILD}\"
-#define KH_VERSION \"0.6.6-${KH_BUILD}\"
+#define KH_VER_BASE \"0.6.7\"   /* E1R: display base, no tag */
+#define KH_VERSION \"0.6.7-${KH_BUILD}\"   /* E1R: internal, tag kept */
 #endif
 ")
 file(WRITE ${GEN}/gensei_build_id.h.tmp "#define GENSEI_BUILD_ID \"r024${KH_BUILD}\"\n")

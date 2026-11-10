@@ -232,6 +232,7 @@ static std::string help_rep(std::string s, const std::string & from, const std::
 static int g_lblcfg = 0;   /* t137: 패드 라벨 방식 0 자동 1 retro 2 xbox */
 static int g_sndbuf = 1;   /* t137: 소리 버퍼 단계 0..3 */
 static void (*g_kha_save)(void) = 0;
+static std::string g_kha_fontdir;   /* E3R: android.ini fontdir= (빈칸=자동) */
 static std::string kh_lbl(std::string s) { int m = g_lblcfg ? g_lblcfg : (gensei_padkind_v == 1 ? 2 : 1); const char * Lb[4] = { m == 1 ? "A" : "B", m == 1 ? "B" : "A", m == 1 ? "Y" : "X", m == 1 ? "X" : "Y" }; s = help_rep(s, "○", Lb[0]); s = help_rep(s, "×", Lb[1]); s = help_rep(s, "□", Lb[2]); s = help_rep(s, "△", Lb[3]); return s; }
 #else
 #define KH_SCR_ROWS 11

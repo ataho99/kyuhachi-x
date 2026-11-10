@@ -12,6 +12,12 @@ inline void Ui::d_font(Canvas & c) {
     const ov::BmpFont * bf = fnt_font(pv);
     text(c, 340, 44, fit(pv.empty() ? std::string("-") : pv, 270), YL, K);
     { std::string grp; for (auto & f : fonts) if (f.name == pv) grp = f.group; text(c, 340, 64, fit(grp.empty() ? std::string(phr_("묶음 -")) : std::string(fontreg::group_label(grp)), 270), CY, K); }
+    { std::string pp; for (auto & f : fonts) if (f.name == pv) pp = f.path;   /* E3R: 고른 글꼴의 폴더 */
+      if (!pp.empty()) { size_t s1 = pp.find_last_of("\\/");
+        std::string dr = s1 == std::string::npos ? pp : pp.substr(0, s1);
+        size_t s2 = dr.find_last_of("\\/");
+        size_t s0 = (s2 == std::string::npos || s2 == 0) ? std::string::npos : dr.find_last_of("\\/", s2 - 1);
+        text(c, 340, 260, fit(s0 == std::string::npos ? dr : dr.substr(s0 + 1), 270), CY, K); } }
     if (bf) { text_bmp(c, *bf, 340, 100, phr_("한글 가나다라마바사"), WH, K); text_bmp(c, *bf, 340, 124, phr_("열락의 학원 신비한 바다"), WH, K); text_bmp(c, *bf, 340, 148, "あいうえお アイウエオ", WH, K); } else text(c, 340, 100, phr_("미리볼 수 없는 글꼴입니다."), GY, K);
     { int rej = 0; for (auto & f : fonts) if (!f.ok) rej++; if (rej) text(c, 340, 280, fit(phr_("거른 파일 ") + std::to_string(rej) + phr_("개 (형식·크기 불일치)"), 270), OR, K); }
     text(c, 340, 196, fit(phr_("같은 묶음의 글꼴만 바꿀 수 있습니다."), 270), WH, K); text(c, 340, 216, fit(phr_("다른 묶음은 한글이 깨져 막아 둡니다."), 270), WH, K);

@@ -12,7 +12,7 @@ static bool gh_text_has_dbx(void) {   /* 텍스트 VRAM(80x25) 에 DOSBox-X 스�
 static void gh_loading_draw(uint32_t * px, int w, int h) {   /* 검은 바탕 + 제품명 + Now Loading... (부팅 연출과 같은 자리) */
     ov::Canvas c = { px, w, h }; c.rect(0, 0, w, h, ov::K);
     int d = (int)((SDL_GetTicks() / 400u) % 4u);
-    ov::text(c, 40, 112, std::string(KH_FULLNAME), ov::WH, ov::K);
+    ov::text(c, 40, 112, std::string(KH_DISPNAME), ov::WH, ov::K); /*E1R*/
     ov::text(c, 40, 144, std::string("Now Loading") + std::string((size_t)d, '.') + std::string((size_t)(3 - d), ' '), ov::WH, ov::K);
 }
 static void gh_ft_sheet(void) {   /* 20 장 컨택트 시트 (5x4, 장당 320x200) */

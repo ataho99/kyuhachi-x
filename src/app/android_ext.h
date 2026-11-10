@@ -4,6 +4,8 @@
  * 설정은 <앱 폴더>\android.ini (padlayout= auto|retro|xbox · sndbuf= 0..3 · lib= 경로 여러 줄). settings.ini 키는 건드리지 않는다. */
 #include <string>
 #include <vector>
+#include <algorithm>   /* E3R: SD 후보 정렬 */
+#include <dirent.h>   /* E3R: /storage 열거 */
 static const char * const KHA_BASE = "/storage/emulated/0/Kyuhachi";   /* 사용자에게는 「내부 저장소/Kyuhachi」 로만 보인다 */
 static std::vector<std::string> g_kha_libs;
 static volatile bool g_kha_fg = false;
@@ -33,6 +35,7 @@ static void kha_cfg_load(void) {
         if (k == "padlayout") ov::g_lblcfg = (v == "retro") ? 1 : (v == "xbox") ? 2 : 0;
         else if (k == "sndbuf") { int n = atoi(v.c_str()); if (n >= 0 && n < 4) ov::g_sndbuf = n; }
         else if (k == "lib" && !v.empty()) g_kha_libs.push_back(v);
+        else if (k == "fontdir") ov::g_kha_fontdir = v;   /* E3R */
     }
     fclose(f);
     gh_log("KHA cfg: padlayout=%s sndbuf=%d libs=%d", ov::g_lblcfg == 1 ? "retro" : ov::g_lblcfg == 2 ? "xbox" : "auto", ov::g_sndbuf, (int)g_kha_libs.size());
@@ -41,6 +44,7 @@ static void kha_cfg_save(void) {
     FILE * f = fopen(kha_cfgpath().c_str(), "w"); if (!f) { gh_log("KHA cfg: save failed"); return; }
     fprintf(f, "padlayout=%s\nsndbuf=%d\n", ov::g_lblcfg == 1 ? "retro" : ov::g_lblcfg == 2 ? "xbox" : "auto", ov::g_sndbuf);
     for (auto & d : g_kha_libs) fprintf(f, "lib=%s\n", d.c_str());
+    if (!ov::g_kha_fontdir.empty()) fprintf(f, "fontdir=%s\n", ov::g_kha_fontdir.c_str());   /* E3R */
     fclose(f);
 }
 static void kha_lib_init(void) {
@@ -80,10 +84,67 @@ static void kha_lib_add(const std::string & d) {
     g_kha_libs.push_back(d); kha_cfg_save(); gh_log("KHA folder registered: %s (total %d)", d.c_str(), (int)g_kha_libs.size());
 }
 static void kha_lib_clear(void) { g_kha_libs.clear(); kha_cfg_save(); }
-static std::string kha_font_lookup(const std::string & name) {   /* 내부 저장소/Kyuhachi\fonts → 등록 폴더의 fonts → (없으면 빈 문자열 = 앱 내장) */
-    std::string p = std::string(KHA_BASE) + "/fonts/" + name + ".bmp"; if (plat::exists(p)) return p;
-    for (auto & d : g_kha_libs) { std::string q = d + "/fonts/" + name + ".bmp"; if (plat::exists(q)) return q; }
+static void kha_font_dirs(std::vector<std::string> & out) {   /* E3R: ①fontdir ②내부 ③SD ④등록 (⑤앱은 호출 쪽) */
+    out.clear();
+    if (!ov::g_kha_fontdir.empty()) out.push_back(ov::g_kha_fontdir);
+    out.push_back(std::string(KHA_BASE) + "/fonts");
+    if (gh_all_files_ok()) {   /* E3R: 권한 없으면 SD 후보 스킵 */
+        DIR * d = opendir("/storage");
+        if (d) {
+            std::vector<std::string> ns; struct dirent * e;
+            while ((e = readdir(d)) != NULL) {
+                std::string n = e->d_name;
+                if (n.empty() || n[0] == '.') continue;
+                if (n == "emulated" || n == "self") continue;
+                ns.push_back(n);
+            }
+            closedir(d); std::sort(ns.begin(), ns.end());
+            for (size_t i = 0; i < ns.size(); i++) out.push_back("/storage/" + ns[i] + "/Kyuhachi/fonts");
+        }
+    }
+    for (size_t i = 0; i < g_kha_libs.size(); i++) out.push_back(g_kha_libs[i] + "/fonts");
+    std::vector<std::string> u;   /* E3R: 중복 제거(순서 유지) */
+    for (size_t i = 0; i < out.size(); i++) { bool dup = false;
+        for (size_t k = 0; k < u.size(); k++) if (u[k] == out[i]) dup = true;
+        if (!dup) u.push_back(out[i]); }
+    out.swap(u);
+}
+static std::string kha_font_lookup(const std::string & name) {   /* E3R: ①→②→③→④, 없으면 빈 문자열 */
+    std::vector<std::string> ds; kha_font_dirs(ds);
+    for (size_t i = 0; i < ds.size(); i++) { std::string p = ds[i] + "/" + name + ".bmp"; if (plat::exists(p)) return p; }
     return std::string();
+}
+static bool kha_is_sd(const std::string & p) {   /* E3R: /storage/UUID (emulated 제외) */
+    if (p.compare(0, 9, "/storage/") != 0) return false;
+    return p.compare(9, 9, "emulated/") != 0;
+}
+static void kha_font_rescan(void) {   /* E3R: 목록 다시 찾기 + 한 줄 안내 */
+    gh_font_rebuild();
+    int okf = 0; std::string sdn;
+    for (size_t i = 0; i < gApp.ui_.fonts.size(); i++) {
+        const ui::UiFont & f = gApp.ui_.fonts[i];
+        if (!f.ok) continue;
+        if (!ov::g_kha_fontdir.empty() && f.path.compare(0, ov::g_kha_fontdir.size(), ov::g_kha_fontdir) == 0) okf++;
+        if (sdn.empty() && kha_is_sd(f.path)) sdn = f.name;
+    }
+    if (!ov::g_kha_fontdir.empty() && okf == 0) {
+        gApp.note = T("글꼴 폴더를 못 찾음 — 직접 지정하세요"); gApp.note_until = SDL_GetTicks() + 8000u;
+    } else if (!sdn.empty()) {
+        gApp.note = std::string(T("SD카드에서 글꼴 찾음: ")) + sdn; gApp.note_until = SDL_GetTicks() + 6000u;
+    }
+    gh_log("KHA fontrescan: fonts=%d fontdir=%s", (int)gApp.ui_.fonts.size(),
+        ov::g_kha_fontdir.empty() ? "(auto)" : ov::g_kha_fontdir.c_str());
+}
+static void kha_fontdir_set(const std::string & d) {   /* E3R: fontdir 저장 → 다시 찾기 */
+    ov::g_kha_fontdir = d; kha_cfg_save(); kha_font_rescan();
+}
+static bool kha_fontdir_pick(void) {   /* E3R: 폴더 고르기 → fontdir 저장 → 다시 찾기 */
+    std::string d;
+    if (!gh_folder_explorer(T("글꼴 폴더 고르기"), d)) return false;
+    while (d.size() > 1 && (d.back() == '/' || d.back() == '\\')) d.pop_back();
+    kha_fontdir_set(d);
+    gh_log("KHA fontdir picked: %s", d.c_str());
+    return true;
 }
 static std::string kha_mixer_conf(void) {
     static const int bs[4] = { 512, 1024, 2048, 4096 }, pb[4] = { 20, 40, 60, 100 }; char b[96];

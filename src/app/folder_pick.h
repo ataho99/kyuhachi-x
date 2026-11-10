@@ -78,6 +78,7 @@ static bool gh_folder_explorer(const char * title_u8, std::string & out) {
             if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { gh_touch_feed(e); continue; }
             if (gh_wm_hotkey(e)) continue;
             ui::UKey k = gh_ev2uk(e, NULL); if (k == ui::UK_NONE) continue;
+            pwr::mclk::key(k);   /* E1R: explorer click */
             if (k == ui::UK_UP) { if (sel > 0) sel--; }
             else if (k == ui::UK_DOWN) { if (sel + 1 < (int)rows.size()) sel++; }
             else if (k == ui::UK_CANCEL) { if (!perm || cur.empty()) return false; cur = fp_up(cur); sel = 0; rebuild(); }
@@ -97,7 +98,7 @@ static bool gh_folder_explorer(const char * title_u8, std::string & out) {
         rebuild(); gh_log("FOLDER all-files-access granted"); } }
         gh_wm_poll();
         U.hits.clear(); c.rect(0, 0, 640, 400, ov::K);
-        ov::text(c, 40, 0, KH_FULLNAME, ov::WH, ov::K);
+        ov::text(c, 40, 0, KH_DISPNAME, ov::WH, ov::K); /*E1R*/
         ov::rbox(c, 16, 24, 608, 300, ov::WH, fpt(0));
         if (!perm) { ov::text(c, 40, 48, fpt(5), ov::YL, ov::K); ov::text(c, 40, 76, ov::fit(fpt(7), 560), ov::WH, ov::K); }
         else ov::text(c, 40, 48, ov::fit(cur.empty() ? std::string(fpt(13)) : cur, 560), ov::YL, ov::K);

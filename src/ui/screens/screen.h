@@ -64,6 +64,15 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
 #if defined(__ANDROID__)
         if (scr == S_CONF && sel == 3 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) { g_sndbuf = (g_sndbuf + (k == UK_LEFT ? 3 : 1)) % 4; if (g_kha_save) g_kha_save(); dirty = true; break; }   /* t137: 소리 버퍼 */
 #endif
+#if defined(__ANDROID__)
+        if (scr == S_CONF && sel == 27 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) {   /* E3R: 글꼴 폴더(27) */
+            if (k == UK_LEFT || k == UK_RIGHT) {
+                if (ov::g_kha_fontdir.empty()) { if (!kha_fontdir_pick()) break; }
+                else kha_fontdir_set("");
+            } else if (ov::g_kha_fontdir.empty()) kha_font_rescan();
+            else if (!kha_fontdir_pick()) break;
+            dirty = true; break; }
+#endif   /* E3R */
         bool scr_s = scr == S_SCREEN; int nrow = scr_s ? 11 : 14;
         if (scr_s && sel == 9 && (k == UK_LEFT || k == UK_RIGHT || k == UK_OK)) { a.t = A_FULLSCR; return a; }   /* t52i (B3): 전체화면 줄 — 좌우·○ 로 바로 오간다 */
         if (scr_s && sel == 12 && (k == UK_LEFT || k == UK_RIGHT || k == UK_OK)) {   /* 빌드 6: 프리셋 — ←→ 고르면 바로 적용(즉시 미리보기), ○ = 저장 칸에서 저장 · 내 프리셋에서 삭제 확인 */
@@ -104,11 +113,26 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 19) s.pwrseq = clampi(s.pwrseq + d, 0, 1);
                 if (sel == 20) s.hddhum = clampi(s.hddhum + d, 0, 2);
                 if (sel == 21) s.hvol = clampi(s.hvol + d, 0, 8);
-                if (sel == 8) s.boot = clampi(s.boot + d, 0, 1); if (sel == 9) s.bosd = clampi(s.bosd + d, 0, 1); if (sel == 10) s.ovbtn = clampi(s.ovbtn + d, 0, 1);
+                if (sel == 26) s.mclick = clampi(s.mclick + d, 0, 1); /*E1R*/
+                if (sel == 8) s.boot = clampi(s.boot + d, 0, 1); if (sel == 9) s.bosd = clampi(s.bosd + d, 0, 1);
+                if (sel == 10) s.ovbtn = clampi(s.ovbtn + d, 0, 1);   /* E2R: split */
+                if (sel == 22) s.ovpos_mode = clampi(s.ovpos_mode + d, 0, 1);   /* E2R */
+                if (sel == 23) s.ovpos_edge = clampi(s.ovpos_edge + d, 0, 3);   /* E2R */
+                if (sel == 24) s.ovpos_align = clampi(s.ovpos_align + d, 0, 2);   /* E2R */
+                if (sel == 25) s.ovpos_free = clampi(s.ovpos_free + d * 5, 0, 100);   /* E2R */
                 a.t = A_APPLY;
             }
             dirty = true; (void)nrow;
-        } else if (k == UK_TRI) { Settings def; Settings & e = eff(); if (scr_s) { e.ratio = def.ratio; e.shader = def.shader; e.curve = def.curve; e.bleed = def.bleed; e.glow = def.glow; e.scan = def.scan; e.mask = def.mask; e.phos = def.phos; } else { e.bgm = def.bgm; e.se = def.se; e.bmult = def.bmult; e.cpuspd = def.cpuspd; e.bmode = def.bmode; e.boot = def.boot; e.bosd = def.bosd; e.bsound = def.bsound; if (conf_grp == 1) { e.dsnd = def.dsnd; e.dvol = def.dvol; e.pwrseq = def.pwrseq; e.hddhum = def.hddhum; e.hvol = def.hvol; } e.ovbtn = def.ovbtn; if (scope == 0) g.fpsd = def.fpsd; } dirty = true; a.t = A_APPLY; }
+        } else if (k == UK_TRI) { Settings def; Settings & e = eff(); if (scr_s) {   /* E2R */
+            e.ratio = def.ratio; e.shader = def.shader; e.curve = def.curve; e.bleed = def.bleed;
+            e.glow = def.glow; e.scan = def.scan; e.mask = def.mask; e.phos = def.phos; }
+        else { e.bgm = def.bgm; e.se = def.se; e.bmult = def.bmult; e.cpuspd = def.cpuspd;
+            e.bmode = def.bmode; e.boot = def.boot; e.bosd = def.bosd; e.bsound = def.bsound;
+            if (conf_grp == 1) { e.dsnd = def.dsnd; e.dvol = def.dvol; e.pwrseq = def.pwrseq;
+                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; /*E1R*/ }
+            e.ovbtn = def.ovbtn; e.ovpos_mode = def.ovpos_mode; e.ovpos_edge = def.ovpos_edge;
+            e.ovpos_align = def.ovpos_align; e.ovpos_free = def.ovpos_free;
+            if (scope == 0) g.fpsd = def.fpsd; } dirty = true; a.t = A_APPLY; }
         else if (k == UK_CANCEL) { if (!scr_s) { cb_has = false; a.t = A_APPLY; dirty = true; }   /* t52i: × = 뒤로. 값은 바뀐 순간부터 저장 대상 */ if (scr_s && backup_has) { eff() = backup; if (bk_cur >= 0 && bk_cur < MAXG) { ov_set(bk_cur, bk_ovm); sync_t(bk_cur); } backup_has = false; a.t = A_APPLY; if (wmult != bk_wmult || winw != bk_winw || winh != bk_winh) { wmult = bk_wmult; winw = bk_winw; winh = bk_winh; a.t = A_WINMULT; a.arg = wmult; } } leave_cfg(); }
         else if (k == UK_OK) { backup_has = false; cb_has = false; dirty = true; a.t = A_APPLY; leave_cfg(); }
         break; }

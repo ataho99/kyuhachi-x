@@ -22,6 +22,29 @@ static const int IDLE_A = 110;                                     /* 평소 불
 enum { OV_KBD = 0, OV_MENU = 1, OV_SAVE = 2, OV_LOAD = 3, OV_BOOST = 4 };
 enum { ACT_MENU = 1, ACT_SAVE = 2, ACT_LOAD = 3, ACT_BOOST = 4, ACT_LOADSHORT = 5 };
 static inline int sx(int s) { return BX + s * PITCH; }
+static int g_ov_mode = 0;   /* E2R: 0 align 1 free */
+static int g_ov_edge = 0;   /* E2R: 0 bottom 1 top 2 left 3 right */
+static int g_ov_align = 0;  /* E2R: horiz 0 left 1 mid 2 right, vert 0 top 1 mid 2 bot */
+static int g_ov_free = 0;   /* E2R: free pos 0..100 */
+static const int OV_M = 4;  /* E2R: inner margin from the game screen edge */
+static inline int ov_len(void) { return NSLOT * BW + (NSLOT - 1) * (PITCH - BW); }   /* E2R */
+static inline int ov_vlen(void) { return NSLOT * BH + (NSLOT - 1) * (PITCH - BH); }   /* E2R */
+static inline int ov_base(int full, int len, int align, int free_) {   /* E2R: row start */
+    if (g_ov_mode == 1) { int f = free_ < 0 ? 0 : free_ > 100 ? 100 : free_;
+        return OV_M + (full - 2 * OV_M - len) * f / 100; }
+    if (align <= 0) return OV_M; if (align == 1) return (full - len) / 2;
+    return full - OV_M - len; }
+static inline void ov_rect(int s, int & x, int & y, int & w, int & h) {   /* E2R */
+    if (g_ov_edge <= 1) { int x0 = ov_base(640, ov_len(), g_ov_align, g_ov_free);
+        x = x0 + s * PITCH; y = g_ov_edge == 0 ? 400 - OV_M - BH : OV_M; w = BW; h = BH; }
+    else { int y0 = ov_base(400, ov_vlen(), g_ov_align, g_ov_free);
+        x = g_ov_edge == 3 ? 640 - OV_M - BW : OV_M; y = y0 + s * PITCH; w = BW; h = BH; }
+    if (x < 0) x = 0; if (y < 0) y = 0;
+    if (x + w > 640) x = 640 - w; if (y + h > 400) y = 400 - h; }
+static bool g_dirty = true;   /* p685 moved up (used by apply_pos) */
+static inline void apply_pos(int mode, int edge, int align, int free_) {   /* E2R */
+    g_ov_mode = mode; g_ov_edge = edge; g_ov_align = align; g_ov_free = free_;
+    g_dirty = true; }
 
 /* ---- 호스트가 채우는 연결 */
 typedef bool (*SendFn)(int kbd, bool down);   /* true = 실제로 코어에 보냈음 */
@@ -39,7 +62,6 @@ static int g_cli_btn = -1;            /* 시험: --kbbtn 값(−1 = 설정을 �
 static bool g_ov_on = true;           /* t52f: 오버레이 버튼 줄 전체 표시(설정 ovbtn). 꺼지면 버튼은 모두 숨고 Alt+K 는 그대로 */
 static int g_cli_ov = -1;             /* 시험: --ovbtn 값 */
 static bool g_force_strong = false;   /* 시험: --ovstrong (항상 진하게) */
-static bool g_dirty = true;
 static int g_down_slot = -1;          /* 누르고 있는 칸 */
 static unsigned g_wake_t = 0; static bool g_lp_on = false, g_lp_fired = false; static unsigned g_lp_t0 = 0; static bool g_lastboost = false;
 static bool g_pressed[160];                           /* 키 index → 눌림(일반·토글) */
@@ -58,9 +80,12 @@ static inline int key_w(int i) { return kbt::g_keys[i].w4 * (kbt::KB_UNIT_PX / 4
 static inline int key_h(int i) { return kbt::g_keys[i].rows * kbt::KB_UNIT_PX - 2; }
 static inline bool in_rect(int x, int y, int rx, int ry, int rw, int rh) { return x >= rx && x < rx + rw && y >= ry && y < ry + rh; }
 static bool slot_shown(int s) { return g_ov_on && (s != OV_KBD || g_btn_on); }
-static int slot_at(int x, int y) {   /* 히트 칸: 칸 0 = 0..45, 칸 s = sx(s)-2 .. +44 */
-    if (!g_ov_on || y < HY || y >= HY + HH) return -1;
-    for (int s = 0; s < NSLOT; s++) { if (!slot_shown(s)) continue; int x0 = s == 0 ? HX : sx(s) - 2, w = s == 0 ? PITCH + 2 : PITCH; if (x >= x0 && x < x0 + w) return s; }
+static int slot_at(int x, int y) {   /* E2R: same ov_rect as draw */
+    if (!g_ov_on) return -1;   /* E2R: bounds come from ov_rect */
+    for (int s = 0; s < NSLOT; s++) { if (!slot_shown(s)) continue;   /* E2R */
+        int rx, ry, rw, rh; ov_rect(s, rx, ry, rw, rh); bool hz = g_ov_edge <= 1;
+        int ex = hz ? 2 : 4, ey = hz ? 4 : 2; if (hz && s == 0) { rx -= 2; rw += 2; }
+        if (x >= rx - ex && x < rx + rw + ex && y >= ry - ey && y < ry + rh + ey) return s; }
     return -1;
 }
 static inline bool in_btn(int x, int y) { return slot_at(x, y) >= 0; }

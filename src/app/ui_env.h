@@ -99,7 +99,7 @@ static void gh_apply_profile_input(const GProfile & p, bool refresh = false) {
 }
 
 /* ------------------------------------------------------------------ t39: 실행 방법 UI 가 쓰는 환경(파일·저장) */
-#define KH_WT_SUFFIX " - " KH_FULLNAME   /* t49a (#811): 창 제목 접미(항상 전부 남김, 30바이트) */
+#define KH_WT_SUFFIX " - " KH_DISPNAME /*E1R*/   /* t49a (#811): 창 제목 접미(항상 전부 남김, 30바이트) */
 #define KH_WT_TITLEMAX (113 - (int)(sizeof(KH_WT_SUFFIX) - 1))                /* 제목 쪽 상한 = 옛 합계 113 - 접미 30 */
 static std::string gh_window_title(const ui::UiGame & tg, bool legacy) {   /* 작품 제목만 줄임, 한글 3바이트 경계 유지 */
     std::string tt = tg.title;
@@ -224,14 +224,29 @@ static void gh_rebuild_fds(const GProfile & p, ui::UiGame & g) {   /* 디스크 
     for (int i = 0; i < 2; i++) if (p.disk[i]) g.cur_fd[i] = flb(p.disk[i]);
     gApp.fdfiles[p.id] = files;
 }
+static void gh_font_rebuild(void) {   /* E3R: 글꼴 목록 합집합(①fontdir ②내부 ③SD ④등록 ⑤앱, 이름 중복은 먼저 것만) */
+    ui::Ui & U = gApp.ui_;
+    std::vector<std::string> ds; kha_font_dirs(ds);
+    std::string exd = aw::dir_of(gh_res_font_path("kyuhachi_font"));
+    bool have = false;
+    for (size_t i = 0; i < ds.size(); i++) if (ds[i] == exd) have = true;
+    if (!have) ds.push_back(exd);
+    U.fonts.clear(); std::set<std::string> seen;
+    for (size_t i = 0; i < ds.size(); i++) {
+        std::vector<std::string> ff; aw::list_dir(ds[i], ff, NULL);
+        std::vector<fontreg::Info> inf = fontreg::scan(ds[i], ff, "\\");
+        for (size_t k = 0; k < inf.size(); k++) {
+            if (!seen.insert(inf[k].name).second) continue;
+            ui::UiFont u; u.name = inf[k].name; u.group = inf[k].group;
+            u.path = inf[k].path; u.why = inf[k].why; u.ok = inf[k].ok;
+            U.fonts.push_back(u);
+        }
+    }
+}
 static void gh_ui_init_games(void) {
     struct ErGuard { std::string k; ErGuard() : k(prof::g_entry_req) { prof::g_entry_req.clear(); } ~ErGuard() { prof::g_entry_req = k; } } er_guard;   /* t48a (#615/#616): 직전 실행의 항목 이름(전역 한 칸)이 모든 작품의 목록 판정에 끼지 않게 한다 */
     gApp.ui_.games.clear(); gApp.vlabel.clear(); gh_ui_env_setup();
-    {   /* t39: 글꼴 폴더 자동 등록 */
-        std::string fd = aw::dir_of(gh_res_font_path("kyuhachi_font")); std::vector<std::string> ff, fs2; aw::list_dir(fd, ff, &fs2);
-        std::vector<fontreg::Info> inf = fontreg::scan(fd, ff, "\\"); gApp.ui_.fonts.clear();
-        for (auto & i : inf) { ui::UiFont u; u.name = i.name; u.group = i.group; u.path = i.path; u.why = i.why; u.ok = i.ok; gApp.ui_.fonts.push_back(u); }
-    }
+    gh_font_rebuild();   /* E3R: 합집합 ①fontdir ②내부 ③SD ④등록 ⑤앱 (t39 단일 폴더 대체) */
     struct E { int order; ui::UiGame g; };
     std::vector<E> es;
     std::vector<std::string> files, subs; gh_list_dir(gApp.exedir + "\\games", files, &subs);
@@ -318,7 +333,8 @@ static void gh_ui_init_games(void) {
             for (int i = 0; i < 4; i++) { ui::UiGame x; x.id = T[i][0]; x.title = T[i][1]; x.disk[0] = std::string("A: ") + T[i][1] + phr_(" 디스크"); x.boot_note = phr_("부팅  A 드라이브"); gApp.ui_.games.push_back(x); }
         }
     }
-    gApp.ui_.build = std::string("v" KH_VERSION);   /* t52a (#53): 내부 빌드명은 로그에만 */
+    gApp.ui_.build = std::string(KH_VER_DISP);   /* E1R: menu shows tag-free */
+    gh_log("version: %s", KH_VERSION);   /* E1R: full tag stays in log */   /* t52a (#53): 내부 빌드명은 로그에만 */
     gh_log("games: %d", (int)gApp.ui_.games.size());
 }
 /* ------------------------------------------------------------------ r017: 작품 추가 · 게임 폴더 자동 등록 */
@@ -525,6 +541,7 @@ static bool gh_touch_pos(float fx, float fy, int & vx, int & vy) {   /* finger (
     vx = gh_touch_fl(lx); vy = (gh_fit_eff() == FIT_1610) ? gh_touch_fl(ly - 40.0) : gh_touch_fl(ly * 400.0 / 480.0); return true;
 }
 static void gh_touch_feed(const SDL_Event & e) {
+    pwr::mclk::note_touch();   /* E1R: touch input stays silent */
     static bool dn = false, mv = false; static SDL_FingerID fid = 0; static float x0 = 0, y0 = 0; static int ay = 0;
     const int STEP = 22, SLOP = 14;
     if (e.type == SDL_FINGERDOWN) { if (dn) return; int vx, vy; if (!gh_touch_pos(e.tfinger.x, e.tfinger.y, vx, vy)) return; dn = true; mv = false; fid = e.tfinger.fingerId; x0 = e.tfinger.x; y0 = e.tfinger.y; ay = vy; return; }

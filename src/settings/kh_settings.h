@@ -33,6 +33,10 @@ struct Settings {
 #else
     int ovbtn = 0;      /* t52f (#132): 윈도 기본 숨김, 안드 표시 유지 0 숨김 1 표시 */
 #endif
+    int ovpos_mode = 0;   /* E2R: 0 align 1 free */
+    int ovpos_edge = 0;   /* E2R: 0 bottom 1 top 2 left 3 right */
+    int ovpos_align = 0;  /* E2R: horiz 0 left 1 mid 2 right, vert 0 top 1 mid 2 bot */
+    int ovpos_free = 0;   /* E2R: free pos 0..100 */
     int padbtn = 2;     // virtual pad in the side bands: 0 off, 1 on, 2 auto (on with a touch screen and no real pad)
     int bsound = 2;     /* r017 배속 중 소리: 0 끔 1 빠르게(음높이 상승) 2 음높이 유지 */
     int dsnd = 0;       /* #641: disk drive sound 0 off 1 seek only 2 on (default off) */
@@ -40,6 +44,7 @@ struct Settings {
     int pwrseq = 1;   /* t667: 0 끔 1 켬(기본 켬) */
     int hddhum = 1;   /* t673: 0 끔 1 게임 중만 2 메뉴 포함(기본 1) */
     int hvol = 3;     /* t667: 0..8(기본 3) */
+    int mclick = 1;   /* E1R: 0 끔 1 켬(기본 켬, 전역 전용) */
     int shim = 2;       /* build 7: menu text shimmer 0 off 1 per letter 2 per dot (global only) */
     int shim_amp = 4, shim_spd = 3, shim_glow = 6, shim_col = 0;   /* strength 1..10, speed 1..10, glow 0..10, color 0 green 1 amber 2 white 3 cyan */
     bool lmode = false, lseen = false; int l_sh = 0, l_scan = 5, l_mask = 1, l_bleed = 0, l_curve = 4;   /* t48c: 옛 형식(fx=1 표지 없음) 파일을 읽는 동안만 쓰는 칸. 끝나면 fx_finish 가 새 칸으로 옮긴다 */
@@ -71,7 +76,10 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "phos=%d\n", s.phos);
     fprintf(f, "dsnd=%d\ndvol=%d\n", s.dsnd, s.dvol);
     fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
+    fprintf(f, "mclick=%d\n", s.mclick);   /* E1R */
     fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* t665 */
+    fprintf(f, "ovpos_mode=%d\novpos_edge=%d\n", s.ovpos_mode, s.ovpos_edge);   /* E2R */
+    fprintf(f, "ovpos_align=%d\novpos_free=%d\n", s.ovpos_align, s.ovpos_free);   /* E2R */
     fprintf(f, "fpsdisp=%d\n", s.fpsd ? 1 : 0);   /* 0 도 쓴다: 작품 구역은 전역 값을 먼저 복사하므로 줄이 없으면 전역 켬이 새어 든다 */
 }
 static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587: 작품 구역에는 바꾼 줄만 쓴다 (비트 = Ui::fbit_of 순서) */
@@ -112,6 +120,7 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "pwrseq") { s.pwrseq = v ? 1 : 0; return true; }
     if (k == "hddhum") { s.hddhum = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "hvol") { s.hvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
+    if (k == "mclick") { s.mclick = v ? 1 : 0; return true; }   /* E1R */
     if (k == "shim") { s.shim = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* build 7: menu text shimmer keys (before the long chain) */
     if (k == "shim_amp") { s.shim_amp = v < 1 ? 1 : v > 10 ? 10 : v; return true; }
     if (k == "shim_spd") { s.shim_spd = v < 1 ? 1 : v > 10 ? 10 : v; return true; }
@@ -127,6 +136,10 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     else if (k == "ratio") s.ratio = v; else if (k == "shader") s.shader = (v == 2) ? 2 : 0; else if (k == "curve") s.curve = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "bleed") s.bleed = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "glow") s.glow = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "scan") s.scan = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "mask") s.mask = v < 0 ? 0 : v > 10 ? 10 : v;
     else if (k == "bgm") s.bgm = v; else if (k == "se") s.se = v; else if (k == "device") s.device = v; else if (k == "pad") s.pad = v; else if (k == "bmult") s.bmult = v; else if (k == "bmode") s.bmode = v; else if (k == "boot") s.boot = v; else if (k == "bosd") s.bosd = v; else if (k == "bsound") s.bsound = v; else if (k == "kbbtn") s.kbbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "ovbtn") s.ovbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "padbtn") s.padbtn = v < 0 ? 0 : v > 2 ? 2 : v; else if (k == "kbshader") s.kbshader = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "fpsdisp") s.fpsd = v ? 1 : 0;
     else if (k == "cpuspd") s.cpuspd = v < 0 ? 0 : v > 3 ? 3 : v;
+    if (k == "ovpos_mode") { s.ovpos_mode = v ? 1 : 0; return true; }   /* E2R */
+    if (k == "ovpos_edge") { s.ovpos_edge = v < 0 ? 0 : v > 3 ? 3 : v; return true; }   /* E2R */
+    if (k == "ovpos_align") { s.ovpos_align = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* E2R */
+    if (k == "ovpos_free") { s.ovpos_free = v < 0 ? 0 : v > 100 ? 100 : v; return true; }   /* E2R */
     else return false;
     return true;
 }

@@ -1,0 +1,1 @@
+Android template copy: build output, signing keys and local.properties are excluded. Do not add keystore files.

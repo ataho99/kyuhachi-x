@@ -5,11 +5,11 @@ namespace kbov {
 /* ---- 그리기 (가상 캔버스에 ARGB 로 그린 뒤 프레임에 알파 합성) */
 static void fill(int x, int y, int w, int h, uint32_t c) { for (int j = y < 0 ? 0 : y; j < y + h && j < 400; j++) for (int i = x < 0 ? 0 : x; i < x + w && i < 640; i++) g_img[j * 640 + i] = c; }
 /* PC-98 느낌의 단색 비트맵 아이콘(16x16 칸 안에 칸 단위 사각형으로). ix,iy = 아이콘 원점 */
-static void icon(int s, int x, uint32_t ink) {
-    int ix = x + 12, iy = BY + 6;
+static void icon(int s, int x, int y, uint32_t ink) {   /* E2R */
+    int ix = x + 12, iy = y + 6;   /* E2R */
     if (s == OV_KBD) {   /* 윗줄 6칸 · 가운데 6칸 · 아랫줄 스페이스 모양 */
-        for (int c = 0; c < 6; c++) { fill(x + 5 + c * 5, BY + 6, 3, 4, ink); fill(x + 5 + c * 5, BY + 12, 3, 4, ink); }
-        fill(x + 11, BY + 18, 18, 4, ink);
+        for (int c = 0; c < 6; c++) { fill(x + 5 + c * 5, y + 6, 3, 4, ink); fill(x + 5 + c * 5, y + 12, 3, 4, ink);   /* E2R */ }
+        fill(x + 11, y + 18, 18, 4, ink);   /* E2R */
     } else if (s == OV_MENU) {   /* 세 줄 */
         fill(ix + 1, iy + 2, 14, 3, ink); fill(ix + 1, iy + 7, 14, 3, ink); fill(ix + 1, iy + 12, 14, 3, ink);
     } else if (s == OV_SAVE) {   /* 아래 화살표 + 받침 */
@@ -39,11 +39,14 @@ static void rebuild(void) {
     }
     for (int s = 0; s < NSLOT; s++) {   /* 버튼 줄: 켜짐(키보드 보임·배속 중·누르는 중)은 밝게 반전 */
         if (!slot_shown(s)) continue;
-        int x = sx(s); bool on = slot_lit(s) || g_down_slot == s;
+        int x, y, bw, bh; ov_rect(s, x, y, bw, bh);   /* E2R */
+        bool on = slot_lit(s) || g_down_slot == s;
         uint32_t face = on ? 0xFFFFC000u : 0xF0202840u, edge = on ? 0xFFFFFFFFu : 0xF0C0C8E0u, ink = on ? 0xFF000000u : 0xFFFFFFFFu;
-        fill(x, BY, BW, BH, edge); fill(x + 1, BY + 1, BW - 2, BH - 2, face);
-        icon(s, x, ink);
-        if (s == OV_LOAD && g_lp_on) { int w = (int)((now_() - g_lp_t0) * (unsigned)(BW - 4) / LP_MS); if (w > BW - 4) w = BW - 4; fill(x + 2, BY + BH - 5, BW - 4, 3, 0xFF404040u); fill(x + 2, BY + BH - 5, w, 3, 0xFF00E0FFu); }   /* 길게 누르는 진행 막대 */
+        fill(x, y, bw, bh, edge); fill(x + 1, y + 1, bw - 2, bh - 2, face);   /* E2R */
+        icon(s, x, y, ink);   /* E2R */
+        if (s == OV_LOAD && g_lp_on) { int w = (int)((now_() - g_lp_t0)   /* E2R */
+            * (unsigned)(bw - 4) / LP_MS); if (w > bw - 4) w = bw - 4;
+            fill(x + 2, y + bh - 5, bw - 4, 3, 0xFF404040u); fill(x + 2, y + bh - 5, w, 3, 0xFF00E0FFu); }
     }
     g_dirty = false;
 }
@@ -75,6 +78,8 @@ static void draw(uint32_t * fr, int fw, int fh) {
     bool caps = g_caps_fn ? g_caps_fn() : false, kana = g_kana_fn ? g_kana_fn() : false, bo = g_boost_fn ? g_boost_fn() : false;
     if (g_dirty || g_lp_on || caps != g_lastcaps || kana != g_lastkana || bo != g_lastboost) rebuild();
     if (g_vis) blend_region(fr, fw, fh, PX, PY, PW, PH);
-    if (g_ov_on) { int m = cur_mul(); for (int s = 0; s < NSLOT; s++) if (slot_shown(s)) blend_region(fr, fw, fh, sx(s), BY, BW, BH, slot_lit(s) && m < 200 ? 200 : m); }
+    if (g_ov_on) { int m = cur_mul(); for (int s = 0; s < NSLOT; s++) if (slot_shown(s)) {   /* E2R */
+            int qx, qy, qw, qh; ov_rect(s, qx, qy, qw, qh);
+            blend_region(fr, fw, fh, qx, qy, qw, qh, slot_lit(s) && m < 200 ? 200 : m); } }
 }
 }   /* namespace kbov */
