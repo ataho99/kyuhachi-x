@@ -327,7 +327,8 @@ inline std::string base_name_of(const std::string & p) {
 inline bool is_hex40(const std::string & v) {
     if (v.size() != 40) return false; for (unsigned char ch : v) if (!isxdigit(ch)) return false; return true;
 }
-inline std::string find_same_source(Ctx & c, const std::string & srcpath, const std::vector<prof::ImgInfo> & imgs) {
+inline std::string find_same_source(Ctx & c, const std::string & srcpath, const std::vector<prof::ImgInfo> & imgs, bool * partial = NULL) {
+    if (partial) *partial = false; std::string part;   /* t723: 직접 지정(auto≠1) 항목은 이미지 한 장씩 들어오므로 이름이 항목 이름의 일부면 같은 작품 */
     std::set<std::string> want;
     for (auto & i : imgs) { std::string b = lower(acp_to_u8(i.base)); if (!b.empty()) want.insert(b); }
     if (want.empty()) return std::string();
@@ -356,8 +357,13 @@ inline std::string find_same_source(Ctx & c, const std::string & srcpath, const 
                     addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
         }
         if (!have.empty() && have == want) return s;
+        if (part.empty() && !have.empty() && !(g.count("auto") && g["auto"] == "1")) {
+            bool sub = true; for (auto & n : want) if (!have.count(n)) { sub = false; break; }
+            if (sub) part = s;
+        }
     }
-    return std::string();
+    if (!part.empty() && partial) *partial = true;
+    return part;
 }
 /* kx-dedup: retire superseded zip extraction copies (games/_zip/<sha12>) whose images are all in oldshas.
    move to games/_zip/_old (never delete). keepdir (the fresh extraction) is skipped. */
@@ -436,7 +442,17 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
     std::string jshort = curated ? std::string(khtr::tr("확인됨 (DB 일치)")) : r.shortt, judge = curated ? khtr::fmt(khtr::tr("DB 일치 — %s"), (q.title.empty() ? q.reason : q.title).c_str()) : r.text;
     R.judge = judge; R.title = title; R.grade = curated ? "A" : std::string(1, r.grade); R.jshort = jshort; R.metasrc = msrc; R.year = year; R.maker = maker;
     {   /* kx-dedup: same srcdir + same file names = patch update. swap images in place, keep id. */
-        std::string tgt = find_same_source(c, srcpath, imgs);
+        bool part = false; std::string tgt = find_same_source(c, srcpath, imgs, &part);
+        if (!tgt.empty() && part) {   /* t723: 직접 지정 항목의 이미지 한 장이 바뀐 것 — 해시·sig 만 보태고 손으로 정한 항목 설정(디스크 자리·제목·등급)은 건드리지 않는다 */
+            R.st = Result::EXISTS; R.id = tgt;
+            R.note = khtr::fmt(khtr::tr("같은 경로·같은 파일명 → %s 이미지 교체 (제목·세이브·설정 유지)"), tgt.c_str());
+            if (dry) return R;
+            std::vector<KVu> u; u.push_back({ "sig", sig, 3 });
+            { std::string sv; for (auto & h : shas) sv += (sv.empty() ? "" : ",") + h; if (!sv.empty()) u.push_back({ "sha1s", sv, 1 }); }
+            ini_patch(join(join(c.games_dir, tgt), "game.ini"), u);
+            c.reg[sig] = tgt; for (auto & h : shas) c.hashidx[h] = tgt;
+            return R;
+        }
         if (!tgt.empty()) {
             R.st = Result::EXISTS; R.id = tgt;
             R.note = khtr::fmt(khtr::tr("같은 경로·같은 파일명 → %s 이미지 교체 (제목·세이브·설정 유지)"), tgt.c_str());

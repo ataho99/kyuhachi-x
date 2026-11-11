@@ -262,9 +262,15 @@ static void gh_stem_step(void) {
 }
 /* 원본 경로(game.ini 의 UTF-8)가 정말 없는지. ANSI 로 못 바꾼 한글 경로(ACP 가 한글이 아닌 PC)는 읽을 수 없으니 「모름」= 없다고 하지 않는다 (t722 결함: 한글 srcdir 작품이 전부 「원본 없음」으로 막혔다) */
 static bool gh_path_gone(const std::string & u8, bool isdir) {
-    if (u8.empty()) return false; const std::string a = aw::u8_to_acp(u8);
-    if (aw::has_hi(a) && aw::u8_valid(a)) return false;
-    return isdir ? !aw::dir_exists(a) : !plat::exists(a);
+    if (u8.empty()) return false;
+#if defined(_WIN32)
+    /* t723: ANSI 로 못 바꾸는 한글 경로는 u8_to_acp 가 '?' 로 바꿔 돌려줘(57be024 의 「그대로 돌려줌」 가정이 틀렸다) 있는 폴더도 없다고 나왔다 — 유니코드 API 로 직접 본다 */
+    std::wstring w; if (!plat::utf8_to_wide(u8, w)) return false;
+    const DWORD at = GetFileAttributesW(w.c_str()); if (at == INVALID_FILE_ATTRIBUTES) return true;
+    return isdir ? !(at & FILE_ATTRIBUTE_DIRECTORY) : false;
+#else
+    return isdir ? !aw::dir_exists(u8) : !plat::exists(u8);
+#endif
 }
 static bool gh_tidy_hidden(const std::string & dir) {   /* kx-clean: 목록 정리에서 뺀 작품(user.ini [game] tidy_hidden=1) — 목록에서만 숨긴다 */
     prof::Ini u; return prof::ini_load(dir + "/user.ini", u) && u.count("game") && u["game"].count("tidy_hidden") && u["game"]["tidy_hidden"] == "1";
