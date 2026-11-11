@@ -216,10 +216,17 @@ static void gh_launch_note(ui::Ui & U, const ui::Act & a) {   /* 실행 요청�
     prof::g_entry_req = (a.t == ui::A_START) ? a.entry : (a.entry.empty() ? U.sel_entry : a.entry);
     if (a.game >= 0 && a.game < (int)U.games.size()) U.games[a.game].last_run = (long long)time(NULL);
 }
+/* t726: DB 작품의 디스크 자리는 sha1 로 적혀 있다 — 교체 목록에는 imgdir 에서 그 해시의 실제 이미지 이름을 찾아 보이고, 못 찾으면 「디스크 n」 */
+static std::string gh_fd_real(const GProfile & p, const std::string & h, const std::vector<std::string> & order) {
+    std::vector<std::string> fl; aw::list_dir(p.imgdir, fl, NULL);
+    for (auto & f : fl) { if (!aw::img_ext(f)) continue; const std::string x = gApp.shacache.sha1(aw::join(p.imgdir, f)); if (!x.empty() && aw::lower(x) == aw::lower(h)) { std::string n = f; size_t dd = n.find_last_of('.'); if (dd != std::string::npos && n.size() - dd <= 5) n = n.substr(0, dd); return n; } }
+    size_t k = 0; for (; k < order.size(); k++) if (order[k] == h) break;
+    return std::string(phr_("디스크")) + " " + std::to_string(k + 1);
+}
 static void gh_rebuild_fds(const GProfile & p, ui::UiGame & g) {   /* 디스크 교체 후보 = 지금 실행하는 항목의 배치 */
     std::string demo = p.kv.count("demo") ? p.kv.at("demo") : std::string(); std::vector<std::string> files; auto addf = [&](const char * f) { if (!f || !*f) return; for (auto & x : files) if (x == f) return; files.push_back(f); };
     for (int i = 0; i < 2; i++) addf(p.disk[i]); for (auto & s : p.swap) addf(s.c_str()); addf(demo.c_str());
-    auto flb = [&](const std::string & f) -> std::string { std::string n = f; size_t dd = n.find_last_of('.'); if (dd != std::string::npos && n.size() - dd <= 5) n = n.substr(0, dd); return n; };
+    auto flb = [&](const std::string & f) -> std::string { std::string n = f; if (aw::is_hex40(n)) { std::vector<std::string> ord; for (int q = 0; q < 2; q++) if (p.disk[q] && *p.disk[q]) ord.push_back(p.disk[q]); for (auto & s : p.swap) ord.push_back(s); return gh_fd_real(p, n, ord); } size_t dd = n.find_last_of('.'); if (dd != std::string::npos && n.size() - dd <= 5) n = n.substr(0, dd); return n; };
     g.fds.clear(); g.cur_fd[0].clear(); g.cur_fd[1].clear(); for (auto & f : files) g.fds.push_back(flb(f));
     for (int i = 0; i < 2; i++) if (p.disk[i]) g.cur_fd[i] = flb(p.disk[i]);
     gApp.fdfiles[p.id] = files;
@@ -358,7 +365,7 @@ static void gh_ui_init_games(void) {
           auto flb = [&](const std::string & f) -> std::string {
               if (p.disk[0] && f == p.disk[0] && !kvs("label_a").empty()) return kvs("label_a"); if (p.disk[1] && f == p.disk[1] && !kvs("label_b").empty()) return kvs("label_b");
               if (!demo.empty() && f == demo) return kvs("label_demo").empty() ? std::string(phr_("오프닝(데모) 디스크")) : kvs("label_demo");
-              std::string n = f; size_t dd = n.find_last_of('.'); if (dd != std::string::npos && n.size() - dd <= 5) n = n.substr(0, dd); return n; };
+              std::string n = f; if (aw::is_hex40(n)) { std::vector<std::string> ord; for (int q = 0; q < 2; q++) if (p.disk[q] && *p.disk[q]) ord.push_back(p.disk[q]); for (auto & s : p.swap) ord.push_back(s); return gh_fd_real(p, n, ord); } size_t dd = n.find_last_of('.'); if (dd != std::string::npos && n.size() - dd <= 5) n = n.substr(0, dd); return n; };
           std::vector<std::string> files; auto addf = [&](const char * f) { if (!f || !*f) return; for (auto & x : files) if (x == f) return; files.push_back(f); };
           for (int i = 0; i < 2; i++) addf(p.disk[i]); for (auto & s : p.swap) addf(s.c_str()); addf(demo.c_str());
           for (auto & f : files) { e.g.fds.push_back(flb(f)); }
