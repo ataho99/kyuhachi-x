@@ -260,6 +260,12 @@ static void gh_stem_step(void) {
       std::string res = au ? std::string("auto ") + stem::pick_gid(g_stem.g[v.top[0].g], j.hd) : (!cp2.empty() ? std::string("cand ") + std::to_string(std::count(cp2.begin(), cp2.end(), '|') + 1) : std::string("none(") + (st.empty() ? "줄기 0개 — 이미지를 못 읽었거나 실행 파일 없음" : "표에 맞는 작품 없음") + ")");
       gh_log("STEM %s → %s  [이미지 %d개 · 줄기 %d개 · 남은 대기 %d]", j.id.c_str(), res.c_str(), (int)ims.size(), (int)st.size(), (int)g_stemq.size()); if (gApp.log) fflush(gApp.log); }
 }
+/* 원본 경로(game.ini 의 UTF-8)가 정말 없는지. ANSI 로 못 바꾼 한글 경로(ACP 가 한글이 아닌 PC)는 읽을 수 없으니 「모름」= 없다고 하지 않는다 (t722 결함: 한글 srcdir 작품이 전부 「원본 없음」으로 막혔다) */
+static bool gh_path_gone(const std::string & u8, bool isdir) {
+    if (u8.empty()) return false; const std::string a = aw::u8_to_acp(u8);
+    if (aw::has_hi(a) && aw::u8_valid(a)) return false;
+    return isdir ? !aw::dir_exists(a) : !plat::exists(a);
+}
 static bool gh_tidy_hidden(const std::string & dir) {   /* kx-clean: 목록 정리에서 뺀 작품(user.ini [game] tidy_hidden=1) — 목록에서만 숨긴다 */
     prof::Ini u; return prof::ini_load(dir + "/user.ini", u) && u.count("game") && u["game"].count("tidy_hidden") && u["game"]["tidy_hidden"] == "1";
 }
@@ -340,7 +346,7 @@ static void gh_ui_init_games(void) {
               prof::Profile q; q.install_required = p.install_required; q.reason = p.reason; q.disk.assign(4, std::string()); for (int i = 0; i < 4; i++) if (p.disk[i]) q.disk[i] = p.disk[i];
               std::map<std::string, std::string> kv = p.kv; if (curated) kv["curated"] = "1"; kv["__id"] = d; if (!autoreg) kv.erase("mouse");   /* 직접 정한 작품은 마우스 때문에 막지 않는다 */
               e.g.dosnote = aw::dos_note(q, kv); e.g.block = aw::block_reason(q, kv); if (e.g.block.empty() && !kvs("block").empty() && kvs("block").find("마우스 필수") == std::string::npos) e.g.block = kvs("block");   /* t48a (#615): 마우스 필수 문구는 막는 사유가 아님 */
-              if (autoreg) { const std::string sd = kvs("srcdir"), idr = kvs("imgdir"); if ((!sd.empty() && !plat::exists(aw::u8_to_acp(sd))) || (!idr.empty() && !aw::dir_exists(aw::u8_to_acp(idr)))) { e.g.nosrc = true; e.g.block = phr_("원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기"); } }   /* #144-2: 원본이 없는 작품은 실행하지 않는다 */
+              if (autoreg) { const std::string sd = kvs("srcdir"), idr = kvs("imgdir"); if (gh_path_gone(sd, false) || gh_path_gone(idr, true)) { e.g.nosrc = true; e.g.block = phr_("원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기"); } }   /* #144-2: 원본이 없는 작품은 실행하지 않는다 */
               gh_log("LISTBLK id=%s src=%s auto=%d curated=%d mouse=%s entry_req='%s' block='%s' boot=%s/%s", d.c_str(), p.src.c_str(), autoreg ? 1 : 0, curated ? 1 : 0, kvs("mouse").c_str(), prof::g_entry_req.c_str(), e.g.block.c_str(), kvs("__val.boot").c_str(), kvs("__src.boot").c_str()); }
           auto flb = [&](const std::string & f) -> std::string {
               if (p.disk[0] && f == p.disk[0] && !kvs("label_a").empty()) return kvs("label_a"); if (p.disk[1] && f == p.disk[1] && !kvs("label_b").empty()) return kvs("label_b");

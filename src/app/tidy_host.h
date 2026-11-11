@@ -30,8 +30,8 @@ static void gh_tidy_scan(void) {
         { prof::Ini u; if (prof::ini_load(dir + "/user.ini", u) && u.count("game")) { auto t = u["game"].find("title_user"); if (t != u["game"].end() && !t->second.empty()) r.title = t->second; r.hidden = u["game"].count("tidy_hidden") && u["game"]["tidy_hidden"] == "1"; } }
         { auto s = g.find("srcdir"); if (s != g.end()) r.src = s->second; }
         std::string imgdir; { auto s = g.find("imgdir"); if (s != g.end()) imgdir = s->second; }
-        if (!r.src.empty() && !plat::exists(aw::u8_to_acp(r.src))) r.st = 1;   /* 원본 경로(폴더 또는 zip)가 없다 */
-        if (!imgdir.empty() && !aw::dir_exists(aw::u8_to_acp(imgdir))) r.st = 1;
+        if (gh_path_gone(r.src, false)) r.st = 1;   /* 원본 경로(폴더 또는 zip)가 없다 (한글 경로를 못 읽는 PC 는 「모름」 = 있다고 본다) */
+        if (gh_path_gone(imgdir, true)) r.st = 1;
         r.saves = gh_tidy_has_files(gApp.savedir + "\\" + d);
         Ex e; gh_tidy_names(g, e.names, e.shas); e.ns = r.src.empty() ? std::string() : aw::norm_path(r.src);
         U.tidy_rows.push_back(r); ex.push_back(e);
