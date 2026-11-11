@@ -34,6 +34,7 @@ static void kha_cfg_load(void) {
         size_t e = s.find('='); if (e == std::string::npos) continue; std::string k = s.substr(0, e), v = s.substr(e + 1);
         if (k == "padlayout") ov::g_lblcfg = (v == "retro") ? 1 : (v == "xbox") ? 2 : 0;
         else if (k == "sndbuf") { int n = atoi(v.c_str()); if (n >= 0 && n < 4) ov::g_sndbuf = n; }
+        else if (k == "cpucore") { ov::g_cpucore = atoi(v.c_str()) ? 1 : 0; }   /* t733: 줄이 없으면 기본(빠름) */
         else if (k == "lib" && !v.empty()) g_kha_libs.push_back(v);
         else if (k == "fontdir") ov::g_kha_fontdir = v;   /* E3R */
     }
@@ -43,6 +44,7 @@ static void kha_cfg_load(void) {
 static void kha_cfg_save(void) {
     FILE * f = fopen(kha_cfgpath().c_str(), "w"); if (!f) { gh_log("KHA cfg: save failed"); return; }
     fprintf(f, "padlayout=%s\nsndbuf=%d\n", ov::g_lblcfg == 1 ? "retro" : ov::g_lblcfg == 2 ? "xbox" : "auto", ov::g_sndbuf);
+    fprintf(f, "cpucore=%d\n", ov::g_cpucore);   /* t733 */
     for (auto & d : g_kha_libs) fprintf(f, "lib=%s\n", d.c_str());
     if (!ov::g_kha_fontdir.empty()) fprintf(f, "fontdir=%s\n", ov::g_kha_fontdir.c_str());   /* E3R */
     fclose(f);
@@ -195,7 +197,7 @@ static void kha_ev_watch(const SDL_Event * e) {
 static void kha_seed_assets(void) {
     static const char * const T[][2] = {
         { "kha/fonts/kyuhachi_font.bmp", "res\\fonts\\kyuhachi_font.bmp" }, { "kha/fonts/kyuhachi_font.fnt", "res\\fonts\\kyuhachi_font.fnt" }, { "kha/fonts/kyuhachi_font_sbcs.fnt", "res\\fonts\\kyuhachi_font_sbcs.fnt" },
-        { "kha/fonts/kr_shinsun.bmp", "res\\fonts\\kr_shinsun.bmp" }, { "kha/fonts/jp_default.bmp", "res\\fonts\\jp_default.bmp" }, { "kha/fonts/shinonome16_jp.fnt", "res\\fonts\\shinonome16_jp.fnt" },
+        { "kha/fonts/shinonome16_jp.fnt", "res\\fonts\\shinonome16_jp.fnt" },
         { "kha/rhythm/2608_bd.wav", "res\\rhythm\\2608_bd.wav" }, { "kha/rhythm/2608_sd.wav", "res\\rhythm\\2608_sd.wav" }, { "kha/rhythm/2608_top.wav", "res\\rhythm\\2608_top.wav" },
         { "kha/rhythm/2608_hh.wav", "res\\rhythm\\2608_hh.wav" }, { "kha/rhythm/2608_tom.wav", "res\\rhythm\\2608_tom.wav" }, { "kha/rhythm/2608_rim.wav", "res\\rhythm\\2608_rim.wav" },
         { "kha/shaders/pc98_sharp.glsl", "res\\shaders\\pc98_sharp.glsl" }, { "kha/shaders/pc98_crt.glsl", "res\\shaders\\pc98_crt.glsl" },
@@ -210,14 +212,15 @@ static void kha_seed_assets(void) {
         { "kha/dsn/hum_loop.wav", "res\\disk-noises\\hum_loop.wav" },
         { "kha/dsn/boot_noise.wav", "res\\disk-noises\\boot_noise.wav" },
         { "kha/dsn/boot_beep.wav", "res\\disk-noises\\boot_beep.wav" },
+        { "kha/dsn/crt_on.wav", "res\\disk-noises\\crt_on.wav" }, { "kha/dsn/crt_off.wav", "res\\disk-noises\\crt_off.wav" },   /* t714: CRT 켜짐/꺼짐 소리 — 풀기 목록에 빠져 노바에서 「CRT sfx 없음」 */
         { "kha/dsn/CREDITS_boot.txt", "res\\disk-noises\\CREDITS_boot.txt" },
         { "kha/flags.ini", "res\\flags.ini" }, { "kha/gamecontrollerdb.txt", "res\\gamecontrollerdb.txt" },
         { "kha/strings_ko.txt", "strings_ko.txt" }, { "kha/strings_en.txt", "strings_en.txt" }, { "kha/strings_ja.txt", "strings_ja.txt" },
-        { "kha/gamedb.ini", "gamedb.ini" }, { "kha/gamedb_nk.tsv", "gamedb_nk.tsv" } };
+        { "kha/gamedb.ini", "gamedb.ini" }, { "kha/gamedb_nk.tsv", "gamedb_nk.tsv" }, { "kha/gamedb_nk_boot.tsv", "gamedb_nk_boot.tsv" }, { "kha/gamedb_nk_stem.tsv", "gamedb_nk_stem.tsv" } };   /* #L5: 기동 상태표(빌드 때 assets/kha 에 복사) */
     plat::mkdir(gApp.exedir + "\\res"); plat::mkdir(gApp.exedir + "\\res\\fonts"); plat::mkdir(gApp.exedir + "\\res\\rhythm"); plat::mkdir(gApp.exedir + "\\res\\shaders"); plat::mkdir(gApp.exedir + "\\res\\disk-noises");
     int made = 0, have = 0, miss = 0;
     for (auto & p : T) {
-        std::string dst = gApp.exedir + "\\" + p[1]; if (plat::exists(dst) && strncmp(p[1], "strings_", 8) != 0) { have++; continue; }   /* 4: 문구 파일은 APK 것으로 매번 갱신(사용자 덮어쓰기는 strings.txt) */
+        std::string dst = gApp.exedir + "\\" + p[1]; if (plat::exists(dst) && strncmp(p[1], "strings_", 8) != 0 && strncmp(p[1], "gamedb_nk_boot", 14) != 0 && strncmp(p[1], "gamedb_nk_stem", 14) != 0) { have++; continue; }   /* 4: 문구 파일은 APK 것으로 매번 갱신(사용자 덮어쓰기는 strings.txt) */
         SDL_RWops * r = SDL_RWFromFile(p[0], "rb"); if (!r) { miss++; continue; }
         Sint64 n = SDL_RWsize(r); std::vector<char> b; if (n > 0) { b.resize((size_t)n); size_t got = SDL_RWread(r, b.data(), 1, (size_t)n); b.resize(got); } SDL_RWclose(r);
         FILE * f = fopen(dst.c_str(), "wb"); if (f) { fwrite(b.data(), 1, b.size(), f); fclose(f); made++; } else miss++;
@@ -229,6 +232,7 @@ static std::string kha_mixer_patch(std::string cc) {
     static const int bs[4] = { 512, 1024, 2048, 4096 }, pb[4] = { 20, 40, 60, 100 };
     auto rp = [&](const std::string & a, const std::string & b) { size_t p = cc.find(a); if (p != std::string::npos) cc.replace(p, a.size(), b); };
     rp("blocksize=512", "blocksize=" + std::to_string(bs[ov::g_sndbuf])); rp("prebuffer=20", "prebuffer=" + std::to_string(pb[ov::g_sndbuf]));
+    rp("core=normal", ov::g_cpucore ? "core=dynamic" : "core=normal"); gh_log("KHA cpu core: %s", ov::g_cpucore ? "dynamic(빠름)" : "normal(호환)");   /* t733 */
     gh_log("KHA sound buffer level %d: blocksize=%d prebuffer=%d", ov::g_sndbuf, bs[ov::g_sndbuf], pb[ov::g_sndbuf]); return cc;
 }
 

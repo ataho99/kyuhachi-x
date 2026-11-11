@@ -221,6 +221,7 @@ static void fncells(Canvas & c, const char * const * it, int n) {
 /* ---- 맨 아랫줄(A안): 노란 글자 한 줄. t49a (#812): 마지막 입력 장치(패드/키보드)에 맞춰 기호↔키 이름을 이 한 곳에서 번역하고, 구분자를 줄이며, 폭을 넘으면 두 줄로 나눈다 */
 static int g_helpdev = 0;                       /* 0 = 패드 기호, 1 = 키보드 키 이름 (마지막 입력 장치; 마우스는 바꾸지 않음) */
 static bool g_help_osk = false;                 /* 한글 화면 키보드 화면(글자 키가 입력이라 별도 문구) */
+static bool g_help_two = false;                 /* v0.6.8: 한 번만 — 도움말 칸을 한 줄이어도 두 줄 자리(높이 32, 시작 y=c.h-32)에 그린다(작품 선택: 작품마다 줄 수가 달라 어긋나 보이던 것) */
 struct HelpKey { std::string sym, name; };
 static std::vector<HelpKey> g_helpkeys;         /* 호스트가 실제 키 매핑 표(gh_keytab)에서 채운다 — 표 한 곳 */
 typedef void (*HelpLogFn)(const std::string & text, int padw, int kbdw, int cellw, bool two);
@@ -231,6 +232,7 @@ static std::string help_rep(std::string s, const std::string & from, const std::
 #define KH_SNDLABEL phr_("소리 버퍼 (다음 시작부터)")
 static int g_lblcfg = 0;   /* t137: 패드 라벨 방식 0 자동 1 retro 2 xbox */
 static int g_sndbuf = 1;   /* t137: 소리 버퍼 단계 0..3 */
+static int g_cpucore = 1;   /* t733: CPU 코어 0 호환(normal) 1 빠름(dynamic, 기본). android.ini 에 cpucore 줄이 없으면 1 */
 static void (*g_kha_save)(void) = 0;
 static std::string g_kha_fontdir;   /* E3R: android.ini fontdir= (빈칸=자동) */
 static std::string kh_lbl(std::string s) { int m = g_lblcfg ? g_lblcfg : (gensei_padkind_v == 1 ? 2 : 1); const char * Lb[4] = { m == 1 ? "A" : "B", m == 1 ? "B" : "A", m == 1 ? "Y" : "X", m == 1 ? "X" : "Y" }; s = help_rep(s, "○", Lb[0]); s = help_rep(s, "×", Lb[1]); s = help_rep(s, "□", Lb[2]); s = help_rep(s, "△", Lb[3]); return s; }
@@ -273,12 +275,12 @@ static void helpline(Canvas & c, const std::string & s0) {
     std::string sp = help_common(s0), sk = help_kbd(sp);
     if (osk && g_helpdev == 1) sk = phr_("키보드로 입력  Enter:완료  Esc:취소  Backspace:지움  한/영 키:한글/영문");
     std::string s = g_helpdev == 1 ? sk : kh_lbl(sp);
-    bool two = tw(s) > maxw;
+    const bool f2 = g_help_two; g_help_two = false; bool two = f2 || tw(s) > maxw;
     if (g_help_logfn) g_help_logfn(s0, tw(sp), tw(sk), maxw, tw(sp) > maxw || tw(sk) > maxw);
     if (!two) { c.rect(0, c.h - 16, c.w, 16, K); text(c, 8, c.h - 16, s, YL, K); return; }
     const int maxw2 = c.w - 32;   /* t50a (안 D): 두 줄일 때는 틀(x=16) 안쪽에 맞춘다 */
     std::string l1 = s, l2; size_t cut = std::string::npos, p = 0;   /* 구분 공백 두 칸에서 나눔: 윗줄이 들어가는 마지막 위치 */
-    while ((p = s.find("  ", p)) != std::string::npos) { if (tw(s.substr(0, p)) <= maxw2) cut = p; else break; p += 2; }
+    if (tw(s) > maxw2) while ((p = s.find("  ", p)) != std::string::npos) { if (tw(s.substr(0, p)) <= maxw2) cut = p; else break; p += 2; }   /* 한 줄에 다 들어가면 나누지 않음(g_help_two) */
     if (cut != std::string::npos) { l1 = s.substr(0, cut); l2 = s.substr(cut + 2); }
     c.rect(0, c.h - 32, c.w, 32, K); text(c, 16, c.h - 32, fit(l1, maxw2), YL, K); if (!l2.empty()) text(c, 16, c.h - 16, fit(l2, maxw2), YL, K);
 }
@@ -340,6 +342,14 @@ static std::string safe_name(const std::string & in, int maxch = 48) {
 static void blit_scaled(Canvas & c, const uint32_t * src, int sw, int sh, int dx, int dy, int dw, int dh) {
     if (!src || sw <= 0 || sh <= 0) return;
     for (int y = 0; y < dh; y++) { int sy = (int)((long long)y * sh / dh); for (int x = 0; x < dw; x++) { int sx = (int)((long long)x * sw / dw); c.set(dx + x, dy + y, src[(size_t)sy * sw + sx] & 0xFFFFFF); } }
+}
+/* #M3: 비율 유지로 칸(dw x dh) 안 가운데에 맞춘다. 남는 곳은 건드리지 않음(호출 쪽이 미리 검정으로 칠함) */
+static void blit_fit(Canvas & c, const uint32_t * src, int sw, int sh, int dx, int dy, int dw, int dh) {
+    if (!src || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
+    int fw = dw, fh = (int)((long long)sh * dw / sw);
+    if (fh > dh) { fh = dh; fw = (int)((long long)sw * dh / sh); }
+    if (fw < 1 || fh < 1) return;
+    blit_scaled(c, src, sw, sh, dx + (dw - fw) / 2, dy + (dh - fh) / 2, fw, fh);
 }
 /* 표본 그림(저장 캡처가 없을 때): 코드로 그린 PC-98풍 화면 한 장 */
 static void sample_picture(Canvas & c, int dx, int dy, int dw, int dh) {

@@ -65,6 +65,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         if (scr == S_CONF && sel == 3 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) { g_sndbuf = (g_sndbuf + (k == UK_LEFT ? 3 : 1)) % 4; if (g_kha_save) g_kha_save(); dirty = true; break; }   /* t137: 소리 버퍼 */
 #endif
 #if defined(__ANDROID__)
+        if (scr == S_CONF && sel == 28 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) { g_cpucore = g_cpucore ? 0 : 1; if (g_kha_save) g_kha_save(); dirty = true; break; }   /* t733: CPU 코어 빠름/호환 (다음 시작부터) */
         if (scr == S_CONF && sel == 27 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) {   /* E3R: 글꼴 폴더(27) */
             if (k == UK_LEFT || k == UK_RIGHT) {
                 if (ov::g_kha_fontdir.empty()) { if (!kha_fontdir_pick()) break; }
