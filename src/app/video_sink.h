@@ -152,16 +152,23 @@ static void gh_ovl_draw_all(uint32_t * px, int fw, int fh) { ov::Canvas oc = { p
 static bool gh_ovl_build(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로 호출 */
     bool osd_on = gApp.osd_until && SDL_GetTicks() < gApp.osd_until;
     if (fw <= 0 || fh <= 0 || !(kbov::active() || osd_on || (gApp.boost_on && gApp.bosd_on) || !gApp.bk_osd.empty() || gApp.fps_on)) return false;
-    size_t n = (size_t)fw * fh; gApp.ovt_b.assign(n, 0xFF000000u); gApp.ovt_w.assign(n, 0xFFFFFFFFu);
+    size_t n = (size_t)fw * fh;
+    static int s_pw = 0, s_ph = 0; static std::vector<uint32_t> s_rb, s_rw;   /* t724 (#P8): 두 바탕 버퍼는 호출 사이에 바탕(검정/흰)으로 되돌려 두고, 그려진 줄만 변환한다(출력 동일) */
+    if (s_pw != fw || s_ph != fh || gApp.ovt_b.size() != n || gApp.ovt_w.size() != n) { gApp.ovt_b.assign(n, 0xFF000000u); gApp.ovt_w.assign(n, 0xFFFFFFFFu); s_rb.assign((size_t)fw, 0xFF000000u); s_rw.assign((size_t)fw, 0xFFFFFFFFu); s_pw = fw; s_ph = fh; }
     gh_ovl_draw_all(gApp.ovt_b.data(), fw, fh); gh_ovl_draw_all(gApp.ovt_w.data(), fw, fh);
-    gApp.ovl.resize(n); bool any = false;
-    for (size_t i = 0; i < n; i++) {
-        uint32_t b = gApp.ovt_b[i], w = gApp.ovt_w[i];
+    gApp.ovl.resize(n); bool any = false; const size_t rowb = (size_t)fw * sizeof(uint32_t);
+    for (int y = 0; y < fh; y++) {
+        uint32_t * pb = gApp.ovt_b.data() + (size_t)y * fw, * pw = gApp.ovt_w.data() + (size_t)y * fw, * po = gApp.ovl.data() + (size_t)y * fw;
+        if (!memcmp(pb, s_rb.data(), rowb) && !memcmp(pw, s_rw.data(), rowb)) { memset(po, 0, rowb); continue; }   /* 아무것도 안 그려진 줄 = 원래 화소 루프 결과(a=0 → 0)와 같다 */
+        for (int x = 0; x < fw; x++) {
+        uint32_t b = pb[x], w = pw[x];
         int dr = (int)((w >> 16) & 255) - (int)((b >> 16) & 255), dg = (int)((w >> 8) & 255) - (int)((b >> 8) & 255), db = (int)(w & 255) - (int)(b & 255);
         int dm = dr > dg ? dr : dg; if (db > dm) dm = db; if (dm < 0) dm = 0; if (dm > 255) dm = 255;
-        int a = 255 - dm; if (a <= 0) { gApp.ovl[i] = 0; continue; }
+        int a = 255 - dm; if (a <= 0) { po[x] = 0; continue; }
         int r = (int)((b >> 16) & 255), g = (int)((b >> 8) & 255), bl = (int)(b & 255); if (r > a) r = a; if (g > a) g = a; if (bl > a) bl = a;
-        gApp.ovl[i] = ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)bl; any = true;
+        po[x] = ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)bl; any = true;
+        }
+        memcpy(pb, s_rb.data(), rowb); memcpy(pw, s_rw.data(), rowb);   /* 바탕으로 되돌림 */
     }
     return any;
 }
@@ -256,6 +263,7 @@ static int SDLCALL gl_thread(void *) {
     int tw = 0, th = 0, cw = 0, ch = 0; int ovw = 0, ovh = 0, otw = 0, oth = 0; bool ov_has = false, ov_dirty = false; std::vector<uint32_t> sw;
     GLuint vp_tex = 0; std::vector<uint32_t> vp_buf; unsigned vp_mask = ~0u; int vp_w = 0, vp_h = 0, vp_sx = -1, vp_sw = -1;   // virtual pad
     while (!gApp.gl_stop) {
+        pdg::gl_tick();   /* #P2: slowcpu 가 켜졌으면 이 스레드도 느린 코어에 묶기(한 번) */
         { unsigned hd = g_kha_hold; if (hd && (hd == 0xFFFFFFFFu || (int)(SDL_GetTicks() - hd) < 0)) { g_kha_glidle = 1; g_kha_was = 1; SDL_GL_MakeCurrent(gApp.win, NULL); SDL_Delay(10); continue; } g_kha_glidle = 0; if (g_kha_was) { g_kha_was = 0; g_kha_rl = 4; } if (g_kha_rl > 0) { g_kha_rl--; int rc0 = SDL_GL_MakeCurrent(gApp.win, gApp.glctx); gh_log("KHA glres rc=%d err=%s cur=%p ctx=%p", rc0, rc0 ? SDL_GetError() : "", (void *)SDL_GL_GetCurrentContext(), (void *)gApp.glctx); } }   /* t146 glres (a127) */
         int dw = 0, dh = 0; SDL_GL_GetDrawableSize(gApp.win, &dw, &dh);
         bool nf = false;
@@ -268,8 +276,10 @@ static int SDLCALL gl_thread(void *) {
         int sx = 0, sy = 0, srw = 0, srh = 0;
         if (cw > 0 && ch > 0 && gApp.rbuf.size() >= (size_t)cw * ch) {
             glBindTexture(GL_TEXTURE_2D, gApp.tex_gl);
+            const uint64_t pd_t0 = pdg::now_us(); const bool pd_up = (cw != tw || ch != th) || nf;   /* #P2 */
             if (cw != tw || ch != th) { glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, cw, ch, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(gApp.rbuf, (size_t)cw * ch, sw)); tw = cw; th = ch; }
             else if (nf) glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cw, ch, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(gApp.rbuf, (size_t)cw * ch, sw));
+            if (pd_up) pdg::gl_up(pdg::now_us() - pd_t0);   /* #P2 */
             int fit = gh_fit_eff(), sh = gApp.shader;
             if (fit == FIT_INT) sh = SH_NEAREST;
             const GProg & P = (sh == SH_CRT && gApp.phos_gl && (gApp.beamv > 0.0f || gApp.breathv > 0.0f || gApp.glowpv > 0.0f)) ? gApp.prog_ph : gApp.prog[sh];
