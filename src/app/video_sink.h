@@ -173,10 +173,19 @@ static bool gh_ovl_build(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로 호�
     return any;
 }
 static void gh_ovl_off(void) { if (gApp.ovl_has) { gApp.ovl_has = false; gApp.ovl_new = true; } }   /* g_fb_mtx 를 잡은 채로 */
-static void gh_ovl_update(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로. 배속 중 프레임이 몰려도 16ms 에 한 번만 다시 만든다 */
+static void gh_ovl_update(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로. 배속 중 프레임이 몰려도 16ms 에 한 번만 다시 만든다. t730 (#P14 4a): 그리는 입력이 하나도 안 바뀌었으면(해시 같음) 다시 만들지 않고 올려 둔 것을 그대로 쓴다 — 500ms 마다는 무조건 다시 만든다(놓친 입력이 있어도 반 초 안에 바로잡힘). fps 표시 켜짐 때는 항상 다시 만든다 */
     static Uint32 last = 0; static bool first = true; Uint32 now = SDL_GetTicks();
     if (!first && now - last < 16) return; first = false; last = now;
-    bool b = gh_ovl_build(fw, fh); gApp.ovl_has = b; gApp.ovl_w = fw; gApp.ovl_h = fh; gApp.ovl_new = true;
+    static uint64_t s_sig = 0; static Uint32 s_t = 0; static bool s_ok = false, s_has = false;
+    bool osd_on = gApp.osd_until && now < gApp.osd_until;
+    uint64_t h = 1469598103934665603ULL; auto mix = [&](uint64_t v) { h = (h ^ v) * 1099511628211ULL; };
+    mix((uint64_t)fw); mix((uint64_t)fh); mix(kbov::g_vis); mix(kbov::g_ov_on); mix(kbov::g_btn_on); mix(kbov::g_dirty); mix((uint64_t)(kbov::g_down_slot + 2)); mix(kbov::g_lp_on ? 1u + ((now - kbov::g_lp_t0) >> 4) : 0u); mix((uint64_t)kbov::cur_mul());
+    mix((uint64_t)kbov::g_ov_mode); mix((uint64_t)kbov::g_ov_edge); mix((uint64_t)kbov::g_ov_align); mix((uint64_t)kbov::g_ov_free); mix(kbov::active());
+    mix(kbov::g_caps_fn ? kbov::g_caps_fn() : false); mix(kbov::g_kana_fn ? kbov::g_kana_fn() : false); mix(kbov::g_boost_fn ? kbov::g_boost_fn() : false);
+    mix(osd_on); if (osd_on) mix(std::hash<std::string>()(gApp.osd)); mix(gApp.boost_on && gApp.bosd_on); mix((uint64_t)gApp.boost_xv); mix(std::hash<std::string>()(gApp.bk_osd));
+    if (s_ok && h == s_sig && !gApp.fps_on && gApp.ovl_has == s_has && now - s_t < 500u) return;
+    s_sig = h; s_t = now; s_ok = true;
+    bool b = gh_ovl_build(fw, fh); s_has = b; gApp.ovl_has = b; gApp.ovl_w = fw; gApp.ovl_h = fh; gApp.ovl_new = true;
 }
 
 static const char * g_nearest_src =
