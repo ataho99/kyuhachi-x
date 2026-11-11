@@ -3465,18 +3465,17 @@ static uint8_t* VGA_PC98_Xlat32_Draw_Line(Bitu vidstart, Bitu line) {
                 uint8_t r8 = pc98_pgraph_current_display_page[(vidmem & vmask) + pc98_pgram_bitplane_offset(1)];      /* B0000-B7FFF */
                 uint8_t b8 = pc98_pgraph_current_display_page[(vidmem & vmask) + pc98_pgram_bitplane_offset(0)];      /* A8000-AFFFF */
 
-                for (unsigned char i=0;i < 8;i++) {
-                    foreground  = (e8 & 0x80) ? 8 : 0;
-                    foreground += (g8 & 0x80) ? 4 : 0;
-                    foreground += (r8 & 0x80) ? 2 : 0;
-                    foreground += (b8 & 0x80) ? 1 : 0;
-
-                    e8 <<= 1;
-                    g8 <<= 1;
-                    r8 <<= 1;
-                    b8 <<= 1;
-
-                    *draw++ = vga.dac.xlat32[foreground];
+                /* t732: 8화소 묶음 — 플레인 4바이트를 화소당 니블로 펼쳐(표 조회 2~4번) 한 번에 합친 뒤 xlat32 8번 조회. 출력은 원래 루프와 동일. */
+                {
+                    static uint32_t kh_spread[256]; static bool kh_spread_ok = false;
+                    if (!kh_spread_ok) { for (unsigned b=0;b < 256;b++) { uint32_t w=0; for (unsigned i=0;i < 8;i++) if (b & (0x80u >> i)) w |= (1u << (4*i)); kh_spread[b]=w; } kh_spread_ok = true; }
+                    const uint32_t w = kh_spread[b8] | (kh_spread[r8] << 1) | (kh_spread[g8] << 2) | (kh_spread[e8] << 3);
+                    const uint32_t* const xl = vga.dac.xlat32;
+                    draw[0] = xl[ w        & 15]; draw[1] = xl[(w >>  4) & 15];
+                    draw[2] = xl[(w >>  8) & 15]; draw[3] = xl[(w >> 12) & 15];
+                    draw[4] = xl[(w >> 16) & 15]; draw[5] = xl[(w >> 20) & 15];
+                    draw[6] = xl[(w >> 24) & 15]; draw[7] = xl[(w >> 28) & 15];
+                    draw += 8;
                 }
 
                 vidmem++;
