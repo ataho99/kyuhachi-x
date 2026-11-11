@@ -91,6 +91,12 @@ static void gh_main_input_init(std::string & id) {
     kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_cfg_load(); for (size_t i_ = 0; i_ < gApp.ui_.gamefolder.size(); i_++) if (gApp.ui_.gamefolder[i_] == '\\') gApp.ui_.gamefolder[i_] = '/';   /* 1b-3: 안드 경로 구분자 통일 */ kha_perm_ask_once(); kha_lib_init();   /* t137 */
     gh_android_savedir();
     gh_android_fontdiag();
+    {   /* t734: 설정 > 시스템(전역) 줄 목록 한 줄 — 「CPU 코어」(28) 행이 목록에 들어가는지 확인용 */
+        ui::Ui & U = gApp.ui_; const int sg = U.conf_grp, ss = U.scope; U.conf_grp = 3; U.scope = 0; std::string rr; bool has28 = false;
+        for (int id : U.rowids(ui::S_CONF)) { rr += std::to_string(id) + " "; if (id == 28) has28 = true; }
+        U.conf_grp = sg; U.scope = ss;
+        gh_log("UI 설정>시스템 줄 목록(전역) [%s] CPU코어행(28)=%s cpucore=%d", rr.c_str(), has28 ? "있음" : "없음", ov::g_cpucore);
+    }
 #endif
     if (!gApp.ui_.lang_seen && gApp.cli_lang < 0 && gApp.uitest_dir.empty()) {   /* #627: no lang= key yet (first boot) -> system locale: ko 0, ja 2, other 1, unknown 0; saved at once */
         std::string l0; if (!gApp.cli_sysloc.empty()) l0 = gApp.cli_sysloc; else { SDL_Locale * lc_ = SDL_GetPreferredLocales(); if (lc_ && lc_[0].language) l0 = lc_[0].language; if (lc_) SDL_free(lc_); }
