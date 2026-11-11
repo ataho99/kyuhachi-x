@@ -21,7 +21,11 @@ inline void Ui::d_edit(Canvas & c) {
     std::vector<ent::Issue> is = ed_issues(); std::vector<std::string> d;
     if (!msg.empty()) d.push_back(fit(msg, 560)); else d.push_back(is.empty() ? std::string(phr_("경고 없음")) : fit(std::string(is[0].err ? phr_("오류: ") : phr_("경고: ")) + is[0].msg, 560));
     d.push_back(fit(dkey(std::string(ed_setdef ? phr_("저장하면 기본 실행 방법으로 지정합니다.") : phr_("기본 지정은 {SEL}{로} 켜고 끕니다.")) + (ed_dirty() ? phr_("  (바꾼 값 있음)") : "")), 560));
-    static const char * H_EDIT = phr_("↑↓:선택, ←→:값, ○:고르기, □:저장, △:시험, SEL:기본 지정, ×:나가기");   /* t50a 안 B: 「시험 실행」→「시험」 (한 줄에 들어감) */
+#if defined(__ANDROID__)
+    static const char * H_EDIT = phr_("↑↓:선택, ←→:값, ○:고르기, □:저장, SEL:기본 지정, ×:나가기");   /* #B4: △ 시험은 윈도 전용 */
+#else
+    static const char * H_EDIT = phr_("↑↓:선택, ←→:값, ○:고르기, □:저장, △:시험, SEL:기본 지정, ×:나가기");
+#endif   /* t50a 안 B: 「시험 실행」→「시험」 (한 줄에 들어감) */
     desc(c, 324, 58, d, (!msg.empty() || (!is.empty() && is[0].err)) ? 0 : -1, H_EDIT);
     helpline(c, H_EDIT);
 }
@@ -48,7 +52,9 @@ inline void Ui::k_edit(UKey k, Act & a) {
                 else if (sel == 11) { if (kv_get("install") == "hdd_new") { if (kv_get("disk_c").empty()) { hddsel = 0; install_start = false; scr = S_HDDASK; } } else { ed["install"] = "hdd_new"; if (!ed.count("hdd_mb")) ed["hdd_mb"] = "40"; } }
             }
             else if (k == UK_SQ) { if (save_ed()) leave_edit_to_ent(); }
+#if !defined(__ANDROID__)   /* #B4: 시험 실행은 윈도 경로·--windowed 명령을 만드는 윈도 전용 기능 — 안드로이드에서는 키·도움말 숨김 */
             else if (k == UK_TRI) { std::vector<ent::Issue> is = ed_issues(); if (ent::has_error(is)) { msg = phr_("오류가 있어 시험할 수 없습니다: ") + is[0].msg; } else yn_open(S_EDIT, YN_TEST, phr_("저장하지 않은 값으로 ") + std::to_string(test_secs()) + phr_("초 실행해 봅니다."), phr_("세이브는 임시 폴더에 쓰고 끝나면 지웁니다."), phr_("실행할까요?")); }
+#endif
             else if (k == UK_SELECT) ed_setdef = !ed_setdef;
             else if (k == UK_CANCEL) { if (ed_dirty()) yn_open(S_EDIT, YN_DISCARD, phr_("바꾼 내용을 저장하지 않고 나갑니까?")); else leave_edit_to_ent(); }
             break; }

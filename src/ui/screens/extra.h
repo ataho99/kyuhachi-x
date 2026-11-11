@@ -9,7 +9,7 @@ inline void Ui::d_extra(Canvas & c) {
     const std::string fv = std::string(phr_("즐겨찾기: ")) + (games.empty() || !games[base_of(cur)].fav ? phr_("☆ 끔") : phr_("★ 켬"));
     std::vector<std::string> a;
     if (extra_sub) a = { phr_("lang_set"), fv };
-    else a = { phr_("디스크 정보"), phr_("부팅 시퀀스 다시 보기"), phr_("조작 안내"), phr_("정보·라이선스"), phr_("적용값 보기 (값·출처 표)"), std::string(phr_("this_set")) + "  >", phr_("원본 디스크로 초기화") };
+    else a = { phr_("부팅 시퀀스 다시 보기"), phr_("조작 안내"), phr_("정보·라이선스"), phr_("적용값 보기 (값·출처 표)"), std::string(phr_("this_set")) + "  >", phr_("원본 디스크로 초기화") };
     std::vector<bool> dm(a.size(), false); items(c, 40, 44, 256, a, sel, 24, &dm);
     rbox(c, 320, 24, 304, 244, WH, phr_("인포메이션"));
     if (gm) { std::string l[4] = { gm->disk[0], gm->disk[1], "", gm->boot_note }; for (int i = 0; i < 4; i++) if (!l[i].empty()) text(c, 344, 44 + i * 22, l[i], i == 3 ? CY : WH, K); }

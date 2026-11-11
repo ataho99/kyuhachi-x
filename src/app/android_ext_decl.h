@@ -42,7 +42,7 @@ static inline void kha_ld_tick(unsigned) {}
 template <class E> static inline void kha_ev_watch(const E *) {}
 #endif
 #ifdef __ANDROID__
-static std::string kha_krf(const std::string & f) { return f.empty() ? std::string("kr_shinsun") : f; }
+static std::string kha_krf(const std::string & f) { return f.empty() ? std::string("kyuhachi_font") : f; }
 #else
 static std::string kha_krf(const std::string & f) { return f; }
 #endif

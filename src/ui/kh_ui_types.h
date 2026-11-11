@@ -9,12 +9,13 @@
 #include "ui/kh_draw.h"
 #include "settings/kh_ent.h"
 #include "settings/kh_settings.h"
+#include "settings/kh_info.h"
 #include "input/kh_ukey.h"
 
 namespace ui {
 using namespace ov;
 
-enum ActT { A_NONE, A_START, A_LOAD, A_SAVE, A_RESUME, A_MAINMENU, A_QUIT, A_SENDKEY, A_DISKSWAP, A_APPLY, A_DELSLOT, A_EXTRA, A_ADD, A_WINMULT, A_FULLSCR, A_SHOT, A_TEST, A_SETLANG, A_KBD, A_KBBTN, A_KBSH, A_SETTITLE, A_NEXTSTAGE };   /* t44a (#494): A_SETLANG(game=작품 index, arg 0 자동 1 한글판 2 원판 일본어) */   /* r017: A_ADD(arg 0 파일 1 폴더 2 게임폴더 지정 3 다시 검색 4 해제) · A_WINMULT(arg=배율, 0=사용자 지정) */
+enum ActT { A_NONE, A_START, A_LOAD, A_SAVE, A_RESUME, A_MAINMENU, A_QUIT, A_SENDKEY, A_DISKSWAP, A_APPLY, A_DELSLOT, A_EXTRA, A_ADD, A_WINMULT, A_FULLSCR, A_SHOT, A_TEST, A_SETLANG, A_KBD, A_KBBTN, A_KBSH, A_SETTITLE, A_NEXTSTAGE, A_STEMPICK };   /* #L6: A_STEMPICK(game=작품 index, arg=후보 번호 0~2 → game.ini boot_gid 로 저장) */   /* t44a (#494): A_SETLANG(game=작품 index, arg 0 자동 1 한글판 2 원판 일본어) */   /* r017: A_ADD(arg 0 파일 1 폴더 2 게임폴더 지정 3 다시 검색 4 해제) · A_WINMULT(arg=배율, 0=사용자 지정) */
 struct Act { ActT t = A_NONE; int game = -1, slot = 0, arg = 0; bool resume = false; std::string entry; };   /* t39: entry = 실행할 항목 이름(빈칸 = 폴더 기본, 「-」 = 항목 없이) */
 
 inline void apply_ov(Settings & s, const std::map<std::string, std::string> & m) {   /* 작품 프로필(DB·game.ini [override]) 값을 전역 위에 얹는다 */
@@ -29,7 +30,7 @@ inline void apply_ov(Settings & s, const std::map<std::string, std::string> & m)
         if (k == "ratio") s.ratio = cl(v, 0, 2); else if (k == "shader") { /* t48c: 위의 앞부분에서 처리 */ } else if (k == "curve") s.curve = cl(v, 0, 10); else if (k == "bleed") { s.bleed = cl(v, 0, 10); if (!fxm) s.glow = s.bleed; } else if (k == "glow") s.glow = cl(v, 0, 10);
         else if (k == "scan") s.scan = fxm ? cl(v, 0, 10) : cl(v, 1, 10); else if (k == "mask") s.mask = fxm ? cl(v, 0, 10) : fx_mask_leg(cl(v, 0, 3)); else if (k == "bgm") s.bgm = cl(v, 0, 8);
         else if (k == "se") s.se = cl(v, 0, 8); else if (k == "pad") s.pad = cl(v, 0, 3); else if (k == "boost") { static const int x[5] = { 2, 3, 4, 6, 8 }; int b = 1; for (int i = 0; i < 5; i++) if (x[i] == v) b = i; s.bmult = b; }
-        else if (k == "boostmode") s.bmode = cl(v, 0, 2); else if (k == "bosd") s.bosd = cl(v, 0, 1); else if (k == "bsound") s.bsound = cl(v, 0, 2); else if (k == "dsnd") s.dsnd = cl(v, 0, 2); else if (k == "dvol") s.dvol = cl(v, 0, 8); else if (k == "pwrseq") s.pwrseq = cl(v, 0, 1); else if (k == "hddhum") s.hddhum = cl(v, 0, 2); else if (k == "hvol") s.hvol = cl(v, 0, 8); else if (k == "kbbtn") s.kbbtn = cl(v, 0, 1); else if (k == "ovbtn") s.ovbtn = cl(v, 0, 1); else if (k == "padbtn") s.padbtn = cl(v, 0, 2); else if (k == "kbshader") s.kbshader = cl(v, 0, 1); else if (k == "fpsdisp") s.fpsd = cl(v, 0, 1); else if (k == "phos") s.phos = cl(v, 0, 255);
+        else if (k == "boostmode") s.bmode = cl(v, 0, 2); else if (k == "bosd") s.bosd = cl(v, 0, 1); else if (k == "bsound") s.bsound = cl(v, 0, 2); else if (k == "dsnd") s.dsnd = cl(v, 0, 2); else if (k == "dvol") s.dvol = cl(v, 0, 8); else if (k == "pwrseq") s.pwrseq = cl(v, 0, 1); else if (k == "hddhum") s.hddhum = cl(v, 0, 2); else if (k == "hvol") s.hvol = cl(v, 0, 8); else if (k == "kbbtn") s.kbbtn = cl(v, 0, 1); else if (k == "ovbtn") s.ovbtn = cl(v, 0, 1); else if (k == "padbtn") s.padbtn = cl(v, 0, 2); else if (k == "kbshader") s.kbshader = cl(v, 0, 1); else if (k == "fpsdisp") s.fpsd = cl(v, 0, 1); else if (k == "phos") s.phos = Settings::phos_norm(v);   /* #S1 */
     }
 }
 struct SlotInfo { bool used = false; std::string stamp, play; int bytes = 0; std::vector<uint32_t> th; int tw_ = 0, th_ = 0; };
@@ -77,6 +78,7 @@ struct Env {   /* 호스트(또는 하니스)가 채우는 입출력 */
 struct UiGame {
     std::string id, title, boot_note; std::string disk[2];
     std::string company, year, genre, patch, devices, disknote;   /* gamedb 항목(인포메이션) */
+    std::string title_jp, intro[3];   /* v0.6.8: library_meta 에서 (일본어 제목 · 소개 최대 3줄, 화면엔 2줄) */
     int play_s = 0; bool has_demo = false;   /* 플레이 시간(초) · 오프닝(데모) 디스크 유무 */
     std::vector<std::string> fds; std::string cur_fd[2];   /* 디스크 교체 목록(표시 이름) · 지금 A/B 에 들어 있는 것 */ std::map<std::string, std::string> ov; std::string src;
     std::vector<uint32_t> thmb; int tw_ = 0, th_ = 0;  /* 마지막 저장 THMB (0x00RRGGBB) */
@@ -87,12 +89,14 @@ struct UiGame {
     std::string lang_exp;   /* t44a (#494): 사용자 지정 언어(user.ini [game] lang=) — ko/jp, 비면 자동 */
     std::string more;   /* r019: 함께 있는 이미지(같은 작품의 다른 이미지) 목록 */
     std::string orig, dbhit;   /* r018: 원판 제목(변형 판정) · DB 일치한 작품 이름 */
+    std::string stemc;   /* #L6: 이름 줄기 점수 후보(game.ini stem_cand= 그대로: 「gid~이름~일치수 | …」, 비면 없음) — 자동으로 못 정한 작품에서 사람이 고른다 */
+    std::string nkgid, bootst, bootconf;   /* #L5: gamedb_nk G id(제목 키+디스크 수가 하나로 정해질 때만) · 기동 상태(OK/SYS/HDI/NOSYS/FAIL/UNK/NA) · 신뢰(자동/눈). 비면 미확인 */
     /* t39 */
     std::string lang, short_t, dir, imgdir, variant_of, fgroup, gfont, defent;   /* lang ko|jp|빈값(미분류) · short= · 폴더 · 이미지 폴더 · 변형이면 기반 id · 글꼴 묶음(전용=custom) · 전용 글꼴 이름 · 기본 항목 */
     int base = -1; bool fav = false, need_install = false; long long last_run = 0; int order_n = 0;   /* base = 변형이면 기반 작품 index */
     std::vector<UiEnt> ents;
 };
 
-enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM };
+enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM, S_STEM };
 
 }   /* namespace ui */

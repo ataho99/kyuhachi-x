@@ -3,10 +3,11 @@ static void gh_finish(int rc);   /* t139: 전방 선언 */
 void GFX_Events(void) {
     static unsigned int last_ev = 0;
     unsigned int now = SDL_GetTicks();
-    kh_input_tick();
+    pdg::HkT pd_ge(0); static unsigned pd_ec = 0; const bool pd_run = pdg::run_hooks(pd_ec);   /* #P4: 구간 재기 + evdiv(기본 1 = 매번 = 지금 동작 그대로) */
+    { pdg::HkT h(1); if (pd_run) kh_input_tick(); }
     kh_stk_mouse_ok = gApp.mouse_game && gApp.boot_tick && !gApp.menu_open && !kbov::g_vis;   /* #624 */
-    kh_stk_tick();
-    kha_ld_tick(now);
+    { pdg::HkT h(2); if (pd_run) kh_stk_tick(); }
+    { pdg::HkT h(3); if (pd_run) kha_ld_tick(now); }
     if (now != last_ev) {
         last_ev = now;
         SDL_Event e;
@@ -196,6 +197,10 @@ void GFX_Events(void) {
                 if (since / 2000 != kst) { kst = since / 2000; gh_log("keytrace pic: t=%u master mask=%02x slave mask=%02x (IRQ1=키보드: 마스크 비트1)", since, (unsigned)IO_ReadB(0x02), (unsigned)IO_ReadB(0x0a)); } }
             if (gApp.mouse_game && since / 2000 != last_stat) { extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y, p7fd9_8255_mouse_x_latch, p7fd9_8255_mouse_y_latch; extern uint8_t p7fd9_8255_mouse_sel, p7fd9_8255_mouse_latch; gh_log("mousereg: x=%d y=%d latchx=%d latchy=%d sel=%u latch=%u", (int)p7fd9_8255_mouse_x, (int)p7fd9_8255_mouse_y, (int)p7fd9_8255_mouse_x_latch, (int)p7fd9_8255_mouse_y_latch, (unsigned)p7fd9_8255_mouse_sel, (unsigned)p7fd9_8255_mouse_latch); }   /* r021 진단: 게임이 버스마우스 레지스터를 읽어 가는가 */
             if (since / 2000 != last_stat) { last_stat = since / 2000; gh_log("stat: wall=%u ms game=%u ms (ratio %.3f) frames=%llu starts=%llu aborts=%llu cycles=%d auto=%d pmode=%d pct=%d CS:IP=%04x:%04x", since, (unsigned)(PIC_Ticks - gApp.pic0), since ? (double)(PIC_Ticks - gApp.pic0) / (double)since : 0.0, gApp.frames, gApp.starts, gApp.aborts, (int)CPU_CycleMax, (int)CPU_CycleAutoAdjust, (int)cpu.pmode, (int)CPU_CyclePercUsed, SegValue(cs), (unsigned)reg_ip);
+                { static unsigned pw0 = 0, pg0 = 0; static bool pnote = false; const unsigned pg1 = (unsigned)(PIC_Ticks - gApp.pic0); const pdg::Snap ps = pdg::take();   /* #P2: 느린 기기 진단 한 줄(로그 전용) */
+                  gh_log("perf: emu간격 n=%u avg=%.2f max=%.2f ms | EndUpdate avg=%.2f max=%.2f ms | GL올림 n=%u avg=%.2f max=%.2f ms | 구간 game/wall=%.3f (누적 %.3f) | audio underrun=%u drop=%u | slowcpu=%d gl=%d", ps.en, ps.gap_avg, ps.gap_max, ps.eu_avg, ps.eu_max, ps.gn, ps.gl_avg, ps.gl_max, since > pw0 ? (double)(pg1 - pg0) / (double)(since - pw0) : 0.0, since ? (double)pg1 / (double)since : 0.0, gensei_mix_under, gensei_mix_drop, pdg::g_slow.load(), pdg::g_glres.load());
+                  gh_log("%s", pdg::take_hk(since > pw0 ? since - pw0 : 0).c_str());   /* #P4 */
+                  if (!pnote && !pdg::g_note.empty()) { pnote = true; gh_log("%s", pdg::g_note.c_str()); } pw0 = since; pg0 = pg1; }
                 gh_log("audio: dev='%s' freq=%d blk=%d cb=%u underrun=%u drop=%u", gensei_audio_dev ? gensei_audio_dev : "(default)", gensei_audio_obt_freq, gensei_audio_obt_samples, gensei_mix_cb, gensei_mix_under, gensei_mix_drop); gh_log("OUTRMS samples=%llu rms=%.2f (창 시작 %u ms)", gensei_out_n, gensei_out_n ? sqrt(gensei_out_sumsq / (double)gensei_out_n) : 0.0, gApp.rms_from); if (dsn::S.inited) gh_log("DSN mode=%d vol=%d ev=%u,%u,%u,%u,%u,%u started=%u,%u,%u,%u,%u merged=%u dropped=%u poll=%u chg=%u", dsn::S.mode, dsn::S.vol, dsn::S.ev[1], dsn::S.ev[2], dsn::S.ev[3], dsn::S.ev[4], dsn::S.ev[5], dsn::S.ev[6], dsn::S.started[0], dsn::S.started[1], dsn::S.started[2], dsn::S.started[3], dsn::S.started[4], dsn::S.merged, dsn::S.dropped, dsn::S.polled, dsn::S.chg);
                 if (dsn::S.inited) { unsigned dpk; double drms; dsn::lvl_take(dpk, drms); gh_log("DSN out pk=%u rms=%.1f all=%u files=%u,%u,%u,%u,%u,%u,%u have=%d%d%d%d%d", dpk, drms, dsn::S.pk_all, dsn::S.lpk[0], dsn::S.lpk[1], dsn::S.lpk[2], dsn::S.lpk[3], dsn::S.lpk[4], dsn::S.lpk[5], dsn::S.lpk[6], (int)dsn::S.have[0], (int)dsn::S.have[1], (int)dsn::S.have[2], (int)dsn::S.have[3], (int)dsn::S.have[4]); } }
             if (gApp.run_ms && since + 100 >= gApp.run_ms) { static bool dsn_fl = false; if (!dsn_fl) { dsn_fl = true; dsn::flush(); } }   /* 641: write the audio log / dump just before quit */

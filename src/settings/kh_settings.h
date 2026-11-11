@@ -25,7 +25,12 @@ struct Settings {
     int fpsd = 0;
     int cpuspd = 0;   /* t665: 0 표준 1 빠름 2 매우빠름 3 최대 */       /* FPS / speed display 0 off 1 on (ini key fpsdisp) */
     int stk_l = 0, stk_r = 2, dz_l = 0, dz_r = 0, stk_sp = 2;   /* #624: stick role 0 off 1 d-pad 2 mouse (left default off, right default mouse); deadzone level 0 default .. 3 largest; mouse speed 1 slow .. 3 fast */
-    int phos = 0;       /* t662 (#635): phosphor bundle, 2 bits each: beam width | persistence << 2 | breathing << 4 | glow << 6 (0 = all off) */
+    int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) — phos_norm() moves it. 0 = all off */
+    static int phos_norm(int v) {   /* #S1: clamp + move an old-format persistence (bits 2-3) to bits 8-10: old 40 -> 27 ms, old 90/160 -> 40 ms */
+        v = v < 0 ? 0 : v > 2047 ? 2047 : v; int lg = (v >> 2) & 3;
+        if (lg) { v &= ~(3 << 2); if (((v >> 8) & 7) == 0) v |= (lg == 1 ? 4 : 5) << 8; }
+        return v;
+    }
     int kbshader = 0;   /* t46z (#548): 화면 키보드·버튼·배속·OSD 에 셰이더 적용 0 안 함(기본) 1 적용 */
     int kbbtn = 1;      /* t46x: 화면 키보드 토글 버튼 표시 0 숨김 1 표시 */
 #if defined(__ANDROID__)
@@ -50,7 +55,7 @@ struct Settings {
     bool lmode = false, lseen = false; int l_sh = 0, l_scan = 5, l_mask = 1, l_bleed = 0, l_curve = 4;   /* t48c: 옛 형식(fx=1 표지 없음) 파일을 읽는 동안만 쓰는 칸. 끝나면 fx_finish 가 새 칸으로 옮긴다 */
     float curve_f() const { return curve * 0.01f; }
     float glow_f() const { return glow * 0.1f; }
-    int ph_beam() const { return phos & 3; }  int ph_pers() const { return (phos >> 2) & 3; }  int ph_breath() const { return (phos >> 4) & 3; }  int ph_glow() const { return (phos >> 6) & 3; }
+    int ph_beam() const { return phos & 3; }  int ph_pers() const { return (phos >> 8) & 7; }  int ph_breath() const { return (phos >> 4) & 3; }  int ph_glow() const { return (phos >> 6) & 3; }
     float bleed_f() const { return bleed * 0.1f; }
     float scan_f() const { return scan / 10.0f; }
     float mask_f() const { return (mask < 0 ? 0 : mask > 10 ? 10 : mask) * 0.05f; }   /* t48c: 옛 마스크 1/2/3 = 0.15/0.3/0.5 = 새 3/6/10 단계 */
@@ -114,7 +119,7 @@ static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587
     if (m & (1u << 25)) fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* 0 도 쓴다 (T252) */
 }
 static bool ini_set(Settings & s, const std::string & k, int v) {
-    if (k == "phos") { s.phos = v < 0 ? 0 : v > 255 ? 255 : v; return true; }   /* t662 (#635) */
+    if (k == "phos") { s.phos = Settings::phos_norm(v); return true; }   /* t662 (#635), #S1: 옛 잔광 칸 이전 */
     if (k == "dsnd") { s.dsnd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* #641 */
     if (k == "dvol") { s.dvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
     if (k == "pwrseq") { s.pwrseq = v ? 1 : 0; return true; }

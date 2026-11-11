@@ -63,3 +63,7 @@ tests/golden/
 /android/template/app/jni/SDL/
 /docs/frontends_new.md
 /android/template/build_out/
+
+# editor/fs leftovers
+.fuse_hidden*
+*.orig_v068

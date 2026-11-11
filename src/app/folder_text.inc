@@ -17,6 +17,11 @@ static const char * fpt(int i) {
     case 13: return phr_("저장소");
     case 14: return phr_("이 폴더에서 작품을 찾지 못했습니다");
     case 15: return phr_("다른 폴더는 「게임 폴더 지정」에서 고르세요");
+    case 16: return phr_("▶ 선택 등록");                                   /* B2 */
+    case 17: return phr_("(이미지 파일·하위 폴더 없음)");                   /* B2 */
+    case 18: return phr_("↑↓:선택  ○·탭:고르기/해제(폴더는 열기)  X·Y:고르기  ×:위로  맨 위 「선택 등록」으로 마침");   /* B2 */
+    case 19: return phr_("고른 파일이 없습니다");                          /* B2 (예약 — 지금은 쓰지 않음) */
+    case 20: return phr_("작품을 등록하는 중입니다...");                   /* B2 */
     default: return "";
     }
 }

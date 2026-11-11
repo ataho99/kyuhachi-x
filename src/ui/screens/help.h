@@ -29,7 +29,14 @@ inline void Ui::d_help(Canvas & c) {   /* t52i (B2·B3): 조작 안내 = 한 장
         phr_("저장    메뉴의 저장/불러오기, Alt+F5 / Alt+F9 는 슬롯 1"),
         phr_("키보드  그 밖의 키는 PC-98 키로 그대로 전달"),
         phr_("        F10 / 숫자 1-7 / KANA 는 메뉴의 「PC-98 키 보내기」로만 보냄") };
-    for (int i = 0; i < 11; i++) text(c, 40, 46 + i * 28, help_btn(L[i]), L[i][0] != ' ' ? CY : WH, K);
+    std::string ln[11]; for (int i = 0; i < 11; i++) ln[i] = L[i];
+#if defined(__ANDROID__)
+    /* #B4: 안드로이드는 윈도 Alt 키 안내(화면 2줄 · 저장 1줄)를 터치/패드 안내로 바꿈. 메뉴(△) = 일시정지 메뉴(F12), 설정 > 화면에 비율·셰이더·곡면 */
+    ln[6] = phr_("화면    메뉴(△) > 설정 > 화면: 비율·셰이더·곡면·잔광");
+    ln[7] = phr_("        터치: 메뉴 화면의 줄과 탭을 직접 눌러 고름");
+    ln[8] = phr_("저장    메뉴(△)의 저장/불러오기 (슬롯 5칸)");
+#endif
+    for (int i = 0; i < 11; i++) text(c, 40, 46 + i * 28, help_btn(ln[i]), ln[i][0] != ' ' ? CY : WH, K);
     helpline(c, phr_("○ 또는 ×:돌아가기"));
 }
 inline void Ui::k_help(UKey k, Act & a) {

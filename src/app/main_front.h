@@ -126,6 +126,7 @@ static void gh_main_logsdl(const std::string & exedir, const bool & ui_mode, std
 #endif
     SDL_SetHint("SDL_IME_SHOW_UI", "1"); SDL_SetHint("SDL_MOUSE_FOCUS_CLICKTHROUGH", "1"); if (gApp.log) gh_log("HINT SDL_MOUSE_FOCUS_CLICKTHROUGH=1 (t48c #639 ②)");   /* t48a: Windows IME 조합·후보 창을 시스템이 그리게 한다 */
     if (!gApp.inject_file.empty()) SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");   /* t48e2: --inject 시험 전용(숨김 창에서도 가상 패드 이벤트 수신). 평소 동작 불변 */
+    SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");   /* v0.6.8: SDL 초기화 전에 — 가속도계를 조이스틱으로 열지 않는다 */
     if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_EVENTS | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | (gApp.headless ? 0 : SDL_INIT_VIDEO)) < 0)
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
     gApp.log_t0 = SDL_GetTicks();

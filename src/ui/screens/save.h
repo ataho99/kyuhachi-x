@@ -12,7 +12,7 @@ inline void Ui::d_save(Canvas & c) {
     rbox(c, 320, 24, 304, 296, WH, phr_("인포메이션"));
     const SlotInfo * si = gm ? &gm->slot[slotsel] : NULL;
     if (si && si->used) {
-        c.rect(343, 43, 258, 162, GY); c.rect(344, 44, 256, 160, K); if (!si->th.empty()) blit_scaled(c, si->th.data(), si->tw_, si->th_, 344, 44, 256, 160); else sample_picture(c, 344, 44, 256, 160);
+        c.rect(343, 43, 258, 162, GY); c.rect(344, 44, 256, 160, K); if (!si->th.empty()) blit_fit(c, si->th.data(), si->tw_, si->th_, 344, 44, 256, 160);   /* #M3: 비율 유지 */ else sample_picture(c, 344, 44, 256, 160);
         std::string l[4] = { phr_("저장 시각  ") + si->stamp, phr_("상태 파일  ") + std::to_string(si->bytes / 1048576) + "." + std::to_string((si->bytes / 104858) % 10) + "MB", gm->disk[0], gm->disk[1] };
         for (int i = 0; i < 4; i++) if (!l[i].empty()) text(c, 344, 214 + i * 20, l[i], WH, K);
     } else text(c, 344, 120, phr_("비어 있는 슬롯입니다."), GY, K);

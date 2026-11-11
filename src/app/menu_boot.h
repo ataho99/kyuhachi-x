@@ -1,31 +1,21 @@
 /* app/menu_boot.h -- S9b: beep, logo, boot sequence, menu run. Moved unchanged from gensei_host.cpp lines 1314-1513 (as of t54t). Included in place; single translation unit. */
-static const unsigned MEM_T0 = 1500;   /* C8: POST MEMORY count start */
-static const unsigned PIPO_T = 1200;   /* C8: beep time (was MEM_T1) */
-static const unsigned MEM_T1 = 4300;   /* C8: MEMORY 640KB OK */
-static const unsigned MEM_KB = 640;   /* C8: POST memory size (KB) */
-static const unsigned FDD_T0 = 4600;   /* C8: FDD dots + lamp */
-static const unsigned FDD_T1 = 5400;   /* C8: FDD OK */
-static const unsigned HDD_T0 = 5700;   /* C8: HDD dots */
-static const unsigned HDD_T1 = 6100;   /* C8: HDD OK */
-static const unsigned SND_T0 = 6400;   /* C8: SOUND dots */
-static const unsigned SND_T1 = 6600;   /* C8: SOUND OK + Now Loading */
-/* ---- 부팅 연출(약 8.0초) · 짧은 로딩 · 삐뽀(음량 ≈1/3 × 효과음 설정) */
+/* ---- 부팅 연출(약 1.8초) · 짧은 로딩 · 삐뽀(음량 ≈1/3 × 효과음 설정) */
+static int g_beep_id = 0;   /* #B4: 삑 소리 번호(gau) */
 static void gh_beep(float se_gain) {
     if (gApp.headless) return;
     int amp = (int)(3000.0f * se_gain); if (amp <= 0) return;
-    SDL_AudioSpec w; SDL_zero(w); w.freq = 44100; w.format = AUDIO_S16SYS; w.channels = 1; w.samples = 1024; w.callback = NULL;
-    SDL_AudioSpec h; gApp.beep_dev = SDL_OpenAudioDevice(NULL, 0, &w, &h, 0); if (!gApp.beep_dev) { gh_log("beep: open fail %s", SDL_GetError()); return; }
     std::vector<int16_t> pcm; const int R = 44100; const double CLK = 1996800.0;
     auto tone = [&](int div, int ms) { double f = CLK / div; int n = R * ms / 1000; for (int i = 0; i < n; i++) { double ph = fmod(i * f / R, 1.0); pcm.push_back((int16_t)(ph < 0.5 ? amp : -amp)); } };
     auto sil = [&](int ms) { pcm.insert(pcm.end(), (size_t)(R * ms / 1000), (int16_t)0); };
-    tone(998, 165); sil(40); tone(1997, 165); sil(100);   /* C8: VM21 pipo */
-    SDL_QueueAudio(gApp.beep_dev, pcm.data(), (Uint32)(pcm.size() * 2)); SDL_PauseAudioDevice(gApp.beep_dev, 0);
+    tone(998, 90); sil(40); tone(1997, 160); sil(100);
+    g_beep_id = gau::play(pcm.data(), pcm.size(), R); if (!g_beep_id) { gh_log("beep: open fail %s", gau::err); return; }   /* #B4: 공유 장치 */
     gh_log("beep: amp=%d", amp);
 }
-static void gh_beep_close(void) { if (gApp.beep_dev) { SDL_CloseAudioDevice(gApp.beep_dev); gApp.beep_dev = 0; } }
+static void gh_beep_close(void) { if (g_beep_id) { gau::stop(g_beep_id); g_beep_id = 0; } }
 /* t52d (#129): 시작 로고 — boot_logo_160.txt 1~18줄(160칸 × 4×8 픽셀: # 꽉 참 · + 체크무늬 50% · . 25% 점) + 아래 가운데 KYUHACHI(비트맵 글자). 검정 바탕 흰색 */
 #include "boot_logo_x1.h"
 #include "boot_logo_x2.h"
+#include "crt_on_fx.h"   /* #S3d: CRT 켜짐 화면 연출(약·중·강) */
 static unsigned char kh_logox_raw[64000]; static bool kh_logox_ok = false;
 static bool kh_logox_load(void) {   /* build 11: base64 -> 640x400 2bpp indices (once) */
     if (kh_logox_ok) return true;
@@ -83,62 +73,77 @@ static void gh_logo_draw(ov::Canvas & c) {   /* build 11: embedded 4-color logo;
         const unsigned char b = kh_logox_raw[y * 160 + (x >> 2)]; c.set(x, y, KH_LOGOX_PAL[(b >> (6 - 2 * (x & 3))) & 3]); }
 }
 static void gh_logo_frame(void) { static uint32_t buf[640 * 400]; ov::Canvas c = { buf, 640, 400 }; gh_logo_draw(c); gh_publish(buf, 640, 400); }
-static void gh_boot_frame(int stage, bool cells, unsigned t) {   /* C6: t=elapsed, 0u=short no POST */
+static void gh_boot_frame(int stage, bool cells) {
     static uint32_t buf[640 * 400]; ov::Canvas c = { buf, 640, 400 }; c.rect(0, 0, 640, 400, ov::K);
-    if (stage >= 1) ov::text(c, 40, 112, std::string(KH_DISPNAME), ov::WH, ov::K); /*E1R*/
-    if (stage >= 2 && (t == 0u || t >= SND_T1))   /* C8: full 6600+, 0u=short */
-        ov::text(c, 40, 144, std::string("Now Loading") + std::string(
-            (size_t)(stage - 1 > 3 ? 3 : stage - 1), '.'), ov::WH, ov::K);
-    if (t >= MEM_T0) {   /* C8: PC-98 POST lines, same ov::text, ASCII only */
-        unsigned kb = t >= MEM_T1 ? MEM_KB : (t - MEM_T0) * MEM_KB / (MEM_T1 - MEM_T0);
-        char mb[32]; snprintf(mb, sizeof mb, "MEMORY  %05uKB%s", kb, t >= MEM_T1 ? "  OK" : " ");
-        ov::text(c, 40, 208, std::string(mb), ov::WH, ov::K);
-        if (t >= FDD_T0)   /* C8: dots first, OK later */
-            ov::text(c, 40, 240, t >= FDD_T1 ? "FDD  ..... OK" : "FDD  .....", ov::WH, ov::K);
-        if (t >= HDD_T0)   /* C8 */
-            ov::text(c, 40, 272, t >= HDD_T1 ? "HDD  ..... OK" : "HDD  .....", ov::WH, ov::K);
-        if (t >= SND_T0)   /* C8 */
-            ov::text(c, 40, 304, t >= SND_T1 ? "SOUND  .... OK" : "SOUND  ....", ov::WH, ov::K);
-    }
-    if (t != 0u && t >= pwr::C10_PROMPT && t < pwr::C10_BLACK) {   /* C10 */
-        unsigned nch = t >= pwr::C10_ENTER ? 8 : pwr::c10_nchars(t);
-        std::string pr = "A>";
-        for (unsigned q = 0; q < nch; q++) pr += "KYUHACHI"[q];
-        if (t < pwr::C10_ENTER && ((t / 250u) & 1u) == 0) pr += "_";
-        ov::text(c, 40, 336, pr, ov::WH, ov::K);
-    }
-    if (t != 0u && t >= pwr::C10_BLACK)   /* C10: black 250ms */
-        c.rect(0, 0, 640, 400, ov::K);
-    if (cells && t < pwr::C10_BLACK) ov::fncells_boot(c);   /* t52a+C10 */
-    pwr::boot_draw(buf, 640, 400);   /* C4: black veil 1->0 on top */
+    if (stage >= 1) ov::text(c, 40, 112, std::string(KH_FULLNAME), ov::WH, ov::K);
+    if (stage >= 2) ov::text(c, 40, 144, std::string("Now Loading") + std::string((size_t)(stage - 1 > 3 ? 3 : stage - 1), '.'), ov::WH, ov::K);
+    if (cells) ov::fncells_boot(c);   /* t52a (#49) */
     gh_publish(buf, 640, 400);
+}
+/* v0.6.8: CRT 켜짐/꺼짐 연출 — 설정 「부팅 연출」(pwrseq) 에 묶음(끄면 둘 다 없음). 소리 res\disk-noises\crt_on.wav · crt_off.wav 는 합성(원본 아님), 44.1kHz 그대로 열어 SDL 이 장치 형식으로 바꾼다. */
+static int g_crt_lvl = 2;   /* #S3d: 켜짐 화면 단계 0=예전 그대로 1=약(e) 2=중(a+b+e) 3=강(a+b+d+e). 기본 중 — 슨상이 시안을 고르면 이 값만 바꾼다. 꺼짐·소리는 무관 */
+static int g_crt_id = 0; static unsigned g_crt_end = 0;   /* #B4: CRT 소리 번호(gau 공유 장치) */
+static bool gh_crt_enabled(void) { return !gApp.headless && gApp.use_gl && gApp.uitest_dir.empty() && gApp.ft_dir.empty() && gApp.ui_.effective(gApp.cur_game).pwrseq != 0; }
+static void gh_crt_sfx(const char * nm) {
+    if (!gh_crt_enabled()) return;
+    const float g = gApp.ui_.effective(gApp.cur_game).se_gain() * 0.8f; if (g <= 0.0f) return;
+    std::string p = gApp.exedir + "\\res\\disk-noises\\" + nm; SDL_AudioSpec sp; Uint8 * wb = NULL; Uint32 wl = 0;
+    std::vector<unsigned char> fb; { FILE * ff = fopen(p.c_str(), "rb"); if (ff) { unsigned char tb[4096]; size_t nn; while ((nn = fread(tb, 1, sizeof tb, ff)) > 0) fb.insert(fb.end(), tb, tb + nn); fclose(ff); } }   /* exedir 는 ANSI 문자열 — SDL_LoadWAV(경로)는 UTF-8 로 읽어 한글 폴더에서 실패하므로 메모리로 읽는다 */
+    if (fb.empty() || !SDL_LoadWAV_RW(SDL_RWFromConstMem(fb.data(), (int)fb.size()), 1, &sp, &wb, &wl)) { gh_log("CRT sfx 없음 %s", p.c_str()); return; }
+    if (sp.format != AUDIO_S16SYS || sp.channels != 1 || sp.freq < 8000) { SDL_FreeWAV(wb); gh_log("CRT sfx 형식 불가 %s", nm); return; }
+    std::vector<int16_t> v((size_t)wl / 2); memcpy(v.data(), wb, v.size() * 2); SDL_FreeWAV(wb);
+    for (size_t i = 0; i < v.size(); i++) { float f = v[i] * g; v[i] = (int16_t)(f > 32767.0f ? 32767.0f : f < -32768.0f ? -32768.0f : f); }
+    if (g_crt_id) { gau::stop(g_crt_id); g_crt_id = 0; }
+    g_crt_id = gau::play(v.data(), v.size(), sp.freq); if (!g_crt_id) { gh_log("CRT sfx 장치 열기 실패 %s", gau::err); return; }
+    g_crt_end = SDL_GetTicks() + (unsigned)((uint64_t)v.size() * 1000 / (uint64_t)sp.freq) + 80u; gh_log("CRT sfx %s %dHz %.2fs gain=%.2f", nm, sp.freq, (double)v.size() / sp.freq, (double)g);
+}
+static inline uint32_t gh_crt_px(float r, float g, float b) { int R = r > 255 ? 255 : r < 0 ? 0 : (int)r, G = g > 255 ? 255 : g < 0 ? 0 : (int)g, B = b > 255 ? 255 : b < 0 ? 0 : (int)b; return 0xFF000000u | ((uint32_t)R << 16) | ((uint32_t)G << 8) | (uint32_t)B; }
+static void gh_crt_frame(uint32_t * o, bool on, float p, const uint32_t * src, int lvl = -1) {   /* 640x400 한 장. p = 0..1 (켜짐은 on_ms(lvl) 에 대한 비율). lvl<0 이면 g_crt_lvl */
+    if (lvl < 0) lvl = g_crt_lvl; if (on && lvl > 0) { crtfx::on_frame(o, p, lvl > 3 ? 3 : lvl); return; }   /* #S3d */
+    const int W = 640, H = 400, cy = H / 2; for (int i = 0; i < W * H; i++) o[i] = 0xFF000000u;
+    auto ease = [](float q) { q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
+    const float GR = 205.0f, GG = 255.0f, GB = 215.0f;   /* 인광 흰초록 */
+    if (on) {   /* 검은 화면 → 가로 밝은 줄이 양옆으로 퍼짐 → 위아래로 번지며 살짝 과밝았다가 가라앉음 */
+        if (p < 0.4f) { const float q = p / 0.4f; const int hw = (int)(ease(q) * 320.0f); const float k = 0.55f + 0.45f * q;
+            for (int dy = -3; dy <= 2; dy++) { const float kk = (dy == -1 || dy == 0) ? k : (dy == -2 || dy == 1) ? k * 0.35f : k * 0.12f; const int y = cy + dy; for (int x = 320 - hw; x < 320 + hw; x++) o[y * W + x] = gh_crt_px(GR * kk, GG * kk, GB * kk); } }
+        else { const float q = (p - 0.4f) / 0.6f; const int hh = (int)(ease(q) * 200.0f) + 2; const float br = (1.0f - q) * (1.0f - q) * 1.35f;
+            for (int y = cy - hh; y < cy + hh; y++) { if (y < 0 || y >= H) continue; const float d = fabsf((float)(y - cy) + 0.5f) / (float)hh; const float k = br * (1.0f - 0.45f * d) + (1.0f - q) * 0.03f;
+                for (int x = 0; x < W; x++) o[y * W + x] = gh_crt_px(GR * k, GG * k, GB * k); } } }
+    else {   /* 화면이 위아래로 눌려 가로줄이 됨(밝아짐) → 줄이 양옆에서 줄어 점이 됨 → 사라짐 */
+        if (p < 0.65f) { const float e = ease(p / 0.65f); int hh = (int)(200.0f * (1.0f - e)); if (hh < 1) hh = 1; const float br = 1.0f + 0.9f * e, mix = e * e * 0.6f;
+            for (int y = cy - hh; y < cy + hh; y++) { int sy = cy + (int)(((float)(y - cy) + 0.5f) * 200.0f / (float)hh); if (sy < 0) sy = 0; if (sy >= H) sy = H - 1; if (y < 0 || y >= H) continue;
+                for (int x = 0; x < W; x++) { const uint32_t v = src ? src[sy * W + x] : 0u; const float r = ((v >> 16) & 255u) * br, g = ((v >> 8) & 255u) * br, b = (v & 255u) * br; o[y * W + x] = gh_crt_px(r * (1 - mix) + GR * mix, g * (1 - mix) + GG * mix, b * (1 - mix) + GB * mix); } } }
+        else { const float q = (p - 0.65f) / 0.35f; const float e = ease(q); int hw = (int)(320.0f * (1.0f - e)); if (hw < 3) hw = 3; const float k = q < 0.75f ? 1.0f : (1.0f - (q - 0.75f) / 0.25f);
+            for (int dy = -2; dy <= 1; dy++) { const float kk = ((dy == -1 || dy == 0) ? 1.0f : 0.3f) * k; const int y = cy + dy; for (int x = 320 - hw; x < 320 + hw; x++) o[y * W + x] = gh_crt_px(GR * kk * 1.1f, GG * kk * 1.1f, GB * kk * 1.1f); } } }
+}
+static void gh_crt_run(bool on, const uint32_t * src) {   /* 막아서 돌리는 연출 (켜짐 0.52~1.0초 단계별 · 꺼짐 0.46초 + 소리 끝날 때까지 최대 1.4초) */
+    static uint32_t ob[640 * 400]; const unsigned dur = on ? crtfx::on_ms(g_crt_lvl > 3 ? 3 : g_crt_lvl) : 460u, t0 = SDL_GetTicks();   /* #S3d: 켜짐 길이는 단계별(520→최대 1000 ms, 소리 1.5 s 안) */
+    for (;;) { const unsigned t = SDL_GetTicks() - t0; if (t >= dur) break; SDL_Event e; while (SDL_PollEvent(&e)) { if (e.type == SDL_QUIT) { GH_QUITSET(); return; } }
+        gh_crt_frame(ob, on, (float)t / (float)dur, src); gh_publish(ob, 640, 400); SDL_Delay(16); }
+    if (!on) { for (int i = 0; i < 640 * 400; i++) ob[i] = 0xFF000000u; gh_publish(ob, 640, 400); while (g_crt_id && gau::playing(g_crt_id) && SDL_GetTicks() < g_crt_end && SDL_GetTicks() - t0 < 1400u) SDL_Delay(10); }
 }
 /* true = 건너뜀. 아무 버튼이나 누르면 건너뛴다. */
 static bool gh_boot_seq(bool full) {
     if (gApp.headless || !gApp.use_gl) return false;
-    static const bool KH_LOGO_ON = false;   /* C1R6: hide boot logo */    /* t601 (#550·#551): 시작 로고 그리기 기본 끔(코드·그림은 남김). t148 개명 때 새 로고와 함께 true 로 */
+    if (full && gh_crt_enabled()) { gh_crt_sfx("crt_on.wav"); gh_crt_run(true, NULL); }   /* v0.6.8: 켜짐 연출 먼저, 그다음 로고·부팅 */
+    static const bool KH_LOGO_ON = false;    /* t601 (#550·#551): 시작 로고 그리기 기본 끔(코드·그림은 남김). t148 개명 때 새 로고와 함께 true 로 */
     if (full && KH_LOGO_ON) {   /* t52d (#129): 시작 로고 1.4초 — 아무 키·클릭이면 부팅 연출 전체를 건너뜀 */
         unsigned tl = SDL_GetTicks(); bool sk = false;
         for (;;) { if (SDL_GetTicks() - tl >= 1400u) break; SDL_Event e; while (SDL_PollEvent(&e)) { bool ak = false; kh_stk_ev(e); gh_ev2uk(e, &ak); if (e.type == SDL_QUIT) { GH_QUITSET(); sk = true; } if (ak) sk = true; } if (sk) return true; gh_logo_frame(); SDL_Delay(16); }
     }
-    pwr::boot_enter(full);   /* C1R1: power sound+video */
-    unsigned t0 = SDL_GetTicks(); bool beeped = false; bool skipped = false;
-    unsigned total = full ? (unsigned)pwr::C10_TOTAL : 500u;   /* C10: 9600 */
+    unsigned t0 = SDL_GetTicks(); bool beeped = false; bool skipped = false; unsigned total = full ? 1800u : 500u;
     for (;;) {
         unsigned t = SDL_GetTicks() - t0; if (t >= total) break;
         SDL_Event e; while (SDL_PollEvent(&e)) { bool ak = false; kh_stk_ev(e); gh_ev2uk(e, &ak); if (e.type == SDL_QUIT) { GH_QUITSET(); skipped = true; } if (ak) skipped = true; }
         if (skipped) break;
         if (full) {
-            if (t >= PIPO_T && !beeped)   /* C8: 1200ms, was MEM_T1 */ { beeped = true; gh_beep(gApp.ui_.effective(gApp.cur_game).se_gain()); }
-            int stage = t < 300 ? 0 : t < 700 ? 1 : t < 1000 ? 2 : t < 1300 ? 3 : 4; gh_boot_frame(stage, t >= 1300, t);   /* C6 */
-        } else gh_boot_frame(t < 150 ? 1 : 4, false, 0u);   /* C6: short has no POST */
+            if (t >= 300 && !beeped) { beeped = true; gh_beep(gApp.ui_.effective(gApp.cur_game).se_gain()); }
+            int stage = t < 300 ? 0 : t < 700 ? 1 : t < 1000 ? 2 : t < 1300 ? 3 : 4; gh_boot_frame(stage, t >= 1300);
+        } else gh_boot_frame(t < 150 ? 1 : 4, false);
         SDL_Delay(16);
     }
-    if (gApp.beep_dev && skipped) SDL_ClearQueuedAudio(gApp.beep_dev);
-    if (skipped) pwr::boot_cut("skip");   /* C5: stop direct audio now */
+    if (g_beep_id && skipped) gau::stop(g_beep_id);   /* #B4 */
     if (full && beeped && !skipped) SDL_Delay(0);
-    pwr::boot_exit();   /* C1R1/R5: hand over to hum */
-    if (full && !skipped) pwr::menu_fade_enter();   /* C10: menu 0.3s */
     gh_beep_close();
     return skipped;
 }
@@ -200,15 +205,16 @@ static void gh_bk_pause_set(bool on, const char * why) {   /* t47a (#559): 자�
 static void gh_menu_run(void) {
 
     if (gApp.headless || !gApp.use_gl) return;
-    kbov::release_all(); gApp.ui_.kb_vis = kbov::g_vis ? 1 : 0; gApp.ui_.kb_btn = kbov::g_btn_on ? 1 : 0; gApp.ui_.kb_sh = gApp.kbshader ? 1 : 0; gApp.menu_open = true; pwr::to_hum(); gh_boost_update();   /* B: menu cancels seq */
+    kbov::release_all(); gApp.ui_.kb_vis = kbov::g_vis ? 1 : 0; gApp.ui_.kb_btn = kbov::g_btn_on ? 1 : 0; gApp.ui_.kb_sh = gApp.kbshader ? 1 : 0; gApp.menu_open = true; gh_boost_update();
     static uint32_t snap[640 * 400], buf[640 * 400]; ov::Canvas sc = { snap, 640, 400 }, c = { buf, 640, 400 };
     sc.rect(0, 0, 640, 400, ov::K); if (!gApp.fb.empty()) ov::blit_scaled(sc, gApp.fb.data(), gApp.fbw, gApp.fbh, 0, 0, 640, 400);
     ui::Ui & U = gApp.ui_; U.in_game = true; U.cur = gApp.cur_game; U.scr = ui::S_GAME; U.sel = 0;
     gh_refresh_game_slots(gApp.cur_game); U.slotsel = U.games[gApp.cur_game].lastslot >= 0 ? U.games[gApp.cur_game].lastslot : 0;
-    bool done = false; bool sendk = false; int sendarg = 0;
+    bool done = false; bool sendk = false; int sendarg = 0; g_rep_k = ui::UK_NONE;
     gh_diag_enter(1);
     while (!done && !gApp.quit) {
         gh_inj_poll_menu();   /* t49a: 하니스 inject 를 일시정지 메뉴에서도 */
+        gh_pad_rep();   /* v0.6.8: 패드 누르고 있기 반복 */
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (gh_evpre(e, 1)) continue;
@@ -219,7 +225,6 @@ static void gh_menu_run(void) {
 #endif
             ui::UKey k = gh_ev2uk(e, NULL); if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) gh_log("DIAG btn -> ev2uk=%d none=%d", (int)k, k == ui::UK_NONE ? 1 : 0); if (k == ui::UK_NONE) continue;
             ui::Act a = U.key(k);
-            pwr::mclk::key(k);   /* E1R: in-game menu click */
             switch (a.t) {
             case ui::A_RESUME: done = true; break;
             case ui::A_NEXTSTAGE: if (!gApp.stage_next.empty()) { gh_log("STAGE F12 menu '%s' -> %s", U.stage_next_label.c_str(), gApp.stage_next.c_str()); if (gApp.inwin_enabled && !gApp.headless && gApp.use_gl) { gApp.inwin_req = 1; gApp.inwin_target = gApp.stage_next; } else gApp.stage_go = true; GH_QUITSET(); done = true; } break;   /* t49a (#847) · t51a: 창 안 전환 먼저, 안 되면 gh_inwin_cycle 이 g_stage_go 로 폴백 */
@@ -241,14 +246,14 @@ static void gh_menu_run(void) {
                 if (fit_ != gApp.fdfiles.end() && a.arg >= 0 && a.arg < (int)fit_->second.size() && a.slot >= 0 && a.slot < 2) { ok = gh_attach(a.slot, fit_->second[a.arg].c_str(), true); if (ok) U.games[gApp.cur_game].cur_fd[a.slot] = U.games[gApp.cur_game].fds[a.arg]; }
                 gh_log("DISKSWAP drive=%c idx=%d %s", a.slot ? 'B' : 'A', a.arg, ok ? "OK" : "FAIL");
                 gh_osd(ok ? std::string(a.slot ? "B" : "A") + phr_(" 드라이브 : ") + U.games[gApp.cur_game].cur_fd[a.slot] : std::string(phr_("디스크 교체에 실패했습니다")), 3000); done = true; break; }
-            case ui::A_MAINMENU: gh_autosave(); gh_play_commit(); ui::settings_save(U, gApp.cfgpath); if (gApp.inwin_enabled && !gApp.headless && gApp.use_gl) gApp.inwin_req = 2; else gh_spawn_menu(); GH_QUITSET(); done = true; break;   /* t51a: 창 안 메뉴 */
-            case ui::A_QUIT: gh_autosave(); gh_play_commit(); if (a.arg) ui::settings_save(U, gApp.cfgpath); GH_QUITSET(); done = true; break;
+            case ui::A_MAINMENU: gh_autosave(); gh_play_commit(); ui::settings_save(U, gApp.cfgpath); if (gh_crt_enabled()) { gh_crt_sfx("crt_off.wav"); gh_crt_run(false, buf); } if (gApp.inwin_enabled && !gApp.headless && gApp.use_gl) gApp.inwin_req = 2; else gh_spawn_menu(); GH_QUITSET(); done = true; break;   /* t51a: 창 안 메뉴 */
+            case ui::A_QUIT: gh_autosave(); gh_play_commit(); if (a.arg) ui::settings_save(U, gApp.cfgpath); if (gh_crt_enabled()) { gh_crt_sfx("crt_off.wav"); gh_crt_run(false, buf); } GH_QUITSET(); done = true; break;
             default: break; }
             if (done) break;
         }
         gh_wm_poll();
         if (U.scr == ui::S_GAME || U.scr == ui::S_KEYS || U.scr == ui::S_QUIT || U.scr == ui::S_SWAP || U.scr == ui::S_SWAPI) memcpy(buf, snap, sizeof buf);
-        U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks(); U.draw(c); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } if (gApp.osd_until && SDL_GetTicks() < gApp.osd_until) ov::osd_draw(c, gApp.osd, true);
+        gh_stem_step(); U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks(); U.draw(c); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } if (gApp.osd_until && SDL_GetTicks() < gApp.osd_until) ov::osd_draw(c, gApp.osd, true);
         gh_publish(buf, 640, 400); SDL_Delay(16);
     }
     if (U.dirty) { ui::settings_save(U, gApp.cfgpath); U.dirty = false; }

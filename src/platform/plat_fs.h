@@ -145,6 +145,14 @@ inline bool find_a(const std::string & pattern, const std::function<bool(const D
 inline std::vector<std::string> drive_roots() {
     std::vector<std::string> r; DWORD m = GetLogicalDrives(); for (int i = 0; i < 26; i++) if (m & (1u << i)) r.push_back(std::string(1, (char)('A' + i)) + ":\\"); return r;
 }
+#elif defined(__ANDROID__)
+/* #B4: 안드로이드 파일 탐색의 루트 「/」 하나 대신 저장소 목록(내장 /storage/emulated/0 + SD·USB /storage/<이름>). 폴더 고르기(app/folder_pick.h fp_roots)와 같은 규칙 */
+inline std::vector<std::string> drive_roots() {
+    std::vector<std::string> r; r.push_back("/storage/emulated/0");
+    DIR * d = opendir("/storage");
+    if (d) { struct dirent * e; while ((e = readdir(d))) { std::string s = e->d_name; if (s.empty() || s[0] == '.' || s == "emulated" || s == "self") continue; r.push_back("/storage/" + s); } closedir(d); }
+    return r;
+}
 #else
 inline std::vector<std::string> drive_roots() { return std::vector<std::string>(1, "/"); }
 #endif

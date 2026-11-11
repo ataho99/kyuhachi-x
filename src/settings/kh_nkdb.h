@@ -16,7 +16,9 @@ struct Game {
     bool has_flag(const char * f) const { return ("," + flags + ",").find(std::string(",") + f + ",") != std::string::npos; }
 };
 struct Sig { std::string label, exes; };
+struct Boot { std::string st, conf, drv, fmt; };   /* #L5: gamedb_nk_boot.tsv 한 줄 — 상태(OK/UNK/NA/FAIL/NOSYS/SYS/HDI) · 신뢰(자동/눈) · 부팅 드라이브 · 형식 */
 struct Db {
+    std::unordered_map<std::string, Boot> boot;                       // gid -> 기동 상태(#L5, 파일 없으면 비어 있음)
     std::string ver_nk, ver_tosec; std::vector<Game> g;
     std::unordered_map<std::string, std::pair<int, int> > bysha;      // sha1 -> (게임, 디스크)
     std::unordered_map<uint64_t, std::vector<int> > bysize;           // 크기 -> 게임들
@@ -52,6 +54,29 @@ inline bool load(const std::string & path, Db & db) {
         }
     }
     db.loaded = !db.g.empty(); return db.loaded;
+}
+/* #L5b: 원판 이름(game.ini orig= 또는 srcdir 끝 이름)으로 gamedb_nk 항목 찾기. 경로·확장자·「 (」 뒤 꼬리를 떼고 제목 키가 같은 항목 수를 돌려준다(정확히 1 일 때만 gid 를 채움 — 0·2 이상은 추측하지 않음) */
+inline std::string src_base(const std::string & s) {
+    std::string x = s; size_t sl = x.find_last_of("\\/"); if (sl != std::string::npos) x = x.substr(sl + 1);
+    size_t dot = x.find_last_of('.'); if (dot != std::string::npos && x.size() - dot - 1 >= 2 && x.size() - dot - 1 <= 4) x.resize(dot);
+    size_t pr = x.find(" ("); if (pr != std::string::npos) x.resize(pr); return x; }
+inline bool src_key_ok(const std::string & name) { const std::string k = normkey(name); return k.size() >= 4 && k != "pc98"; }
+inline int by_name(const Db & db, const std::string & name, std::string & gid) {
+    const std::string k = normkey(name); if (k.size() < 4 || k == "pc98") return 0; std::set<std::string> ids;
+    for (size_t i = 0; i < db.g.size(); i++) if (db.g[i].tkey == k) ids.insert(db.g[i].gid);
+    if (ids.size() == 1) gid = *ids.begin(); return (int)ids.size(); }
+/* #L5 기동 상태표: B<TAB>gid<TAB>상태<TAB>신뢰<TAB>부팅드라이브<TAB>형식<TAB>대표g<TAB>근거. 파일이 없으면 0 (앱은 지금과 똑같이 동작). load() 뒤에 부른다(load 가 Db 를 초기화한다). */
+inline int load_boot(const std::string & path, Db & db) {
+    FILE * f = fopen(path.c_str(), "rb"); if (!f) return 0;
+    std::string data; { char b[1 << 16]; size_t n; while ((n = fread(b, 1, sizeof b, f)) > 0) data.append(b, n); } fclose(f);
+    int rows = 0; size_t pos = 0; db.boot.clear();
+    while (pos < data.size()) {
+        size_t e = data.find('\n', pos); if (e == std::string::npos) e = data.size();
+        std::string ln = data.substr(pos, e - pos); pos = e + 1; if (!ln.empty() && ln.back() == '\r') ln.pop_back(); if (ln.empty() || ln[0] != 'B') continue;
+        std::vector<std::string> t = tabs(ln); if (t[0] != "B" || t.size() < 6) continue;
+        Boot b; b.st = t[2]; b.conf = t[3]; b.drv = t[4]; b.fmt = t[5]; db.boot[t[1]] = b; rows++;
+    }
+    return rows;
 }
 /* 서명 파일: S<TAB>gid<TAB>볼륨라벨<TAB>실행파일들(콤마) — --sigscan 이 원판 폴더에서 만든다 */
 inline bool load_sig(const std::string & path, Db & db) {

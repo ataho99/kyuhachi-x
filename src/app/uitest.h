@@ -63,6 +63,7 @@ static bool gh_ui_main_(std::string & out_id) {
             case ui::A_FULLSCR: gh_fs_toggle(); break;
             case ui::A_ADD: gh_add_action(a.arg); break;
             case ui::A_SETLANG: gh_setlang(a.game, a.arg); break;
+            case ui::A_STEMPICK: gh_stempick(a.game, a.arg); break;   /* #L6 */
             case ui::A_SETTITLE: gh_settitle(a.game, a.entry); break;
             case ui::A_TEST: gh_spawn_test(U.games[a.game].id, a.entry, a.arg); break;
             case ui::A_EXTRA:
@@ -117,11 +118,14 @@ static void gh_uitest(void) {
     };
     if (!gApp.uikeys_file.empty()) {   /* t39: 키 입력 스크립트 시험 — 공백 구분 토큰, # 줄은 주석. shot:이름 text:글자 go:작품id 키(U D L R O C T S E LB RB)*반복 */
         std::string sc; { FILE * kf = fopen(gApp.uikeys_file.c_str(), "rb"); if (kf) { char ln[1024]; while (fgets(ln, sizeof ln, kf)) { if (ln[0] != '#') sc += ln; } fclose(kf); } else gh_log("uikeys: 파일을 열 수 없음 %s", gApp.uikeys_file.c_str()); }
-        static const std::map<std::string, ui::UKey> KM = { { "U", ui::UK_UP }, { "D", ui::UK_DOWN }, { "L", ui::UK_LEFT }, { "R", ui::UK_RIGHT }, { "O", ui::UK_OK }, { "C", ui::UK_CANCEL }, { "T", ui::UK_TRI }, { "S", ui::UK_SQ }, { "E", ui::UK_SELECT }, { "LB", ui::UK_L }, { "RB", ui::UK_R } };
+        static const std::map<std::string, ui::UKey> KM = { { "U", ui::UK_UP }, { "D", ui::UK_DOWN }, { "L", ui::UK_LEFT }, { "R", ui::UK_RIGHT }, { "O", ui::UK_OK }, { "C", ui::UK_CANCEL }, { "T", ui::UK_TRI }, { "S", ui::UK_SQ }, { "E", ui::UK_SELECT }, { "LB", ui::UK_L }, { "RB", ui::UK_R }, { "P", ui::UK_PROF } };
         U.in_game = false; U.scr = ui::S_MAIN; U.ts_ms = 0; U.now_s = (long long)time(NULL); if (U.cur < 0 || U.cur >= (int)U.games.size()) U.cur = 0; U.pick = U.cur; gApp.cur_game = U.cur;
         std::istringstream in(sc); std::string tk; int nact = 0;
         while (in >> tk) {
             if (tk.compare(0, 5, "shot:") == 0) { shot(tk.substr(5).c_str()); continue; }
+            if (tk.compare(0, 6, "crton:") == 0 || tk.compare(0, 7, "crtoff:") == 0) {   /* v0.6.8 시험: CRT 켜짐/꺼짐 한 프레임 (p = 0..1) */
+                const bool on = tk.compare(0, 6, "crton:") == 0; std::string pv = tk.substr(tk.find(':') + 1); int clv = -1; { size_t c2 = pv.find(':'); if (c2 != std::string::npos) { clv = atoi(pv.c_str() + c2 + 1); pv.resize(c2); } } static uint32_t snap_[640 * 400]; if (!on) { U.draw(c); memcpy(snap_, buf, sizeof snap_); }
+                gh_crt_frame(buf, on, (float)atof(pv.c_str()), snap_, clv); char pp[700]; snprintf(pp, sizeof pp, "%s\\ui_%02d_%s_%s.png", gApp.uitest_dir.c_str(), ++n, on ? "crton" : "crtoff", pv.c_str()); gh_png(pp, buf, 640, 400); continue; }
             if (tk.compare(0, 5, "text:") == 0) { U.text_in(tk.substr(5)); continue; }
             if (tk.compare(0, 5, "vals:") == 0) {   /* t48a (#614 ③): 전 작품 적용값 표를 TSV 로 저장(시험 전용) */
                 std::string vp = gApp.uitest_dir + "\\" + tk.substr(5); FILE * vf = fopen(vp.c_str(), "wb"); int nr = 0;

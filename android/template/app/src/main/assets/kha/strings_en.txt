@@ -421,7 +421,6 @@ BGM 음량=BGM volume
 빠르게=Fast
 음높이 유지=Keep pitch
 기본 (kyuhachi_font)=Default (kyuhachi_font)
-기본 (jp_default)=Default (jp_default)
 BGM 음량입니다. 효과음과 따로 조절합니다.=BGM volume. Adjusted separately from SFX.
 효과음 음량입니다. 시작 소리도 이 값을 따릅니다.=SFX volume. The startup sound follows it too.
 소리가 나오는 장치입니다. 지금은 기본 장치만 씁니다.=Sound output device. Only the default device is used for now.

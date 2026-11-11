@@ -109,7 +109,7 @@ static void boot_logf(const char * fmt, ...) {   /* C5: PWRBOOT file+stderr */
 }
 static void boot_cut(const char * why) {   /* C5: why logged at each site */
     boot_logf("cut why=%s dev=%u", why, (unsigned)S.boot_dev);
-    if (S.boot_dev) { SDL_CloseAudioDevice(S.boot_dev); S.boot_dev = 0; }
+    if (S.boot_dev) { gau::stop((int)S.boot_dev); S.boot_dev = 0; }   /* #B4: boot_dev = 공유 장치(gau)의 소리 번호 */
 }
 static void boot_mix_play(void) {   /* C4: click+spinup+noise, SDL direct */
     if (gApp.headless || S.pwrseq == 0) {   /* C5: entry logged */
@@ -214,18 +214,10 @@ static void boot_mix_play(void) {   /* C4: click+spinup+noise, SDL direct */
                 0xC10u + k * 7919u, 55, false, g);
         c10_tick_add(mx, (size_t)dsn::ms((int)C10_ENTER), 0xE77u, 88, true, g);
     }
-    SDL_AudioSpec w; SDL_zero(w);   /* same shape as gh_beep, 22050 mono */
-    w.freq = dsn::RATE; w.format = AUDIO_S16SYS; w.channels = 1;
-    w.samples = 1024; w.callback = NULL;
-    SDL_AudioSpec got; SDL_zero(got);   /* C5: defined even if open fails */
-    S.boot_dev = SDL_OpenAudioDevice(NULL, 0, &w, &got, 0);
-    boot_logf("play open dev=%u err=%s", (unsigned)S.boot_dev, SDL_GetError());
+    S.boot_dev = (SDL_AudioDeviceID)gau::play(mx.data(), mx.size(), dsn::RATE);   /* #B4: 공유 장치에 넣는다(직접 열지 않음) */
+    boot_logf("play open id=%u err=%s", (unsigned)S.boot_dev, gau::err);
     if (!S.boot_dev) { boot_logf("play skip openfail"); return; }   /* beep stays */
-    boot_logf("play got freq=%d fmt=%u ch=%d n=%u", (int)got.freq,
-        (unsigned)got.format, (int)got.channels, (unsigned)n);
-    SDL_QueueAudio(S.boot_dev, mx.data(), (Uint32)(mx.size() * 2));
-    boot_logf("play queued bytes=%u", (unsigned)(mx.size() * 2));
-    SDL_PauseAudioDevice(S.boot_dev, 0);
+    boot_logf("play queued bytes=%u n=%u", (unsigned)(mx.size() * 2), (unsigned)n);
 }
 static void gen(int16_t * out, int n) {
     S.calls++;
@@ -412,7 +404,6 @@ static void shorten(SDL_Event & e) {
 }
 /* E1R: menu click (move/confirm/hotkey tick, direct audio, no samples) */
 namespace mclk {
-static SDL_AudioDeviceID dev = 0;   /* E1R: lazy click device */
 static unsigned last_ms = 0;   /* E1R: 60ms repeat gate */
 static unsigned mute_until = 0;   /* E1R: touch input stays silent */
 static uint32_t lcg = 0xE1C4u;   /* E1R: fixed seed, 3 variants */
@@ -443,16 +434,7 @@ static void play(bool enter) {   /* E1R */
         if (y > 1.0f) y = 1.0f; else if (y < -1.0f) y = -1.0f;   /* E1R */
         pcm[j] = dsn::to16(y);   /* E1R */
     }   /* E1R */
-    if (!dev) {   /* E1R: lazy open once */
-        SDL_AudioSpec w; SDL_zero(w);   /* E1R */
-        w.freq = dsn::RATE; w.format = AUDIO_S16SYS; w.channels = 1;   /* E1R */
-        w.samples = 1024; w.callback = NULL;   /* E1R */
-        SDL_AudioSpec got; SDL_zero(got);   /* E1R */
-        dev = SDL_OpenAudioDevice(NULL, 0, &w, &got, 0);   /* E1R */
-        if (!dev) return;   /* E1R: no log (log may be shut) */
-    }   /* E1R */
-    SDL_QueueAudio(dev, pcm.data(), (Uint32)(pcm.size() * 2));   /* E1R */
-    SDL_PauseAudioDevice(dev, 0);   /* E1R */
+    gau::play(pcm.data(), pcm.size(), dsn::RATE);   /* #B4: 공유 장치에 넣는다 */
 }   /* E1R: play */
 static void key(ui::UKey k) {   /* E1R: menu input to tick kind */
     int kind = -1;   /* E1R: 0 light tick, 1 low enter tick */

@@ -6,6 +6,7 @@
 #include <cctype>
 #include "settings/kh_prof.h"
 #include "settings/kh_nkdb.h"
+#include "settings/kh_stem.h"
 #include "settings/kh_zip.h"
 #include <sys/stat.h>
 #include <set>
@@ -121,6 +122,7 @@ struct Ctx {
     std::string games_dir;
     const std::vector<prof::DbGame> * db = NULL;
     const nk::Db * nk = NULL;
+    const stem::Table * stab = NULL;             /* #L6: 실행 파일 이름 줄기 점수표 */
     ShaCache * cache = NULL;
     std::map<std::string, std::string> reg;      /* sig → id (이미 등록된 것) */
     std::set<std::string> ids;                   /* 게임 폴더에 있는 id 들 */
@@ -378,6 +380,19 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
     if (!msrc.empty()) fprintf(f, "metasrc=%s\n", msrc.c_str());
     if (g) { fprintf(f, "nk_gid=%s\nnk_flags=%s\nnk_media=%s\n", g->gid.c_str(), g->flags.c_str(), g->media.c_str()); }
     if (!curated && r.game >= 0 && (r.grade == 'B' || r.grade == 'C')) fprintf(f, "orig=%s\n", c.nk->g[r.game].title.c_str());
+    std::string bg0;
+    if (!g && c.nk && c.nk->loaded) { if (nk::src_key_ok(nk::src_base(srcpath)) && nk::by_name(*c.nk, nk::src_base(srcpath), bg0) == 1) fprintf(f, "boot_gid=%s\n", bg0.c_str()); else bg0.clear(); }   /* #L5b: 원판 이름으로 표 항목이 정확히 1개일 때만 기동 줄용 boot_gid 기입(nk_gid 는 작품 합침에 쓰이므로 따로) */
+    /* #L6: 순서 ① boot_gid(위 by_name) → ② sha1(nk_gid) → ③ 실행 파일 이름 줄기 점수. 확실하면(1위/2위 ≥ 2) boot_gid, 아니면 후보 3개를 stem_cand 로 남긴다. 실패는 조용히 「미확인」. */
+    if (!g && c.stab && c.stab->loaded) {
+        bool had = !bg0.empty();
+        if (!had) {
+            std::set<std::string> st; stem::work_stems(imgs, st); bool hd = false; for (auto & i : imgs) if (i.fmt == prof::F_HDI || i.fmt == prof::F_NHD || i.fmt == prof::F_RAWHD) hd = true;
+            stem::Verdict v = stem::judge(*c.stab, st);
+            if (v.autolink && !v.top.empty()) { fprintf(f, "boot_gid=%s\nboot_how=stem\n", stem::pick_gid(c.stab->g[v.top[0].g], hd).c_str()); }
+            else if (!v.top.empty()) fprintf(f, "stem_cand=%s\n", stem::cand_pack(*c.stab, v, hd).c_str());
+        }
+        fprintf(f, "stem_done=1\n");
+    }
     if (curated && !q.dbhit_title.empty()) fprintf(f, "dbhit=%s\n", q.dbhit_title.c_str());
     fprintf(f, "grade=%s\njshort=%s\njudge=%s\nauto_note=%s\n", R.grade.c_str(), jshort.c_str(), judge.c_str(), q.reason.c_str());
     fclose(f);

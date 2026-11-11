@@ -5,8 +5,8 @@ inline void Ui::d_main(Canvas & c, int mode) {
     titlebar(c, "");
     rbox(c, 16, 24, 288, 224, WH, phr_("메인메뉴"));
     std::vector<std::string> m; menu_names(m); items(c, 40, 46, 256, m, mode == 2 ? 5 : mainsel, 28);
-    info_box(c, 320, 24, 304, 224);
-    static const char * md[] = { phr_("현재 작품을 이어하기(마지막 저장) 또는 처음부터 시작합니다."), phr_("작품을 고릅니다. 고른 작품이 현재 작품이 됩니다."), phr_("소리 크기, 패드 배치, 배속을 설정합니다."), phr_("저장 슬롯을 불러오거나 지웁니다."), phr_("디스크 정보, 오프닝 보기, 조작 안내, 정보·라이선스입니다."), phr_("설정을 저장하고 끝냅니다.") };
+    d_main_info(c);   /* #M4: 오른쪽 상자 = 지금 고른 작품(시안 A). 작품 선택과 같은 제목·캡처·열 함수 (screens/infopane.h) */
+    static const char * md[] = { phr_("현재 작품을 이어하기(마지막 저장) 또는 처음부터 시작합니다."), phr_("작품을 고릅니다. 고른 작품이 현재 작품이 됩니다."), phr_("소리 크기, 패드 배치, 배속을 설정합니다."), phr_("저장 슬롯을 불러오거나 지웁니다."), phr_("오프닝 보기, 조작 안내, 정보·라이선스입니다."), phr_("설정을 저장하고 끝냅니다.") };
     desc(c, 264, 64, { md[mode == 2 ? 5 : mainsel] });
     if (mode == 0) helpline(c, phr_("↑↓:선택, ○:결정, ×:취소, SELECT:부가"));
     }

@@ -120,6 +120,8 @@ uint32_t GFX_Rmask = 0x00FF0000, GFX_Gmask = 0x0000FF00, GFX_Bmask = 0x000000FF,
 unsigned char GFX_Rshift = 16, GFX_Gshift = 8, GFX_Bshift = 0, GFX_bpp = 32;
 
 #include "app/state.h"   /* S9d */
+#include "app/perfdiag.h"   /* #P2: 느린 기기 진단 로그 + slowcpu(디버그 전용) */
+#include "app/gh_audio.h"   /* v0.6.8 #B4: 소리 장치 하나 공유 */
 #include "app/disk_snd.h"
 #include "app/pwr_seq.h"   /* B: boot seq + hum */   /* 641: floppy drive noise (after mixer.h and state.h) */
 #include "app/android_ext_decl.h"   /* t137 */

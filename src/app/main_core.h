@@ -11,6 +11,8 @@ static void gh_main_conf() {
         {   /* 작품별 cycles / 글꼴 / extra (프로필 > 공통) */
             std::string c;
             gh_log("CPUSPD eff=%d prof_cycles=[%s]", gApp.ui_.effective(gApp.cur_game).cpuspd, gApp.prof_.cycles.c_str());   /* t681 measure */
+            pdg::evdiv_init(gApp.prof_.kv.count("evdiv") ? atoi(gApp.prof_.kv["evdiv"].c_str()) : 1);   /* #P4: 디버그 전용 — 입력 훅 3개를 N 틱에 한 번만 */
+            pdg::slow_init(gApp.prof_.kv.count("slowcpu") && gApp.prof_.kv["slowcpu"] == "1");   /* #P2: 디버그 전용 — 에뮬 스레드를 가장 느린 코어에 묶기 */
             if (!gApp.prof_.cycles.empty()) { bool num = true; for (char ch : gApp.prof_.cycles) if (ch < '0' || ch > '9') num = false; c += std::string("[cpu]\ncycles=") + (num ? "fixed " : "") + gApp.prof_.cycles + "\n"; }
             else { int ci = gApp.ui_.effective(gApp.cur_game).cpuspd;
                 if (ci < 0 || ci > 3) ci = 0;
@@ -21,7 +23,7 @@ static void gh_main_conf() {
                 auto ex = [](const std::string & p) { return plat::exists(p.c_str()); };
                 std::string f0 = gApp.prof_.font; bool soft = false;
                 { auto fk = gApp.prof_.kv.find("font_kind");   /* t39 (#290/#291): 항목의 font= > 목록 기본 — 원판(jp)은 jp 글꼴, 한글판은 번들 한글(또는 설정에서 고른 같은 묶음 글꼴) */
-                  if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "jp") { f0 = gApp.ui_.font_jp.empty() ? std::string("jp_default") : gApp.ui_.font_jp; soft = true; }
+                  if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "jp") { f0 = gApp.ui_.font_jp.empty() ? std::string("kyuhachi_font") : gApp.ui_.font_jp; soft = true; }
                   else if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "kr" && !gApp.ui_.font_kr.empty()) { f0 = gApp.ui_.font_kr; soft = true; } }
                 if (!f0.empty()) {
                     bool isname = f0.find_first_of("\\/:.") == std::string::npos; std::string fp;

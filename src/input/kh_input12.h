@@ -123,11 +123,14 @@ static int kh_pad_opens = 0, kh_pad_closes = 0;   /* t49a (#823): 같은 장치 
 static void (*kh_hotplug_hook)(bool added, const char * name) = NULL;   /* 호스트가 채움: 연결/해제 알림·입력 장치 표기 */
 static void gensei_open_pad(int idx) {
     if (!SDL_IsGameController(idx)) {
+        { const char* sn = SDL_JoystickNameForIndex(idx); std::string sl = sn ? sn : ""; for (auto & c : sl) c = (char)tolower((unsigned char)c);   /* v0.6.8: 안드로이드 가속도계는 조이스틱이 아니다 */
+          if (sl.find("accelerometer") != std::string::npos) { GPLOG("PADMAP skip sensor idx=%d name='%s'", idx, sn ? sn : "?"); return; } }
         /* t48e (#651 2): 표에 없는 패드 — GUID 한 줄을 남기고 원시 번호로 폴백 */
         char gs[64] = "?"; SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(idx), gs, sizeof gs);
         const char* jn = SDL_JoystickNameForIndex(idx);
         SDL_Joystick* js = SDL_JoystickOpen(idx);
         if (!js) { GPLOG("PADMAP unknown joystick %d guid=%s name='%s' — open fail: %s", idx, gs, jn ? jn : "?", SDL_GetError()); return; }
+        if (SDL_JoystickNumButtons(js) == 0 && SDL_JoystickNumHats(js) == 0) { GPLOG("PADMAP skip sensor idx=%d name='%s' buttons=0 hats=0", idx, jn ? jn : "?"); SDL_JoystickClose(js); return; }
         SDL_JoystickID id = SDL_JoystickInstanceID(js);
         kh_rawpads[id] = js; kh_rawhat[id] = 0;
         GPLOG("PADMAP unknown joystick idx=%d id=%d guid=%s name='%s' buttons=%d hats=%d axes=%d -> RAW fallback (0=남 1=동 2=서 3=북 4=L1 5=R1 6=SELECT 7=START, 십자=hat0, 왼스틱=축0/1)", idx, (int)id, gs, jn ? jn : "?", SDL_JoystickNumButtons(js), SDL_JoystickNumHats(js), SDL_JoystickNumAxes(js));
@@ -175,6 +178,7 @@ static void kh_input_init(void) {
     kh_plog = fopen("kyuhachi_pad_log.txt", "a");
     time_t t = time(NULL);
     GPLOG("== GENSEI r004 input layer start %s padmouse=%d", ctime(&t), (int)kh_padmouse);
+    SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");   /* v0.6.8: 가속도계를 패드로 열지 않는다 (가능하면 SDL 초기화 전에) */
     if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) < 0) { GPLOG("GAMECONTROLLER init fail: %s", SDL_GetError()); return; }
     { SDL_version cv; SDL_VERSION(&cv); SDL_version lv; SDL_GetVersion(&lv); GPLOG("SDL compiled %d.%d.%d linked %d.%d.%d", (int)cv.major, (int)cv.minor, (int)cv.patch, (int)lv.major, (int)lv.minor, (int)lv.patch); }
     kh_load_db();
