@@ -20,6 +20,7 @@ inline std::vector<int> Ui::tidy_picked(int cursor_row) const {   /* 표시한 �
 }
 inline void Ui::d_tidy(Canvas & c) {
     titlebar(c, phr_("목록 정리"));
+    tidy_apply_goto();
     std::vector<int> v = tidy_vis(); const int n = (int)v.size();
     if (sel >= n) sel = n > 0 ? n - 1 : 0;
     const char * const fnm = tidy_filt == 0 ? phr_("전체") : tidy_filt == 1 ? phr_("원본 없음만") : phr_("숨긴 항목");
@@ -95,6 +96,7 @@ inline void Ui::tidy_menu_do(int mi, Act & a) {
     }
 }
 inline void Ui::k_tidy(UKey k, Act & a) {
+    tidy_apply_goto();
     std::vector<int> v = tidy_vis(); const int n = (int)v.size();
     if (tidy_lvl == 2) {
         if (k == UK_UP || k == UK_DOWN) tidy_keep ^= 1;
@@ -119,5 +121,5 @@ inline void Ui::k_tidy(UKey k, Act & a) {
     else if (k == UK_OK) { if (n && sel < n) { int ri = v[sel]; if (ri < (int)tidy_mark.size()) tidy_mark[ri] = tidy_mark[ri] ? 0 : 1; tidy_msg.clear(); } }
     else if (k == UK_TRI) { tidy_lvl = 1; }
     else if (k == UK_L || k == UK_R) { tidy_filt = (tidy_filt + (k == UK_R ? 1 : 2)) % 3; sel = 0; tidy_msg.clear(); }
-    else if (k == UK_CANCEL) { go(S_ADD, 7); }
+    else if (k == UK_CANCEL) { if (tidy_ret == S_PICK) { tidy_ret = S_ADD; int nv = (int)vis.size(); if (pick > nv) pick = nv; scr = S_PICK; dirty = true; } else go(S_ADD, 7); }
 }

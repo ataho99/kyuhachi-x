@@ -132,6 +132,8 @@ struct Ctx {
     struct Pend { std::string dbid, label, sig; std::vector<std::string> sha; std::string company, year, msrc; };
     std::vector<Pend> pend;                      /* r019: 주 작품이 아직 없는 보조 이미지(주 작품이 등록되면 붙인다) */
     void (*on_dir)(const std::string &) = NULL;  /* r020: 작품 추가 때 작품 폴더를 알려 준다(공용 자원 가져오기) */
+    bool user_add = false;                       /* 사용자가 직접 고른 추가(파일·폴더) — 게임 폴더 자동 훑기는 false. true 이면 「목록에서 뺀」 작품을 같은 원본으로 다시 추가할 때 숨김을 푼다 */
+    int unhid = 0;                               /* 숨김을 푼 작품 수 */
 };
 struct Result { enum St { ADDED, EXISTS, SKIP } st = SKIP; std::string id, title, note, grade, jshort, judge, block, metasrc, year, maker; };
 
@@ -533,7 +535,20 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
     if (curated && !q.dbhit_id.empty()) for (size_t pi = 0; pi < c.pend.size();) { if (c.pend[pi].dbid == q.dbhit_id) { auto & pd = c.pend[pi]; attach_companion(c, id, pd.label, pd.sig, pd.sha, pd.company, pd.year, pd.msrc); c.pend.erase(c.pend.begin() + pi); } else pi++; }
     R.st = Result::ADDED; R.note = R.block.empty() ? std::string(khtr::tr("등록함")) : std::string(khtr::tr("등록함 (실행 불가")) + ": " + R.block + ")"; return R;
 }
+inline Result register_work_in(Ctx & c, const Work & w, bool dry);
+/* 같은 원본을 사용자가 다시 추가하면(= 같은 srcdir+이미지 이름 = 같은 작품) 목록 정리에서 뺀 표시(tidy_hidden)를 푼다 */
 inline Result register_work(Ctx & c, const Work & w, bool dry = false) {
+    Result R = register_work_in(c, w, dry);
+    if (!dry && c.user_add && R.st == Result::EXISTS && !R.id.empty()) {
+        const std::string dir = join(c.games_dir, R.id); prof::Ini u;
+        if (prof::ini_load(dir + "/user.ini", u) && u.count("game") && u["game"].count("tidy_hidden") && u["game"]["tidy_hidden"] == "1") {
+            prof::set_game_key(dir, "tidy_hidden", ""); prof::set_game_key(dir, "merged_into", ""); c.unhid++;
+            R.note += std::string(" · ") + khtr::tr("목록에서 뺐던 작품이라 다시 목록에 넣었습니다");
+        }
+    }
+    return R;
+}
+inline Result register_work_in(Ctx & c, const Work & w, bool dry) {
     if (!dry && c.on_dir) c.on_dir(w.dir);
     Result R; std::string sig = signature(w);
     { auto it = c.reg.find(sig); if (it != c.reg.end()) { R.st = Result::EXISTS; R.id = it->second; R.note = khtr::tr("이미 등록됨"); return R; } }

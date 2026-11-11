@@ -1168,3 +1168,6 @@ desc_cpucore=Emulated CPU method. Fast (default) translates hot code to native c
 원본이 있는 폴더를 고르세요=Choose the folder that has the original files
 원본 폴더를 다시 지정했습니다.=Source folder updated.
 그 폴더에서 같은 이미지를 찾지 못했습니다.=The same images were not found in that folder.
+원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기=Source missing — Add game > Tidy list: Relocate / Remove from list
+원본이 없어 실행할 수 없습니다. △ 메뉴에서 다시 찾기 / 목록에서 빼기를 고르세요.=The source is missing, so this cannot run. Use the △ menu: Relocate / Remove from list.
+목록에서 뺐던 작품이라 다시 목록에 넣었습니다=This game was removed from the list; it is back in the list now

@@ -340,6 +340,7 @@ static void gh_ui_init_games(void) {
               prof::Profile q; q.install_required = p.install_required; q.reason = p.reason; q.disk.assign(4, std::string()); for (int i = 0; i < 4; i++) if (p.disk[i]) q.disk[i] = p.disk[i];
               std::map<std::string, std::string> kv = p.kv; if (curated) kv["curated"] = "1"; kv["__id"] = d; if (!autoreg) kv.erase("mouse");   /* 직접 정한 작품은 마우스 때문에 막지 않는다 */
               e.g.dosnote = aw::dos_note(q, kv); e.g.block = aw::block_reason(q, kv); if (e.g.block.empty() && !kvs("block").empty() && kvs("block").find("마우스 필수") == std::string::npos) e.g.block = kvs("block");   /* t48a (#615): 마우스 필수 문구는 막는 사유가 아님 */
+              if (autoreg) { const std::string sd = kvs("srcdir"), idr = kvs("imgdir"); if ((!sd.empty() && !plat::exists(aw::u8_to_acp(sd))) || (!idr.empty() && !aw::dir_exists(aw::u8_to_acp(idr)))) { e.g.nosrc = true; e.g.block = phr_("원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기"); } }   /* #144-2: 원본이 없는 작품은 실행하지 않는다 */
               gh_log("LISTBLK id=%s src=%s auto=%d curated=%d mouse=%s entry_req='%s' block='%s' boot=%s/%s", d.c_str(), p.src.c_str(), autoreg ? 1 : 0, curated ? 1 : 0, kvs("mouse").c_str(), prof::g_entry_req.c_str(), e.g.block.c_str(), kvs("__val.boot").c_str(), kvs("__src.boot").c_str()); }
           auto flb = [&](const std::string & f) -> std::string {
               if (p.disk[0] && f == p.disk[0] && !kvs("label_a").empty()) return kvs("label_a"); if (p.disk[1] && f == p.disk[1] && !kvs("label_b").empty()) return kvs("label_b");
@@ -465,8 +466,9 @@ static void gh_reload_games(void) {   /* 목록을 다시 만들고 보던 작�
     for (size_t i = 0; i < gApp.ui_.games.size(); i++) if (gApp.ui_.games[i].id == keep) { gApp.cur_game = (int)i; gApp.ui_.cur = (int)i; gApp.ui_.pick = (int)i; }
     if (!gApp.headless) for (size_t i = 0; i < gApp.ui_.games.size(); i++) gh_refresh_game_slots((int)i);
 }
-static aw::Summary gh_add_works(const std::vector<aw::Work> & ws, const char * what) {
-    aw::Ctx c = gh_aw_ctx(); aw::Summary S; aw::run_works(c, ws, S); gApp.shacache.save();
+static aw::Summary gh_add_works(const std::vector<aw::Work> & ws, const char * what, bool user = false) {
+    aw::Ctx c = gh_aw_ctx(); c.user_add = user; aw::Summary S; aw::run_works(c, ws, S); gApp.shacache.save();
+    if (c.unhid > 0) { gh_log("ADDWORK unhid %d (목록에서 뺐던 작품을 다시 추가)", c.unhid); gh_reload_games(); }   /* 사용자가 같은 원본을 다시 추가하면 숨김을 푼다 */
     char h[200]; snprintf(h, sizeof h, "%s: 추가%d 있음%d 건너뜀%d 불가%d", what, S.added, S.exists, S.skipped, S.blocked);
     gApp.ui_.add_log.clear(); gApp.ui_.add_log.push_back(what); { char sb[200]; snprintf(sb, sizeof sb, phr_("추가%d 있음%d 건너뜀%d 불가%d"), S.added, S.exists, S.skipped, S.blocked); gApp.ui_.add_log.push_back(sb); }   /* #B4: 낱말 앞 공백을 키로 쓰면 문구표 읽기에서 잘려 글자가 붙었다 → 공백이 안쪽에 있는 한 줄 틀 */ for (auto & l : S.lines) gApp.ui_.add_log.push_back(l);
     gh_log("ADDWORK %s", h); for (auto & l : S.lines) gh_log("ADDWORK   %s", l.c_str());
@@ -489,8 +491,8 @@ static void gh_android_savedir(void);
 #endif
 static void gh_add_action(int arg) {
     ui::Ui & U = gApp.ui_;
-    if (arg == 0) { std::vector<std::string> fs; if (!gh_pick_files(fs)) return; std::vector<aw::Work> ws; aw::from_files(fs, ws); aw::Summary S = gh_add_works(ws, phr_("파일 추가")); if (S.added) { gh_reload_games(); U.add_new = S.added_ids; U.add_new_why = S.added_why; U.open_lang(U.add_new, U.add_new_why, ui::S_ADD); } }
-    else if (arg == 1) { std::string d; if (!gh_pick_folder(phr_("추가할 작품 폴더를 고르세요"), d)) return; kha_lib_add(d); std::vector<aw::Work> ws; aw::collect(d, 3, ws); aw::Summary S = gh_add_works(ws, phr_("폴더 추가")); if (S.added) { gh_reload_games(); U.add_new = S.added_ids; U.add_new_why = S.added_why; U.open_lang(U.add_new, U.add_new_why, ui::S_ADD); } }
+    if (arg == 0) { std::vector<std::string> fs; if (!gh_pick_files(fs)) return; std::vector<aw::Work> ws; aw::from_files(fs, ws); aw::Summary S = gh_add_works(ws, phr_("파일 추가"), true); if (S.added) { gh_reload_games(); U.add_new = S.added_ids; U.add_new_why = S.added_why; U.open_lang(U.add_new, U.add_new_why, ui::S_ADD); } }
+    else if (arg == 1) { std::string d; if (!gh_pick_folder(phr_("추가할 작품 폴더를 고르세요"), d)) return; kha_lib_add(d); std::vector<aw::Work> ws; aw::collect(d, 3, ws); aw::Summary S = gh_add_works(ws, phr_("폴더 추가"), true); if (S.added) { gh_reload_games(); U.add_new = S.added_ids; U.add_new_why = S.added_why; U.open_lang(U.add_new, U.add_new_why, ui::S_ADD); } }
     else if (arg == 2) { std::string d; if (!gh_pick_folder(phr_("「게임 폴더」를 고르세요 — 켤 때마다 새 작품을 찾아 등록합니다"), d)) return; U.gamefolder = aw::acp_to_u8(d); ui::settings_save(U, gApp.cfgpath); gh_scan_gamefolder(phr_("게임 폴더 지정"));
 #if defined(__ANDROID__)
     gh_android_savedir();
