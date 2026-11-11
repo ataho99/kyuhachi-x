@@ -146,7 +146,7 @@ struct Ui {
     std::vector<int> tidy_vis() const; int tidy_nmark() const; std::vector<int> tidy_picked(int cursor_row) const;
     Scr tidy_ret = S_ADD; std::string tidy_goto;   /* 목록 정리에서 × 로 돌아갈 화면 · 처음 커서를 둘 작품 id */
     void open_tidy(Act & a) { tidy_lvl = 0; tidy_filt = 0; tidy_ms = 0; tidy_msg.clear(); sel = 0; tidy_ret = S_ADD; tidy_goto.clear(); scr = S_TIDY; a.t = A_TIDY; a.arg = 0; }
-    void open_tidy_for(Act & a, const std::string & id) { open_tidy(a); tidy_filt = 1; tidy_ret = S_PICK; tidy_goto = id; tidy_msg = phr_("원본이 없어 실행할 수 없습니다. △ 메뉴에서 다시 찾기 / 목록에서 빼기를 고르세요."); }
+    void open_tidy_for(Act & a, const std::string & id) { open_tidy(a); tidy_filt = 1; tidy_ret = S_PICK; tidy_goto = id; tidy_msg = phr_("원본 없음 — △ 메뉴: 다시 찾기 / 빼기"); }
     void tidy_apply_goto() { if (tidy_goto.empty() || tidy_rows.empty()) return; std::vector<int> v = tidy_vis(); for (size_t i = 0; i < v.size(); i++) if (tidy_rows[v[i]].id == tidy_goto) { sel = (int)i; break; } tidy_goto.clear(); }
     void d_tidy(Canvas & c); void k_tidy(UKey k, Act & a); void tidy_menu_do(int mi, Act & a);
     static std::string ttl_full(const UiGame & g, int px) { return fit_title(g.title, px); }

@@ -288,7 +288,7 @@ inline int merge_dups(Ctx & c, std::vector<std::string> * log) {
     std::map<std::string, std::string> first; int moved = 0;
     for (auto & s : subs) {
         if (s.empty() || s[0] == '_') continue; std::string gi = join(join(c.games_dir, s), "game.ini"); prof::Ini ini; if (!prof::ini_load(gi, ini) || !ini.count("game")) continue;
-        auto & g = ini["game"]; if (g.count("dup_of")) continue; if (g.count("auto") == 0 || g["auto"] != "1") continue;   /* 1b-3: 이미 중복 표시한 작품은 건너뜀 */
+        auto & g = ini["game"]; if (g.count("dup_of")) continue; const bool isauto = g.count("auto") && g["auto"] == "1";   /* 1b-3: 이미 중복 표시한 작품은 건너뜀. t723: 직접 지정(auto≠1) 항목도 files= 는 채운다(중복 숨김은 자동 항목만) */
         std::string imgdir = sys_from_ini(g.count("imgdir") ? g["imgdir"] : std::string()); if (imgdir.empty() || !dir_exists(imgdir)) continue;
         std::vector<std::string> f2; list_dir(imgdir, f2, NULL); std::set<std::string> hs; std::vector<std::pair<std::string, std::string> > fh; for (auto & f : f2) if (img_ext(f)) { std::string h = c.cache ? c.cache->sha1(join(imgdir, f)) : prof::sha1_file(join(imgdir, f)); if (!h.empty()) { hs.insert(h); fh.push_back(std::make_pair(f, h)); } }
         if (hs.empty()) continue;
@@ -297,6 +297,7 @@ inline int merge_dups(Ctx & c, std::vector<std::string> * log) {
             std::string fv; for (auto & x : fh) if (rec.count(x.second)) fv += (fv.empty() ? "" : ",") + acp_to_u8(x.first);
             if (!fv.empty()) ini_patch(gi, { { "files", fv, 3 } });
         }
+        if (!isauto) continue;
         std::string same; bool all = true; for (auto & h : hs) { auto it = first.find(h); if (it == first.end()) { all = false; break; } if (same.empty()) same = it->second; else if (same != it->second) { all = false; break; } }
         if (all && !same.empty()) {
             /* 1b-3 (#510-4): 사용자 폴더는 옮기거나 이름을 바꾸지 않는다 — game.ini 에 dup_of 만 적어 목록에서 숨긴다 */
@@ -337,19 +338,23 @@ inline std::string find_same_source(Ctx & c, const std::string & srcpath, const 
         prof::Ini gi; if (!prof::ini_load(join(join(c.games_dir, s), "game.ini"), gi) || !gi.count("game")) continue;
         auto & g = gi["game"]; if (g.count("dup_of")) continue;
         auto it = g.find("srcdir"); if (it == g.end() || norm_path(it->second) != ns) continue;
-        std::set<std::string> have;
+        std::set<std::string> have; std::vector<std::map<std::string, std::string> *> secs; secs.push_back(&g);
+        for (auto & sc : gi) if (sc.first.compare(0, 6, "entry:") == 0) secs.push_back(&sc.second);   /* t723: 직접 지정 항목은 디스크 이름이 [entry:…] 칸에 있다 */
         auto addv = [&](const std::string & v) {
             std::string b = lower(base_name_of(v));
             if (!b.empty() && b != "-" && !is_hex40(b)) have.insert(b);
         };
         static const char * const sk[] = { "disk_a", "disk_b", "disk_c", "disk_d", "cd" };
-        for (auto k : sk) { auto jt = g.find(k); if (jt != g.end()) addv(jt->second); }
-        { auto jt = g.find("swap"); if (jt != g.end()) { size_t p = 0;
-            while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
-                addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
-        { auto jt = g.find("files"); if (jt != g.end()) { size_t p = 0;
-            while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
-                addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
+        for (auto * sp : secs) {
+            auto & m = *sp;
+            for (auto k : sk) { auto jt = m.find(k); if (jt != m.end()) addv(jt->second); }
+            { auto jt = m.find("swap"); if (jt != m.end()) { size_t p = 0;
+                while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
+                    addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
+            { auto jt = m.find("files"); if (jt != m.end()) { size_t p = 0;
+                while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
+                    addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
+        }
         if (!have.empty() && have == want) return s;
     }
     return std::string();

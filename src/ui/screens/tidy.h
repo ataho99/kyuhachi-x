@@ -54,7 +54,7 @@ inline void Ui::d_tidy(Canvas & c) {
         text(c, 444, y, std::string(phr_("상태")) + ": " + st, r.st == 1 && !r.hidden ? OR : WH, K); y += 22;
         text(c, 444, y, std::string(phr_("세이브")) + ": " + (r.saves ? phr_("있음") : phr_("없음")), WH, K);
     }
-    const std::vector<std::string> m = { phr_("목록에서 빼기 (세이브 남김)"), phr_("빼고 세이브는 _old 로"), phr_("합치기"), phr_("다시 찾기 (원본 폴더)"), phr_("보기 바꾸기"), phr_("숨긴 항목 되살리기"), phr_("표시 모두 해제") };
+    const std::vector<std::string> m = { phr_("빼기 (세이브 유지)"), phr_("빼기 (세이브 _old)"), phr_("합치기"), phr_("다시 찾기"), phr_("보기 바꾸기"), phr_("숨긴 항목 되살리기"), phr_("표시 모두 해제") };
     const std::vector<bool> dm = { tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, false, tidy_filt != 2, tidy_nmark() == 0 };
     if (tidy_lvl == 1) items(c, 444, 150, 176, m, tidy_ms, 21, &dm);
     else for (size_t i = 0; i < m.size(); i++) text(c, 444, 150 + (int)i * 21, fit(m[i], 168), dm[i] ? GY : CY, K);
