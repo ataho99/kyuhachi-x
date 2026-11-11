@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="docs/kyuhachi_x_logo.png" alt="Kyuhachi X" width="480">
-
 # 九八 · 큐하치 X (Kyuhachi X)
 
 [![Downloads](https://img.shields.io/github/downloads/ataho99/kyuhachi-x/total?label=downloads)](https://github.com/ataho99/kyuhachi-x/releases)
