@@ -260,6 +260,9 @@ static void gh_stem_step(void) {
       std::string res = au ? std::string("auto ") + stem::pick_gid(g_stem.g[v.top[0].g], j.hd) : (!cp2.empty() ? std::string("cand ") + std::to_string(std::count(cp2.begin(), cp2.end(), '|') + 1) : std::string("none(") + (st.empty() ? "줄기 0개 — 이미지를 못 읽었거나 실행 파일 없음" : "표에 맞는 작품 없음") + ")");
       gh_log("STEM %s → %s  [이미지 %d개 · 줄기 %d개 · 남은 대기 %d]", j.id.c_str(), res.c_str(), (int)ims.size(), (int)st.size(), (int)g_stemq.size()); if (gApp.log) fflush(gApp.log); }
 }
+static bool gh_tidy_hidden(const std::string & dir) {   /* kx-clean: 목록 정리에서 뺀 작품(user.ini [game] tidy_hidden=1) — 목록에서만 숨긴다 */
+    prof::Ini u; return prof::ini_load(dir + "/user.ini", u) && u.count("game") && u["game"].count("tidy_hidden") && u["game"]["tidy_hidden"] == "1";
+}
 static void gh_nk_load_once(void);   /* #L5: 목록을 만들 때 기동 상태표를 쓰므로 미리 선언(정의는 아래 r017 절) */
 static void gh_ui_init_games(void) {
     struct ErGuard { std::string k; ErGuard() : k(prof::g_entry_req) { prof::g_entry_req.clear(); } ~ErGuard() { prof::g_entry_req = k; } } er_guard;   /* t48a (#615/#616): 직전 실행의 항목 이름(전역 한 칸)이 모든 작품의 목록 판정에 끼지 않게 한다 */
@@ -278,6 +281,7 @@ static void gh_ui_init_games(void) {
         return std::string(1, L[i]) + ": " + n;
     };
     for (auto & d : subs) {
+        if (gh_tidy_hidden(gApp.exedir + "\\games\\" + d)) continue;   /* kx-clean */
         GProfile p; if (!gh_profile(d, p)) continue;
         if (p.kv.count("dup_of")) continue;   /* 1b-3: 같은 이미지의 중복 작품은 목록에서만 숨긴다(폴더는 옮기지 않음) */
         E e; e.order = 100; auto o = p.kv.find("order"); if (o != p.kv.end()) e.order = atoi(o->second.c_str());
@@ -503,6 +507,7 @@ static void gh_stempick(int gi, int cand) {
     if (!eid.empty()) for (size_t i = 0; i < U.games.size(); i++) if (U.games[i].id == eid) U.entg = (int)i;
     if (!ok) U.msg = phr_("원판을 저장하지 못했습니다.");
 }
+#include "app/tidy_host.h"   /* kx-clean: 목록 정리(S_TIDY) host 쪽 */
 static void gh_setlang(int gi, int mode) {
     ui::Ui & U = gApp.ui_; if (gi < 0 || gi >= (int)U.games.size()) return;
     std::string id = U.games[gi].id, eid = (U.entg >= 0 && U.entg < (int)U.games.size()) ? U.games[U.entg].id : std::string();

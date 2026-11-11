@@ -15,7 +15,7 @@
 namespace ui {
 using namespace ov;
 
-enum ActT { A_NONE, A_START, A_LOAD, A_SAVE, A_RESUME, A_MAINMENU, A_QUIT, A_SENDKEY, A_DISKSWAP, A_APPLY, A_DELSLOT, A_EXTRA, A_ADD, A_WINMULT, A_FULLSCR, A_SHOT, A_TEST, A_SETLANG, A_KBD, A_KBBTN, A_KBSH, A_SETTITLE, A_NEXTSTAGE, A_STEMPICK };   /* #L6: A_STEMPICK(game=작품 index, arg=후보 번호 0~2 → game.ini boot_gid 로 저장) */   /* t44a (#494): A_SETLANG(game=작품 index, arg 0 자동 1 한글판 2 원판 일본어) */   /* r017: A_ADD(arg 0 파일 1 폴더 2 게임폴더 지정 3 다시 검색 4 해제) · A_WINMULT(arg=배율, 0=사용자 지정) */
+enum ActT { A_NONE, A_START, A_LOAD, A_SAVE, A_RESUME, A_MAINMENU, A_QUIT, A_SENDKEY, A_DISKSWAP, A_APPLY, A_DELSLOT, A_EXTRA, A_ADD, A_WINMULT, A_FULLSCR, A_SHOT, A_TEST, A_SETLANG, A_KBD, A_KBBTN, A_KBSH, A_SETTITLE, A_NEXTSTAGE, A_STEMPICK, A_TIDY };   /* kx-clean: A_TIDY(arg 0 목록 다시 읽기 1 빼기(slot=1 이면 세이브도 _old 로) 2 합치기(game=남길 id 줄, slot=없앨 줄; tidy_rows 번호) 3 되살리기 4 다시 찾기) */   /* #L6: A_STEMPICK(game=작품 index, arg=후보 번호 0~2 → game.ini boot_gid 로 저장) */   /* t44a (#494): A_SETLANG(game=작품 index, arg 0 자동 1 한글판 2 원판 일본어) */   /* r017: A_ADD(arg 0 파일 1 폴더 2 게임폴더 지정 3 다시 검색 4 해제) · A_WINMULT(arg=배율, 0=사용자 지정) */
 struct Act { ActT t = A_NONE; int game = -1, slot = 0, arg = 0; bool resume = false; std::string entry; };   /* t39: entry = 실행할 항목 이름(빈칸 = 폴더 기본, 「-」 = 항목 없이) */
 
 inline void apply_ov(Settings & s, const std::map<std::string, std::string> & m) {   /* 작품 프로필(DB·game.ini [override]) 값을 전역 위에 얹는다 */
@@ -97,6 +97,8 @@ struct UiGame {
     std::vector<UiEnt> ents;
 };
 
-enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM, S_STEM };
+enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM, S_STEM, S_TIDY };
+/* kx-clean: 「목록 정리」 한 줄 (host 가 games\<id> 를 훑어 채운다). st: 0 정상 · 1 원본 없음 · 2 중복 의심 */
+struct TidyRow { std::string id, title, src; int st = 0; bool hidden = false, saves = false; };
 
 }   /* namespace ui */

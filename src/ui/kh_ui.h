@@ -140,6 +140,12 @@ struct Ui {
     void open_stem() { stem_lvl = 0; stem_w = -1; sel = 0; scr = S_STEM; }
     void d_stem(Canvas & c);
     void k_stem(UKey k, Act & a);
+    /* kx-clean: 목록 정리 (S_TIDY, screens/tidy.h · host 쪽 app/tidy.h) */
+    std::vector<TidyRow> tidy_rows; std::vector<char> tidy_mark; int tidy_lvl = 0, tidy_filt = 0, tidy_ms = 0, tidy_keep = 0, tidy_ia = -1, tidy_ib = -1;   /* lvl 0 목록 · 1 메뉴 · 2 남길 쪽 고르기 / filt 0 전체 1 원본 없음만 2 숨긴 항목 */
+    std::string tidy_msg, tidy_keep_id, tidy_drop_id; std::vector<std::string> tidy_ids;   /* host 가 읽는 입력: 대상 id 들 · 합치기의 남길/없앨 id */
+    std::vector<int> tidy_vis() const; int tidy_nmark() const; std::vector<int> tidy_picked(int cursor_row) const;
+    void open_tidy(Act & a) { tidy_lvl = 0; tidy_filt = 0; tidy_ms = 0; tidy_msg.clear(); sel = 0; scr = S_TIDY; a.t = A_TIDY; a.arg = 0; }
+    void d_tidy(Canvas & c); void k_tidy(UKey k, Act & a); void tidy_menu_do(int mi, Act & a);
     static std::string ttl_full(const UiGame & g, int px) { return fit_title(g.title, px); }
 
     int base_of(int g) const { if (g < 0 || g >= (int)games.size()) return g; int b = games[g].base; return b >= 0 && b < (int)games.size() ? b : g; }
@@ -217,7 +223,7 @@ struct Ui {
     std::string en_orig; bool enew = false; ent::Kv ed, ed0; std::string ed_name, ed_name0; bool ed_setdef = false;
     std::string msg;             /* 한 줄 알림 */
     std::string yn_msg[3]; int yn_act = 0, ynsel = 1; Scr yn_ret = S_MAIN; int yn_arg = 0;
-    enum { YN_DISCARD, YN_DELETE, YN_TEST, YN_INSTDONE, YN_RESET, YN_TITLE, YN_MAINMENU, YN_DELSLOT, YN_DISKRESET, YN_INDIVRESET, YN_INDIVALL, YN_PREDEL };   /* t52e (#131) */
+    enum { YN_DISCARD, YN_DELETE, YN_TEST, YN_INSTDONE, YN_RESET, YN_TITLE, YN_MAINMENU, YN_DELSLOT, YN_DISKRESET, YN_INDIVRESET, YN_INDIVALL, YN_PREDEL, YN_TIDYHIDE, YN_TIDYMERGE };   /* t52e (#131) */
     /* 파일 고르기 */
     std::string fl_key, fl_dir; std::vector<std::pair<std::string, std::string> > fl_roots; int fl_ri = 0, fl_swapi = -1; std::vector<FileItem> fl_items; bool fl_sort_kind = false; Scr fl_ret = S_EDIT;
     /* 자동 입력 · 교체 목록 */
@@ -685,7 +691,7 @@ struct Ui {
     void d_keys(Canvas & c);
 
     /* ================================================================ t39: 새 화면 입력 */
-    bool new_scr() const { switch (scr) { case S_SORT: case S_ENT: case S_ENTMENU: case S_TPL: case S_EDIT: case S_FILE: case S_KEYSEQ: case S_STEP: case S_SWAPED: case S_FONT: case S_OSK: case S_NAME: case S_YN: case S_HDDASK: case S_LANG: case S_STEM: case S_VALS: case S_PAD: case S_PADKEY: case S_HOT: case S_EXT: case S_KBPICK: case S_SET: case S_GKB: case S_SHARE: case S_SHIMP: case S_SHPREV: case S_SHIM: case S_EXEPICK: return true; default: return false; } }
+    bool new_scr() const { switch (scr) { case S_SORT: case S_ENT: case S_ENTMENU: case S_TPL: case S_EDIT: case S_FILE: case S_KEYSEQ: case S_STEP: case S_SWAPED: case S_FONT: case S_OSK: case S_NAME: case S_YN: case S_HDDASK: case S_LANG: case S_STEM: case S_TIDY: case S_VALS: case S_PAD: case S_PADKEY: case S_HOT: case S_EXT: case S_KBPICK: case S_SET: case S_GKB: case S_SHARE: case S_SHIMP: case S_SHPREV: case S_SHIM: case S_EXEPICK: return true; default: return false; } }
     static std::string parent_of(const std::string & p) { size_t d = p.find_last_of("\\/"); return d == std::string::npos || d == 0 ? std::string() : p.substr(0, d); }
     static std::vector<std::string> split_commas(const std::string & s) { std::vector<std::string> r; size_t p = 0; while (p <= s.size() && !s.empty()) { size_t e = s.find(',', p); if (e == std::string::npos) e = s.size(); if (e > p) r.push_back(s.substr(p, e - p)); p = e + 1; } return r; }
     static std::string join_commas(const std::vector<std::string> & v) { std::string o; for (auto & x : v) { if (!o.empty()) o += ","; o += x; } return o; }
@@ -803,6 +809,8 @@ struct Ui {
             dirty = true; a.t = A_APPLY; scr = yn_ret;
         }
         else if (act == YN_PREDEL) { if (yn_arg >= PRE_NB && yn_arg < PRE_NB + (int)presets.size()) { presets.erase(presets.begin() + (yn_arg - PRE_NB)); pre_i = clampi(pre_i, 0, pre_total() - 1); dirty = true; } scr = yn_ret; }   /* 빌드 6: 내 프리셋 삭제(지금 화면 값은 그대로) */
+        else if (act == YN_TIDYHIDE) { a.t = A_TIDY; a.arg = 1; a.slot = yn_arg; scr = S_TIDY; tidy_lvl = 0; }   /* kx-clean: slot=1 이면 세이브도 _old 로 */
+        else if (act == YN_TIDYMERGE) { a.t = A_TIDY; a.arg = 2; scr = S_TIDY; tidy_lvl = 0; }
         else if (act == YN_MAINMENU) { a.t = A_MAINMENU; scr = S_GAME; }   /* t52e (#131 ①) */
         else if (act == YN_DELSLOT) { a.t = A_DELSLOT; a.game = cur; a.slot = yn_arg; scr = S_SAVE; }   /* t52e (#131 ②) */
         else if (act == YN_DISKRESET) { a.t = A_EXTRA; a.arg = 6; a.game = cur; scr = S_EXTRA; }   /* t52e (#131 ②) */
@@ -845,6 +853,7 @@ struct Ui {
         case S_YN: k_yn(k, a); break;
         case S_LANG: k_lang(k, a); break;
         case S_STEM: k_stem(k, a); break;
+        case S_TIDY: k_tidy(k, a); break;
         case S_HDDASK: k_hddask(k, a); break;
         default: break;
         }
@@ -864,7 +873,7 @@ struct Ui {
     std::string pre_name(int i) const { if (i < PRE_NB) { static const char * const KN[4] = { "preset_b0", "preset_b1", "preset_b2", "preset_b3" }; return std::string(phr_(KN[i])); } if (i < PRE_NB + (int)presets.size()) return presets[(size_t)(i - PRE_NB)].name; return std::string(phr_("preset_new")); }
     void pre_add(const Settings & s) { if ((int)presets.size() >= PRE_MAX) return; std::string nm; for (int n = 1; n < 100; n++) { nm = std::string(phr_("preset_user")) + " " + std::to_string(n); bool dup = false; for (size_t q = 0; q < presets.size(); q++) if (presets[q].name == nm) dup = true; if (!dup) break; } Preset p; p.name = nm; pre_copy(p.st, s); presets.push_back(p); pre_i = PRE_NB + (int)presets.size() - 1; dirty = true; }
     int nitems() const {
-        switch (scr) { case S_MAIN: return 6; case S_START: return 3; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 1; case S_ADD: return 7; case S_SCREEN: return phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return 5; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 6; case S_GAME: return 8 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
+        switch (scr) { case S_MAIN: return 6; case S_START: return 3; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 1; case S_ADD: return 8; case S_SCREEN: return phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return 5; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 6; case S_GAME: return 8 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
     }
     int & curSel() { if (scr == S_MAIN) return mainsel; if (scr == S_PICK) return pick; if (scr == S_SAVE) return slotsel; if (scr == S_START) return startsel; if (scr == S_SWAP) return swapdrv; if (scr == S_SWAPI) return swapsel; return sel; }
     void go(Scr s, int selv = 0) { scr = s; sel = selv; phos_pg = false; fnow_cur = -2; if (s == S_EXTRA) extra_sub = 0; }   /* build 5b-3: font-now cache reset / work menu back to its main list */

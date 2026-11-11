@@ -288,8 +288,13 @@ inline int merge_dups(Ctx & c, std::vector<std::string> * log) {
         if (s.empty() || s[0] == '_') continue; std::string gi = join(join(c.games_dir, s), "game.ini"); prof::Ini ini; if (!prof::ini_load(gi, ini) || !ini.count("game")) continue;
         auto & g = ini["game"]; if (g.count("dup_of")) continue; if (g.count("auto") == 0 || g["auto"] != "1") continue;   /* 1b-3: 이미 중복 표시한 작품은 건너뜀 */
         std::string imgdir = sys_from_ini(g.count("imgdir") ? g["imgdir"] : std::string()); if (imgdir.empty() || !dir_exists(imgdir)) continue;
-        std::vector<std::string> f2; list_dir(imgdir, f2, NULL); std::set<std::string> hs; for (auto & f : f2) if (img_ext(f)) { std::string h = c.cache ? c.cache->sha1(join(imgdir, f)) : prof::sha1_file(join(imgdir, f)); if (!h.empty()) hs.insert(h); }
+        std::vector<std::string> f2; list_dir(imgdir, f2, NULL); std::set<std::string> hs; std::vector<std::pair<std::string, std::string> > fh; for (auto & f : f2) if (img_ext(f)) { std::string h = c.cache ? c.cache->sha1(join(imgdir, f)) : prof::sha1_file(join(imgdir, f)); if (!h.empty()) { hs.insert(h); fh.push_back(std::make_pair(f, h)); } }
         if (hs.empty()) continue;
+        if (!g.count("files") && g.count("sha1s")) {   /* kx-clean: 옛 항목에 files= (갱신 때 같은 작품을 알아보는 열쇠)를 한 번 채운다 — 기록된 sha1 에 맞는 이미지 이름만 */
+            std::set<std::string> rec; { const std::string & sv = g["sha1s"]; size_t p = 0; while (p <= sv.size()) { size_t q = sv.find(',', p); if (q == std::string::npos) q = sv.size(); if (q > p) rec.insert(sv.substr(p, q - p)); p = q + 1; } }
+            std::string fv; for (auto & x : fh) if (rec.count(x.second)) fv += (fv.empty() ? "" : ",") + acp_to_u8(x.first);
+            if (!fv.empty()) ini_patch(gi, { { "files", fv, 3 } });
+        }
         std::string same; bool all = true; for (auto & h : hs) { auto it = first.find(h); if (it == first.end()) { all = false; break; } if (same.empty()) same = it->second; else if (same != it->second) { all = false; break; } }
         if (all && !same.empty()) {
             /* 1b-3 (#510-4): 사용자 폴더는 옮기거나 이름을 바꾸지 않는다 — game.ini 에 dup_of 만 적어 목록에서 숨긴다 */
@@ -374,6 +379,8 @@ inline void retire_zip_copies(Ctx & c, const std::string & keepdir, const std::v
     }
 }
 
+/* kx-clean: 등급 순서(작을수록 좋음). 갱신 때 기존 등급이 더 좋으면 낮추지 않는다. */
+inline int grade_rank(const std::string & g) { return g.empty() || g == "-" ? 100 : (unsigned char)g[0]; }
 /* 한 작품을 등록(또는 이미 있으면 건너뜀). 이미지는 w.dir 의 w.files (zip 작품은 먼저 풀어서 같은 흐름으로). */
 inline Result register_core(Ctx & c, const Work & w, const std::string & sig, const std::string & srcpath, bool dry) {
     Result R;
@@ -428,8 +435,10 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             R.note = khtr::fmt(khtr::tr("같은 경로·같은 파일명 → %s 이미지 교체 (제목·세이브·설정 유지)"), tgt.c_str());
             if (dry) return R;
             std::string gi_path = join(join(c.games_dir, tgt), "game.ini");
-            std::vector<std::string> oldshas;
+            std::vector<std::string> oldshas; std::string old_grade, old_dbid;
             { prof::Ini gi0; if (prof::ini_load(gi_path, gi0) && gi0.count("game")) {
+                { auto og = gi0["game"].find("grade"); if (og != gi0["game"].end()) old_grade = og->second;
+                  auto od = gi0["game"].find("dbid"); if (od != gi0["game"].end()) old_dbid = od->second; }
                 auto sh = gi0["game"].find("sha1s");
                 if (sh != gi0["game"].end()) { size_t p = 0;
                     while (p <= sh->second.size()) { size_t q = sh->second.find(',', p);
@@ -443,18 +452,32 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             { std::string fv; for (auto & i : imgs) { std::string b = acp_to_u8(i.base);
                     if (!b.empty()) fv += (fv.empty() ? "" : ",") + b; }
                 if (!fv.empty()) u.push_back({ "files", fv, 3 }); }
+            u.push_back({ "imgdir", acp_to_u8(w.dir), 3 });   /* zip 작품: 새로 푼 사본 폴더로 (옛 사본은 아래에서 _old 로 옮겨지므로 안 바꾸면 이미지를 못 찾는다) */
+            if (!old_dbid.empty() && c.db) {   /* DB 작품은 디스크 자리를 sha1 로 정한다 — 패치판은 sha1 이 달라 자리를 잃으므로, 안 맞는 자리 하나에 바뀐 이미지 하나면 이름으로 직접 잇는다 */
+                const prof::DbGame * dg = NULL; for (auto & d : *c.db) if (d.id == old_dbid) { dg = &d; break; }
+                if (dg) {
+                    std::set<std::string> dbsha; for (auto & kv : dg->g) { if (kv.first.compare(0, 5, "disk_") == 0) { if (is_hex40(kv.second)) dbsha.insert(kv.second); }
+                        else if (kv.first == "swap") { size_t p = 0; while (p <= kv.second.size()) { size_t q2 = kv.second.find(',', p); if (q2 == std::string::npos) q2 = kv.second.size(); if (is_hex40(kv.second.substr(p, q2 - p))) dbsha.insert(kv.second.substr(p, q2 - p)); if (q2 == kv.second.size()) break; p = q2 + 1; } } }
+                    std::set<std::string> cur; for (auto & i : imgs) cur.insert(i.sha1);
+                    std::vector<std::string> lost; for (const char * dk : { "disk_a", "disk_b", "disk_c", "disk_d" }) { auto it = dg->g.find(dk); if (it != dg->g.end() && is_hex40(it->second) && !cur.count(it->second)) lost.push_back(dk); }
+                    std::vector<std::string> chg; for (auto & i : imgs) if (!dbsha.count(i.sha1)) chg.push_back(acp_to_u8(i.base));
+                    if (lost.size() == 1 && chg.size() == 1) u.push_back({ lost[0], chg[0], 3 });
+                }
+            }
             R.block = block_reason(q, std::map<std::string, std::string>());
             { std::map<std::string, std::string> kv; if (g) { kv["nk_flags"] = g->flags; kv["nk_media"] = g->media; }
                 if (curated) kv["curated"] = "1"; for (auto & k : q.kv) kv[k.first] = k.second; R.block = block_reason(q, kv); }
-            u.push_back({ "grade", R.grade, 3 }); u.push_back({ "jshort", jshort, 3 });
-            u.push_back({ "judge", judge, 3 }); u.push_back({ "auto_note", q.reason, 3 });
+            if (old_grade.empty() || grade_rank(R.grade) <= grade_rank(old_grade)) {   /* 등급은 낮추지 않는다 — 새 판정이 같거나 더 높을 때만 판정 글도 바꾼다 */
+                u.push_back({ "grade", R.grade, 3 }); u.push_back({ "jshort", jshort, 3 });
+                u.push_back({ "judge", judge, 3 }); u.push_back({ "auto_note", q.reason, 3 });
+            }
             if (!maker.empty()) u.push_back({ "company", maker, 0 });
             if (!year.empty()) u.push_back({ "year", year, 0 });
             if (!msrc.empty()) u.push_back({ "metasrc", msrc, 0 });
             if (curated && !q.dbhit_id.empty()) u.push_back({ "dbid", q.dbhit_id, 0 });
             if (g) { u.push_back({ "nk_gid", g->gid, 0 }); u.push_back({ "nk_flags", g->flags, 0 });
                 u.push_back({ "nk_media", g->media, 0 }); }
-            ini_patch(gi_path, u);
+            ini_patch(gi_path, u);   /* 목록 정리에서 뺀(tidy_hidden) 작품은 갱신돼도 숨김 그대로 — 게임 폴더 훑기가 켤 때마다 되살리지 않게 */
             if (is_zip(srcpath)) retire_zip_copies(c, w.dir, oldshas);
             c.reg[sig] = tgt; for (auto & h : shas) c.hashidx[h] = tgt;
             return R;

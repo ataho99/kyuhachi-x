@@ -9,6 +9,7 @@
 #include "ui/screens/quit.h"
 #include "ui/screens/lang.h"
 #include "ui/screens/stem.h"
+#include "ui/screens/tidy.h"
 #include "ui/screens/sort.h"
 #include "ui/screens/swap.h"
 #include "ui/screens/swapi.h"
@@ -74,7 +75,7 @@ inline void Ui::draw_body(Canvas & c) {
     case S_ADD: d_add(c); break;
     case S_SORT: d_sort(c); break; case S_ENT: d_ent(c); break; case S_ENTMENU: d_entmenu(c); break; case S_TPL: d_tpl(c); break; case S_EDIT: d_edit(c); break;
     case S_FILE: d_file(c); break; case S_KEYSEQ: d_keyseq(c); break; case S_STEP: d_step(c); break; case S_SWAPED: d_swaped(c); break; case S_FONT: d_font(c); break;
-    case S_OSK: d_osk(c); break; case S_NAME: d_name(c); break; case S_YN: d_yn(c, yn_ret); break; case S_HDDASK: d_hddask(c); break; case S_LANG: d_lang(c); break; case S_STEM: d_stem(c); break; case S_VALS: d_vals(c); break;
+    case S_OSK: d_osk(c); break; case S_NAME: d_name(c); break; case S_YN: d_yn(c, yn_ret); break; case S_HDDASK: d_hddask(c); break; case S_LANG: d_lang(c); break; case S_STEM: d_stem(c); break; case S_TIDY: d_tidy(c); break; case S_VALS: d_vals(c); break;
     case S_EXEPICK: d_exepick(c); break;
     case S_PAD: d_pad(c); break; case S_PADKEY: d_padkey(c); break; case S_HOT: d_hot(c); break; case S_EXT: d_ext(c); break; case S_KBPICK: d_kbpick(c); break; case S_SET: d_set(c); break; case S_GKB: d_gkb(c); break;
     case S_SHARE: d_share(c); break; case S_SHIMP: d_shimp(c); break; case S_SHPREV: d_shprev(c); break; case S_SHIM: d_shim(c); break;

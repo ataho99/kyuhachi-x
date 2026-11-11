@@ -64,6 +64,7 @@ static bool gh_ui_main_(std::string & out_id) {
             case ui::A_ADD: gh_add_action(a.arg); break;
             case ui::A_SETLANG: gh_setlang(a.game, a.arg); break;
             case ui::A_STEMPICK: gh_stempick(a.game, a.arg); break;   /* #L6 */
+            case ui::A_TIDY: gh_tidy_do(a.arg, a.slot); break;   /* kx-clean: 목록 정리 */
             case ui::A_SETTITLE: gh_settitle(a.game, a.entry); break;
             case ui::A_TEST: gh_spawn_test(U.games[a.game].id, a.entry, a.arg); break;
             case ui::A_EXTRA:
@@ -255,7 +256,7 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
             if (tk.compare(0, 6, "guard:") == 0) { gApp.note.clear(); gApp.note_until = 0; bool gok = gh_disk_guard(tk.substr(6)); gh_log("uikeys: GUARD id=%s ok=%d note='%s'", tk.substr(6).c_str(), gok ? 1 : 0, gApp.note.c_str()); continue; }   /* #451 test-only: disk preflight result */
             int rep = 1; size_t st = tk.find('*'); if (st != std::string::npos) { rep = atoi(tk.c_str() + st + 1); tk = tk.substr(0, st); }
             auto it = KM.find(tk); if (it == KM.end()) { gh_log("uikeys: 알 수 없는 토큰 %s", tk.c_str()); continue; }
-            for (int i = 0; i < rep; i++) { ui::Act a = U.key(it->second); if (a.t != ui::A_NONE) { nact++; gh_log("uikeys: act=%d game=%d arg=%d entry=%s", (int)a.t, a.game, a.arg, a.entry.c_str()); if (a.t == ui::A_SETLANG) gh_setlang(a.game, a.arg); if (a.t == ui::A_SETTITLE) gh_settitle(a.game, a.entry); } }   /* t44c: A_SETLANG 는 호스트 처리기를 그대로 실행 */
+            for (int i = 0; i < rep; i++) { ui::Act a = U.key(it->second); if (a.t != ui::A_NONE) { nact++; gh_log("uikeys: act=%d game=%d arg=%d entry=%s", (int)a.t, a.game, a.arg, a.entry.c_str()); if (a.t == ui::A_SETLANG) gh_setlang(a.game, a.arg); if (a.t == ui::A_SETTITLE) gh_settitle(a.game, a.entry); if (a.t == ui::A_TIDY) gh_tidy_do(a.arg, a.slot); } }   /* t44c: A_SETLANG 는 호스트 처리기를 그대로 실행 */
         }
         gh_log("uikeys: done acts=%d shots=%d", nact, n); return;
     }
