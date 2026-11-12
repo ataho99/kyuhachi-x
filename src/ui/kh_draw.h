@@ -44,7 +44,7 @@ static uint32_t shim_fg(uint32_t fg, int ox, int oy, int px, int py) {
 }
 
 struct Canvas {
-    uint32_t * p; int w, h; bool shim = false;
+    uint32_t * p; int w, h; bool shim = false; bool bgfill = false;   /* bgfill: kx-bg, boxes are opaque while a background effect runs */
     int clx0 = 0, cly0 = 0, clx1 = 1 << 30, cly1 = 1 << 30;   /* r018: 그리기 제한 영역 (긴 제목을 상자 안에서 자르기) */
     void clip(int x, int y, int cw, int ch) { clx0 = x; cly0 = y; clx1 = x + cw; cly1 = y + ch; }
     void unclip() { clx0 = 0; cly0 = 0; clx1 = 1 << 30; cly1 = 1 << 30; }
@@ -156,6 +156,7 @@ static int text_bmp(Canvas & c, const BmpFont & f, int x, int y, const std::stri
 }
 static std::string fit(const std::string & s, int maxw);
 static void rbox(Canvas & c, int x, int y, int w, int h, uint32_t col, const char * title) {
+    if (c.bgfill) c.rect(x + 1, y + 1, w - 2, h - 2, K);
     c.rect(x + 3, y, w - 6, 1, col); c.rect(x + 3, y + h - 1, w - 6, 1, col); c.rect(x, y + 3, 1, h - 6, col); c.rect(x + w - 1, y + 3, 1, h - 6, col);
     c.set(x + 2, y + 1, col); c.set(x + 1, y + 2, col); c.set(x + w - 3, y + 1, col); c.set(x + w - 2, y + 2, col);
     c.set(x + 2, y + h - 2, col); c.set(x + 1, y + h - 3, col); c.set(x + w - 3, y + h - 2, col); c.set(x + w - 2, y + h - 3, col);

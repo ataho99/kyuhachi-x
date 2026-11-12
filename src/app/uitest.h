@@ -183,6 +183,8 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
             if (tk == "addscr") { U.scr = ui::S_ADD; U.sel = 0; continue; }
             if (tk.compare(0, 4, "cur:") == 0) { for (size_t i = 0; i < U.games.size(); i++) if (U.games[i].id == tk.substr(4)) { U.cur = (int)i; U.entg = (int)i; gApp.cur_game = (int)i; } continue; }   /* t48e2 시험 전용: 현재 작품 지정 */
             if (tk == "scrcfg") { U.scr_from = ui::S_MAIN; U.enter_screen_cfg(); U.go(ui::S_SCREEN, 0); continue; }
+            if (tk.compare(0, 5, "bgms:") == 0) { U.ts_ms = atoi(tk.c_str() + 5); continue; }
+            if (tk == "bgpg") { U.scr_from = ui::S_MAIN; U.enter_screen_cfg(); U.go(ui::S_SCREEN, 0); U.bgfx_pg = true; U.sel = 0; continue; }
             if (tk == "phospg") { U.scr_from = ui::S_MAIN; U.enter_screen_cfg(); U.go(ui::S_SCREEN, 0); U.phos_pg = true; U.sel = 0; continue; }   /* t662 (#635) test only: open the phosphor page */
             if (tk.compare(0, 9, "phosdump:") == 0) { const int ci = U.cur; const bool ok = ci >= 0 && ci < (int)ui::Ui::MAXG;
                 gh_log("uikeys: PHOSDUMP %s scr=%d pg=%d sel=%d scope=%d g=%d eff=%d t=%d ovm=%x", tk.c_str() + 9, (int)U.scr, U.phos_pg ? 1 : 0, U.sel, U.scope, U.g.phos, U.eff().phos, ok ? U.t[ci].phos : -1, ok ? U.ovm[ci] : 0u); continue; }
