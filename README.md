@@ -36,6 +36,8 @@ Kyuhachi X takes the DOSBox-X PC-98 core, cuts it down to what PC-98 games need,
 |---|---|
 | Windows 10 / 11 (x64) | `KyuhachiX.exe`, portable folder, nothing written to the registry |
 | Android | `KyuhachiX-v0.6.8-android.apk` (package `io.github.ataho99.kyuhachix`); tuned for the Retroid Pocket Nova, works with other gamepad devices |
+| Linux | Planned |
+| Steam Deck | Planned |
 
 ## Install
 
