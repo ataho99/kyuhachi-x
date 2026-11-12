@@ -110,7 +110,9 @@ static bool gh_dsk_load(const std::string & sp) {   /* 상태 적용이 성공�
         if (pos + 6 > end) { all = false; break; } uint32_t d = gh_dg32(&b[pos]); pos += 4; size_t nl = (size_t)b[pos] | ((size_t)b[pos + 1] << 8); pos += 2;
         if (pos + nl + 16 > end) { all = false; break; } std::string nm((const char *)&b[pos], nl); pos += nl; uint64_t raw = gh_dg64(&b[pos]), zs = gh_dg64(&b[pos + 8]); pos += 16;
         if (pos + zs > end) { all = false; break; }
-        if (d < 4 && gApp.disk_fh[d] && !gApp.disk_wp[d].empty() && gh_bn_(gApp.disk_nm[d]) == gh_bn_(nm)) { bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; }
+        if (d < 4 && gApp.disk_fh[d] && !gApp.disk_wp[d].empty() && gh_bn_(gApp.disk_nm[d]) == gh_bn_(nm)) {
+            if (fileno(gApp.disk_fh[d]) < 0) { std::string rn = gApp.disk_nm[d]; bool ra = gh_attach((int)d, rn.c_str(), true); gh_log("DSK reattach drive %u %s %s (t740: 불러오기 중 디스크 핸들이 닫혀 있었음)", d, rn.c_str(), ra ? "OK" : "FAIL"); }   /* t740 */
+            bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; }
         else gh_log("DSK skip drive %u %s (no matching disk in that drive)", d, nm.c_str());
         pos += (size_t)zs;
     }
