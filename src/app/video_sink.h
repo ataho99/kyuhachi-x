@@ -383,7 +383,7 @@ static int SDLCALL gl_thread(void *) {
                 F.BindBuffer(GL_ARRAY_BUFFER, gApp.vbo); F.EnableVertexAttribArray(0); F.EnableVertexAttribArray(1);
                 F.VertexAttribPointer(0, 2, GL_FLOAT, 0, 16, (const void *)0); F.VertexAttribPointer(1, 2, GL_FLOAT, 0, 16, (const void *)8);
                 for (int ti = 0; ti < tn; ti++) {
-                    uint32_t tsp[256]; tfx::sprite(tsp, tv[ti].age, tv[ti].rel);
+                    uint32_t tsp[256]; if (gApp.ui_.g.touchfx == 2) tfx::sprite_bf(tsp, tv[ti].age, tv[ti].rel); else tfx::sprite(tsp, tv[ti].age, tv[ti].rel);
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 16, 0, GL_BGRA, GL_UNSIGNED_BYTE, tsp);
                     glViewport((int)(tv[ti].x * (float)dw) - ts / 2, dh - (int)(tv[ti].y * (float)dh) - ts / 2, ts, ts);
                     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

@@ -90,4 +90,24 @@ static void sprite(uint32_t * b, int age, int rel) {
         if (nb) { const int oa = ra > aa ? ra : aa; b[i] = pm((uint32_t)(oa * 200 / 255), 51, 0, 119); }
     }
 }
+/* 내장 나비(16x16, PC-98 16색 계열 · 왼쪽 8칸만 적고 거울) — 손가락을 따라다닌다. 누르는 동안 날갯짓, 뗄 때 반짝하며 사라진다 */
+static const char * const BF_HEAD[2] = { "....i...", ".....i.y" };
+static const char * const BF_A[11] = { "..kkk..o", "kWWCkk.o", "kWCCCCko", "kCCbCCko", ".kCCbCko", "..kCCkko", ".kPPkk.o", "kPPYPkko", "kPYPPk.o", ".kkkk..o", "........" };
+static const char * const BF_B[11] = { "..kk...o", ".kWCk..o", ".kWCCkko", ".kCbCCko", "..kCbCko", "...kCkko", "..kPPk.o", ".kPYPkko", "..kPPk.o", "...kk..o", "........" };
+static const char * const BF_C[11] = { ".......o", "...kk..o", "..kWCk.o", "..kCbkko", "..kCCk.o", "...kCk.o", "..kPPk.o", "..kPYk.o", "...kk..o", "........", "........" };
+static uint32_t bf_col(char ch, uint32_t a) {
+    switch (ch) { case 'k': return pm(a, 51, 0, 119); case 'i': return pm(a, 170, 170, 255); case 'o': return pm(a, 153, 85, 0);
+        case 'y': case 'Y': return pm(a, 255, 255, 0); case 'W': return pm(a, 255, 255, 255); case 'C': return pm(a, 0, 238, 238);
+        case 'b': return pm(a, 0, 102, 221); case 'P': return pm(a, 255, 136, 204); default: return 0; }
+}
+static void sprite_bf(uint32_t * b, int age, int rel) {
+    const int step = (age / 90) & 3; const bool sp = rel >= 0; const char * const * body = (step == 0) ? BF_A : (step == 2) ? BF_C : BF_B;
+    if (sp) body = BF_B;
+    char g[16][17]; for (int y = 0; y < 16; y++) { for (int x = 0; x < 16; x++) g[y][x] = '.'; g[y][16] = 0; }
+    for (int y = 0; y < 13; y++) { const char * r = y < 2 ? BF_HEAD[y] : body[y - 2]; for (int x = 0; x < 8; x++) { g[y][x] = r[x]; g[y][15 - x] = r[x]; } }
+    if (sp) { for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { if (g[y][x] == 'C') g[y][x] = 'W'; else if (g[y][x] == 'b') g[y][x] = 'C'; }
+        const int px[6] = { 1, 14, 0, 15, 7, 8 }, py[6] = { 2, 2, 10, 10, 0, 0 }; for (int i = 0; i < 6; i++) if (g[py[i]][px[i]] == '.') g[py[i]][px[i]] = 'Y'; }
+    int a = 255; if (sp) { a = 255 - rel * 255 / 220; if (a < 0) a = 0; }
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) b[y * 16 + x] = bf_col(g[y][x], (uint32_t)a);
+}
 }   /* namespace tfx */

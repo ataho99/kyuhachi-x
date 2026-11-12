@@ -119,7 +119,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 20) s.hddhum = clampi(s.hddhum + d, 0, 2);
                 if (sel == 21) s.hvol = clampi(s.hvol + d, 0, 8);
                 if (sel == 26) s.mclick = clampi(s.mclick + d, 0, 1); /*E1R*/
-                if (sel == 29) s.touchfx = clampi(s.touchfx + d, 0, 1);   /* kx-touch */
+                if (sel == 29) s.touchfx = clampi(s.touchfx + d, 0, 2);   /* kx-touch */
                 if (sel == 30) s.tfxsz = clampi(s.tfxsz + d, 0, 1);
                 if (sel == 31) s.tfxmouse = clampi(s.tfxmouse + d, 0, 1);
                 if (sel == 32) s.tmouse = clampi(s.tmouse + d, 0, 1);

@@ -52,7 +52,7 @@ inline void Ui::d_conf(Canvas & c) {
     { char b3[8]; snprintf(b3, sizeof b3, "%d", s.hvol); barv(c, 340, ry(21), 232, s.hvol / 8.0, "OFF", "MAX", WH, row(21)); text(c, 590, ry(21), b3, WH, K); }
     { const char * mc[] = { phr_("끔"), phr_("켬") }; /*E1R*/
       choices(c, 344, ry(26), mc, 2, s.mclick, WH, row(26)); } /*E1R*/
-    { const char * tf[] = { phr_("끔"), phr_("tfx_dot") }; choices(c, 344, ry(29), tf, 2, s.touchfx, WH, row(29)); }   /* kx-touch */
+    { const char * tf[] = { phr_("끔"), phr_("tfx_dot"), phr_("tfx_butterfly") }; choices(c, 344, ry(29), tf, 3, s.touchfx, WH, row(29)); }   /* kx-touch */
     { const char * tz[] = { phr_("tfx_small"), phr_("tfx_large") }; choices(c, 344, ry(30), tz, 2, s.tfxsz, WH, row(30)); }
     { const char * tm[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(31), tm, 2, s.tfxmouse, WH, row(31)); }
     { const char * tq[] = { phr_("tmouse_pad"), phr_("tmouse_abs") }; choices(c, 344, ry(32), tq, 2, s.tmouse, WH, row(32)); }

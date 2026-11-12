@@ -136,7 +136,7 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "hddhum") { s.hddhum = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "hvol") { s.hvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
     if (k == "mclick") { s.mclick = v ? 1 : 0; return true; }   /* E1R */
-    if (k == "touchfx") { s.touchfx = v < 0 ? 0 : v > 1 ? 1 : v; return true; }   /* kx-touch */
+    if (k == "touchfx") { s.touchfx = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* kx-touch */
     if (k == "tfxsz") { s.tfxsz = v < 0 ? 0 : v > 1 ? 1 : v; return true; }
     if (k == "tfxmouse") { s.tfxmouse = v < 0 ? 0 : v > 1 ? 1 : v; return true; }
     if (k == "tmouse") { s.tmouse = v < 0 ? 0 : v > 1 ? 1 : v; return true; }

@@ -632,13 +632,14 @@ static bool gh_touch_pos(float fx, float fy, int & vx, int & vy) {   /* finger (
 }
 static void gh_touch_feed(const SDL_Event & e) {
     pwr::mclk::note_touch();   /* E1R: touch input stays silent */
-    static bool dn = false, mv = false; static SDL_FingerID fid = 0; static float x0 = 0, y0 = 0; static int ay = 0;
+    static bool dn = false, mv = false, hz = false; static SDL_FingerID fid = 0; static float x0 = 0, y0 = 0; static int ay = 0, ax = 0;
     const int STEP = 22, SLOP = 14;
     if (e.type == SDL_FINGERDOWN) { if (dn) return; int vx, vy; if (!gh_touch_pos(e.tfinger.x, e.tfinger.y, vx, vy)) return; dn = true; mv = false; fid = e.tfinger.fingerId; x0 = e.tfinger.x; y0 = e.tfinger.y; ay = vy; return; }
     if (!dn || e.tfinger.fingerId != fid) return;
     int vx, vy; if (!gh_touch_pos(e.tfinger.x, e.tfinger.y, vx, vy)) { if (e.type == SDL_FINGERUP) dn = false; return; }
     if (e.type == SDL_FINGERMOTION) {
-        if (!mv) { int sx, sy; gh_touch_pos(x0, y0, sx, sy); if (abs(vy - sy) < SLOP && abs(vx - sx) < SLOP) return; mv = true; ay = sy; }
+        if (!mv) { int sx, sy; gh_touch_pos(x0, y0, sx, sy); if (abs(vy - sy) < SLOP && abs(vx - sx) < SLOP) return; mv = true; ay = sy; ax = sx; hz = abs(vx - sx) > abs(vy - sy); }   /* kx-touch: 가로 끌기 = 왼쪽/오른쪽 */
+        if (hz) { while (vx - ax >= STEP) { gh_touch_key(SDLK_RIGHT); ax += STEP; } while (ax - vx >= STEP) { gh_touch_key(SDLK_LEFT); ax -= STEP; } return; }
         while (vy - ay >= STEP) { gh_touch_key(SDLK_UP); ay += STEP; }
         while (ay - vy >= STEP) { gh_touch_key(SDLK_DOWN); ay -= STEP; }
         return; }
