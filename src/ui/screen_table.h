@@ -87,6 +87,18 @@ inline void Ui::draw_body(Canvas & c) {
     case S_PAD: d_pad(c); break; case S_PADKEY: d_padkey(c); break; case S_HOT: d_hot(c); break; case S_EXT: d_ext(c); break; case S_KBPICK: d_kbpick(c); break; case S_SET: d_set(c); break; case S_GKB: d_gkb(c); break;
     case S_SHARE: d_share(c); break; case S_SHIMP: d_shimp(c); break; case S_SHPREV: d_shprev(c); break; case S_SHIM: d_shim(c); break;
     }
+    {   /* kx-touch: 좌상단 ← (취소). 안드로이드는 항상, 윈도는 시험용으로 KH_BACKARROW 가 있을 때만. 메인·시작 화면에는 그리지 않는다 */
+#if defined(__ANDROID__)
+        const bool sb = true;
+#else
+        static const bool sb = getenv("KH_BACKARROW") != NULL;
+#endif
+        if (sb && scr != S_MAIN && scr != S_START) {
+            c.rect(2, 2, 44, 28, K); c.rect(2, 2, 44, 1, WH); c.rect(2, 29, 44, 1, WH); c.rect(2, 2, 1, 28, WH); c.rect(45, 2, 1, 28, WH);
+            for (int i = 0; i < 7; i++) c.rect(10 + i, 16 - i, 1, 1 + 2 * i);
+            c.rect(17, 15, 20, 3, WH);
+        }
+    }
 }
 
 inline Act Ui::key(UKey k) {

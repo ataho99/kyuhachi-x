@@ -645,7 +645,9 @@ static void gh_touch_feed(const SDL_Event & e) {
         return; }
     if (e.type == SDL_FINGERUP) {
         dn = false; if (mv) { gh_log("TOUCH swipe end v=(%d,%d)", vx, vy); return; }
-        if (vx < 0 || vx >= 640 || vy < 0 || vy >= 400) { gh_log("TOUCH tap v=(%d,%d) outside -> cancel", vx, vy); gh_touch_key(SDLK_ESCAPE); return; }
+        const bool ba = gApp.ui_.scr != ui::S_MAIN && gApp.ui_.scr != ui::S_START;   /* kx-touch: ← 가 그려지는 화면 */
+        if (vx < 0 || vx >= 640 || vy < 0 || vy >= 400) { if (ba) { gh_log("TOUCH tap v=(%d,%d) outside -> ignored", vx, vy); return; } gh_log("TOUCH tap v=(%d,%d) outside -> cancel", vx, vy); gh_touch_key(SDLK_ESCAPE); return; }
+        if (ba && vx < 48 && vy < 32) { gh_log("TOUCH tap v=(%d,%d) back arrow -> cancel", vx, vy); gh_touch_key(SDLK_ESCAPE); return; }
         ui::Ui & U = gApp.ui_;
         if (U.scr == ui::S_PICK && U.prof_w > 0 && vx >= U.prof_x && vx < U.prof_x + U.prof_w && vy >= U.prof_y && vy < U.prof_y + U.prof_h) { gh_log("TOUCH tap v=(%d,%d) 실행 줄 -> 다음 방법", vx, vy); gh_touch_key(SDLK_p); return; }   /* v0.6.8 */
         if (U.scr == ui::S_CONF || U.scr == ui::S_SCREEN) {   /* #638: tap on an option of a choice line = select that option (move to its row, then left/right) */
