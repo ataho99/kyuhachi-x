@@ -137,6 +137,7 @@ void RENDER_EndUpdate(bool abort) {
     if (abort) { gApp.aborts++; return; }
     pdg::EmuTimer pd_et;   /* #P2: 프레임 간격·EndUpdate 소요(로그 전용) */
     gApp.frames++;
+    kc::tick();   /* kx-cheat: re-write frozen values every emulated frame */
     gh_frame_hook();
     if (gApp.scr_req) { gApp.scr_req = false; gApp.scr_pend = (!gApp.headless && gApp.use_gl) ? 3 : 1; }   /* t41: GL 은 게시된 프레임이 화면에 올라간 뒤 찍는다 */
     if (!gApp.headless && gApp.use_gl && !gApp.fb.empty()) {

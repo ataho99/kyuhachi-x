@@ -73,7 +73,7 @@ struct Env {   /* 호스트(또는 하니스)가 채우는 입출력 */
     std::function<std::string(int)> raw_line;   /* i >= 0: i-th newest raw input line; -1: "EXIT" when the tab should close */
     std::function<int()> padkind;   /* 0 그 밖 1 Xbox 2 PlayStation 3 Retroid(닌텐도 배치) */
     std::function<bool(int, const std::string &, const std::string &, std::vector<FileItem> &)> exelist;   /* 2b: (작품, 디스크 이름·경로, 이미지 안 폴더, 목록 = 하위 폴더 + 실행 파일) */
-    std::function<std::vector<std::string>()> padkeys;   /* 고를 수 있는 키 이름(저장용, 소문자) */
+    std::function<std::vector<std::string>()> padkeys; std::function<int(int, int, long long, std::string &)> cheat;   /* kx-cheat: (op, idx, value, io) -> result; see app/kh_cheat.h */   /* 고를 수 있는 키 이름(저장용, 소문자) */
 };
 struct UiGame {
     std::string id, title, boot_note; std::string disk[2];
@@ -97,7 +97,7 @@ struct UiGame {
     std::vector<UiEnt> ents;
 };
 
-enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM, S_STEM, S_TIDY };
+enum Scr { S_MAIN, S_PICK, S_SCREEN, S_CONF, S_SAVE, S_EXTRA, S_QUIT, S_GAME, S_KEYS, S_HELP, S_START, S_SWAP, S_SWAPI, S_ABOUT, S_ADD, S_SORT, S_ENT, S_ENTMENU, S_TPL, S_EDIT, S_FILE, S_KEYSEQ, S_STEP, S_SWAPED, S_FONT, S_OSK, S_NAME, S_YN, S_HDDASK, S_LANG, S_VALS, S_PAD, S_PADKEY, S_EXEPICK, S_HOT, S_EXT, S_KBPICK, S_SET, S_GKB, S_SHARE, S_SHIMP, S_SHPREV, S_SHIM, S_STEM, S_TIDY, S_CHEAT };
 /* kx-clean: 「목록 정리」 한 줄 (host 가 games\<id> 를 훑어 채운다). st: 0 정상 · 1 원본 없음 · 2 중복 의심 */
 struct TidyRow { std::string id, title, src; int st = 0; bool hidden = false, saves = false; };
 

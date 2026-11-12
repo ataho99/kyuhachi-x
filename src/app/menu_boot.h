@@ -205,6 +205,7 @@ static void gh_bk_pause_set(bool on, const char * why) {   /* t47a (#559): ÏûêÎè
 static void gh_menu_run(void) {
 
     if (gApp.headless || !gApp.use_gl) return;
+    kc::presave = gh_autosave;   /* kx-cheat: auto slot is saved before a cheat write */
     kbov::release_all(); gApp.ui_.kb_vis = kbov::g_vis ? 1 : 0; gApp.ui_.kb_btn = kbov::g_btn_on ? 1 : 0; gApp.ui_.kb_sh = gApp.kbshader ? 1 : 0; gApp.menu_open = true; gh_boost_update();
     static uint32_t snap[640 * 400], buf[640 * 400]; ov::Canvas sc = { snap, 640, 400 }, c = { buf, 640, 400 };
     sc.rect(0, 0, 640, 400, ov::K); if (!gApp.fb.empty()) ov::blit_scaled(sc, gApp.fb.data(), gApp.fbw, gApp.fbh, 0, 0, 640, 400);
