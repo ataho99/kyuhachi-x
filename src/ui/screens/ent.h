@@ -26,8 +26,8 @@ inline void Ui::d_ent(Canvas & c) {
         int yy = 44; auto ln = [&](const char * lab, const std::string & val, uint32_t col2 = WH) { text(c, 340, yy, lab, CY, K); text(c, 340 + 76, yy, fit(val, 304 - 24 - 76 - 8), col2, K); yy += 20; };
         ln(phr_("출처"), e->vgi >= 0 ? std::string(phr_("변형 폴더")) : e->tag);
         const char * dn[] = { "A", "B", "C", "D" }; const char * dk[] = { "disk_a", "disk_b", "disk_c", "disk_d" };
-        for (int q = 0; q < 4; q++) { auto it = e->kv.find(dk[q]); if (it != e->kv.end() && it->second != "-" && !it->second.empty()) ln((std::string(phr_("디스크")) + dn[q]).c_str(), disk_label(it->second)); }
-        { auto it = e->kv.find("cd"); if (it != e->kv.end() && !it->second.empty() && it->second != "-") ln("CD", disk_label(it->second)); }
+        for (int q = 0; q < 4; q++) { auto it = e->kv.find(dk[q]); if (it != e->kv.end() && it->second != "-" && !it->second.empty()) ln((std::string(phr_("디스크")) + dn[q]).c_str(), fit_tail(disk_label(it->second), 196)); }
+        { auto it = e->kv.find("cd"); if (it != e->kv.end() && !it->second.empty() && it->second != "-") ln("CD", fit_tail(disk_label(it->second), 196)); }
         { auto it = e->kv.find("boot"); std::string b = it == e->kv.end() ? std::string(phr_("자동")) : it->second; auto ft = e->kv.find("font"); auto fk = e->kv.find("font_kind"); ln(phr_("부팅"), b + phr_("   글꼴 ") + (ft != e->kv.end() ? ft->second : fk != e->kv.end() ? (fk->second == "jp" ? std::string(phr_("일본어")) : std::string(phr_("한글"))) : std::string(phr_("목록 기본")))); }
         { auto it = e->kv.find("bootkeys"); auto sk = e->kv.find("swap"); int bn = it != e->kv.end() ? (int)ent::parse_steps(it->second).size() : 0, sn = 0; if (sk != e->kv.end()) { std::string s = sk->second; if (!s.empty()) { sn = 1; for (char ch : s) if (ch == ',') sn++; } } ln(phr_("자동입력"), std::to_string(bn) + phr_("단계   교체 ") + std::to_string(sn) + phr_("장")); }
         if (ent_warn(entg, v[sel])) ln(phr_("경고"), e->warn_msg, OR);

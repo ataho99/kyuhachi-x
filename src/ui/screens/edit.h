@@ -16,7 +16,7 @@ inline void Ui::d_edit(Canvas & c) {
     for (int i = 0; i < 14; i++) {
         int yy = 42 + i * 19; bool sl = i == sel; if (sl) c.rect(30, yy - 3, 580, 19, WH);
         text(c, 40, yy, lab[i], sl ? K : CY, sl ? WH : K); c.clip(160, yy - 3, 440, 22);
-        bool valarr = (i == 6 || i == 10 || i == 11); text(c, 160, yy, std::string(valarr && sl ? "← " : "") + fit(v[i], 380) + (valarr && sl ? " →" : ""), sl ? K : WH, sl ? WH : K); c.unclip();
+        bool valarr = (i == 6 || i == 10 || i == 11); text(c, 160, yy, std::string(valarr && sl ? "← " : "") + fit_tail(v[i], 380) + (valarr && sl ? " →" : ""), sl ? K : WH, sl ? WH : K); c.unclip();
     }
     std::vector<ent::Issue> is = ed_issues(); std::vector<std::string> d;
     if (!msg.empty()) d.push_back(fit(msg, 560)); else d.push_back(is.empty() ? std::string(phr_("경고 없음")) : fit(std::string(is[0].err ? phr_("오류: ") : phr_("경고: ")) + is[0].msg, 560));

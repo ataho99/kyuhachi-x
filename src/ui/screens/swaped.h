@@ -2,7 +2,7 @@
 /* screens/swaped.h -- S8c: S_SWAPED screen. Code moved unchanged from kh_ui.h (members of struct Ui, defined out of line). */
 inline void Ui::d_swaped(Canvas & c) {
     titlebar(c, ""); rbox(c, 16, 24, 608, 296, WH, phr_("교체 목록 (게임 중 메뉴와 같은 순서)"));
-    std::vector<std::string> r; for (size_t i = 0; i < sw.size(); i++) r.push_back(std::to_string(i + 1) + "  " + fit(sw[i], 520)); r.push_back(phr_("+ 디스크 추가 (이미지 고르기)"));
+    std::vector<std::string> r; for (size_t i = 0; i < sw.size(); i++) r.push_back(std::to_string(i + 1) + "  " + fit_tail(sw[i], 520)); r.push_back(phr_("+ 디스크 추가 (이미지 고르기)"));
     rowlist(c, 40, 48, 560, 9, r, sel, 24);
     { const char * H = phr_("↑↓:선택, ○:바꾸기, □:삭제, △:위로, SEL:아래로, ×:완료"); desc(c, 324, 58, { phr_("게임 중 메뉴의 「디스크 교체」에 나오는 디스크와 순서입니다."), phr_("시작부터 교체가 필요한 작품은 처음 3초에 안내가 뜹니다.") }, -1, H); helpline(c, H); }
 }

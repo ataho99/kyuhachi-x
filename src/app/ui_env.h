@@ -277,7 +277,12 @@ static void gh_ui_init_games(void) {
         std::string k = std::string("label_") + (char)('a' + i); auto it = p.kv.find(k);
         if (it != p.kv.end()) return std::string(1, L[i]) + ": " + it->second;
         if (!p.disk[i]) return std::string(); std::string n = p.disk[i]; size_t d = n.find_last_of('.'); if (d != std::string::npos && n.size() - d <= 5) n = n.substr(0, d);
-        if (n.size() > 34) n = n.substr(0, 31) + "...";
+        if (n.size() > 34) {   /* kx-ars: keep the tail (arle-game vs rulue-data) */
+            std::string t = n.substr(n.size() - 31); size_t b = 0;
+            while (b < t.size() && ((unsigned char)t[b] & 0xC0) == 0x80) b++; t = t.substr(b);
+            size_t sp = t.find(' '); if (sp != std::string::npos && sp < 10) t = t.substr(sp + 1);
+            n = "..." + t;
+        }
         return std::string(1, L[i]) + ": " + n;
     };
     for (auto & d : subs) {

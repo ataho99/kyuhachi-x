@@ -3,7 +3,7 @@
 inline void Ui::d_swap(Canvas & c) {
     const UiGame * gm = game(); c.rect(120, 16, 400, 336, K); rbox(c, 128, 24, 384, 320, WH, phr_("디스크 교체"));
     if (!gm || gm->fds.empty()) { text(c, 160, 60, phr_("교체할 디스크가 없습니다."), GY, K); helpline(c, phr_("×:돌아가기")); return; }
-    std::vector<std::string> a = { phr_("A 드라이브  ") + (gm->cur_fd[0].empty() ? std::string(phr_("(비어 있음)")) : fit(gm->cur_fd[0], 190)), phr_("B 드라이브  ") + (gm->cur_fd[1].empty() ? std::string(phr_("(비어 있음)")) : fit(gm->cur_fd[1], 190)) };
+    std::vector<std::string> a = { phr_("A 드라이브  ") + (gm->cur_fd[0].empty() ? std::string(phr_("(비어 있음)")) : fit_tail(gm->cur_fd[0], 190)), phr_("B 드라이브  ") + (gm->cur_fd[1].empty() ? std::string(phr_("(비어 있음)")) : fit_tail(gm->cur_fd[1], 190)) };
     items(c, 160, 48, 330, a, swapdrv, 30);
     text(c, 160, 130, phr_("바꿀 드라이브를 고릅니다."), WH, K);
     helpline(c, phr_("↑↓:선택, ○:디스크 고르기, ×:돌아가기"));

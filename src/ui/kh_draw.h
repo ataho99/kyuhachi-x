@@ -289,6 +289,22 @@ static void dim(Canvas & c) { for (int i = 0; i < c.w * c.h; i++) c.p[i] = (c.p[
 static int choices_w(const char * const * arr, int n) { int w = 0; for (int i = 0; i < n; i++) w += tw(arr[i]) + 8 + (i ? 8 : 0); return w; }
 /* 폭을 넘으면 … 로 자른다 */
 static std::string fit(const std::string & s, int maxw) { if (tw(s) <= maxw) return s; std::string o; const char * p = s.c_str(); for (;;) { const char * q = p; uint32_t cp = u8next(q); if (!cp) break; std::string ch(p, q - p); if (tw(o + ch + "\xE2\x80\xA6") > maxw) break; o += ch; p = q; } return o + "\xE2\x80\xA6"; }
+/* kx-ars: fit the tail instead of the head (file names: the differing part is at the end).
+ * Titles and messages keep fit() (head matters); only file-name displays use this. */
+static std::string fit_tail(const std::string & s, int maxw) {
+    if (tw(s) <= maxw) return s;
+    static const std::string el = "\xE2\x80\xA6"; int w = tw(el);
+    if (maxw <= w) return el;
+    size_t e = s.size(); std::string o;
+    for (;;) {
+        if (e == 0) break;
+        size_t q = e; do { q--; } while (q > 0 && ((unsigned char)s[q] & 0xC0) == 0x80);
+        std::string ch = s.substr(q, e - q);
+        if (w + tw(ch) > maxw) break;
+        o = ch + o; w += tw(ch); e = q;
+    }
+    return el + o;
+}
 
 /* ---- t39: 제목 표시 도우미 (지시 #288) */
 /* 끝의 [..] 또는 (..) 묶음(꼬리표)을 보존하며 줄인다: 「대마도전략물어… [원판 일본어]」. 꼬리표가 없거나 머리가 3자(48px) 미만이면 끝 … */

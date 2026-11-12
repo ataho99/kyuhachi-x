@@ -17,7 +17,7 @@ inline void Ui::d_exepick(Canvas & c) {
     if (!xp_dir.empty()) { r.push_back(phr_(".. (위로)")); col.push_back(YL); }
     for (auto & f : xp_items) {
         if (f.dir) { r.push_back("[" + f.name + "]"); col.push_back(YL); }
-        else { r.push_back(fit(f.name, 380) + "  " + std::to_string((long long)f.size) + " B"); col.push_back(0); }
+        else { r.push_back(fit_tail(f.name, 380) + "  " + std::to_string((long long)f.size) + " B"); col.push_back(0); }
     }
     rowlist(c, 40, 94, 560, 9, r, sel, 24, &col);
     std::vector<std::string> d;
