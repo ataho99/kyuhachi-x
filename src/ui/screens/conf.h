@@ -6,12 +6,12 @@ inline void Ui::d_conf(Canvas & c) {
     rbox(c, 16, 24, 288, 296, WH, phr_("동작 환경 설정"));
     const std::vector<int> ri = rowids(S_CONF);
     const bool own = scope == 1 && cur >= 0 && cur < MAXG; const bool ind = own && ovm[cur] != 0u;
-    static const unsigned rb[29] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
+    static const unsigned rb[32] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
         1u << 10, 1u << 11,   /* E3R */ 1u << 14, 1u << 12, 1u << 13, 1u << 15,
         0u, 0u, 0u, 0u, 0u, 1u << 23,   /* E3R */ 1u << 24, 1u << 25, 1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u,
-        0u, 0u }; /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
+        0u, 0u, 0u, 0u, 0u }; /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
     std::vector<std::string> n;
-    { const std::string nm[29] = { /*E1R*/ /* E3R */ phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"),   /* E2R */
+    { const std::string nm[32] = { /*E1R*/ /* E3R */ phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"),   /* E2R */
       KH_SNDLABEL,   /* E3R */
         phr_("조작 설정"), phr_("배속 배율"), phr_("배속 방식"), phr_("배속 중 소리"),
       phr_("부팅 시퀀스"), phr_("배속 표시"), phr_("오버레이 버튼 표시"),
@@ -20,7 +20,8 @@ inline void Ui::d_conf(Canvas & c) {
         phr_("snd_disk"),   /* E3R */ phr_("snd_dvol"), phr_("CPU 속도"), phr_("기동 시퀀스"),
       phr_("HDD 회전음"), phr_("회전음 음량"), phr_("오버레이 위치 모드"), phr_("오버레이 변"),
       phr_("오버레이 정렬"), phr_("오버레이 직접 위치"), phr_("메뉴 클릭음"),
-        phr_("글꼴 폴더"), phr_("cpu_core") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
+        phr_("글꼴 폴더"), phr_("cpu_core"),
+        phr_("touchfx"), phr_("tfxsz"), phr_("tfxmouse") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
       for (int id : ri) n.push_back(id == 15 ? std::string("FPS / Speed") : ((own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id])); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
     items(c, 40, 44, 256, n, sel, 19);
@@ -51,6 +52,9 @@ inline void Ui::d_conf(Canvas & c) {
     { char b3[8]; snprintf(b3, sizeof b3, "%d", s.hvol); barv(c, 340, ry(21), 232, s.hvol / 8.0, "OFF", "MAX", WH, row(21)); text(c, 590, ry(21), b3, WH, K); }
     { const char * mc[] = { phr_("끔"), phr_("켬") }; /*E1R*/
       choices(c, 344, ry(26), mc, 2, s.mclick, WH, row(26)); } /*E1R*/
+    { const char * tf[] = { phr_("끔"), phr_("tfx_dot") }; choices(c, 344, ry(29), tf, 2, s.touchfx, WH, row(29)); }   /* kx-touch */
+    { const char * tz[] = { phr_("tfx_small"), phr_("tfx_large") }; choices(c, 344, ry(30), tz, 2, s.tfxsz, WH, row(30)); }
+    { const char * tm[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(31), tm, 2, s.tfxmouse, WH, row(31)); }
     const char * bt[] = { phr_("켬"), phr_("끔") }; choices(c, 344, ry(8), bt, 2, s.boot, WH, row(8));
     { const char * bo[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(9), bo, 2, s.bosd, WH, row(9)); }
     { const char * ob[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(10), ob, 2, s.ovbtn, WH, row(10)); }   /* t52f (#132) */
@@ -82,7 +86,7 @@ inline void Ui::d_conf(Canvas & c) {
 #else
     static const char * dd[] = { "desc_scope", "desc_bgm", "desc_se", "desc_snddev", "desc_pad", "desc_bmult", "desc_bmode", "desc_bsound", "desc_boot", "desc_bosd", "desc_ovbtn", "desc_fontkr", "desc_fontjp", "desc_lang", "desc_indiv_reset", "desc_fps", "desc_dsnd", "desc_dvol" };
 #endif
-    std::string dt = dkey(phr_(rs == 28 ? "desc_cpucore" : rs == 27   /* E3R */
+    std::string dt = dkey(phr_(rs == 31 ? "desc_tfxmouse" : rs == 30 ? "desc_tfxsz" : rs == 29 ? "desc_touchfx" : rs == 28 ? "desc_cpucore" : rs == 27   /* E3R */
         ? "desc_fontdir" : rs == 22 ? "desc_ovpos_mode" : rs == 23 ?   /* E2R */
       "desc_ovpos_edge" : rs == 24 ? "desc_ovpos_align" : rs == 25 ? "desc_ovpos_free" :
       rs == 19 ? "desc_pwrseq" : rs == 20 ? "desc_hddhum" : rs == 21 ? "desc_hvol" :

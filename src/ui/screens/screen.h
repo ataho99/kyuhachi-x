@@ -119,6 +119,9 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 20) s.hddhum = clampi(s.hddhum + d, 0, 2);
                 if (sel == 21) s.hvol = clampi(s.hvol + d, 0, 8);
                 if (sel == 26) s.mclick = clampi(s.mclick + d, 0, 1); /*E1R*/
+                if (sel == 29) s.touchfx = clampi(s.touchfx + d, 0, 1);   /* kx-touch */
+                if (sel == 30) s.tfxsz = clampi(s.tfxsz + d, 0, 1);
+                if (sel == 31) s.tfxmouse = clampi(s.tfxmouse + d, 0, 1);
                 if (sel == 8) s.boot = clampi(s.boot + d, 0, 1); if (sel == 9) s.bosd = clampi(s.bosd + d, 0, 1);
                 if (sel == 10) s.ovbtn = clampi(s.ovbtn + d, 0, 1);   /* E2R: split */
                 if (sel == 22) s.ovpos_mode = clampi(s.ovpos_mode + d, 0, 1);   /* E2R */
@@ -134,7 +137,8 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         else { e.bgm = def.bgm; e.se = def.se; e.bmult = def.bmult; e.cpuspd = def.cpuspd;
             e.bmode = def.bmode; e.boot = def.boot; e.bosd = def.bosd; e.bsound = def.bsound;
             if (conf_grp == 1) { e.dsnd = def.dsnd; e.dvol = def.dvol; e.pwrseq = def.pwrseq;
-                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; /*E1R*/ }
+                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; /*E1R*/
+                e.touchfx = def.touchfx; e.tfxsz = def.tfxsz; e.tfxmouse = def.tfxmouse;   /* kx-touch */ }
             e.ovbtn = def.ovbtn; e.ovpos_mode = def.ovpos_mode; e.ovpos_edge = def.ovpos_edge;
             e.ovpos_align = def.ovpos_align; e.ovpos_free = def.ovpos_free;
             if (scope == 0) g.fpsd = def.fpsd; } dirty = true; a.t = A_APPLY; }

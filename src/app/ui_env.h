@@ -616,11 +616,14 @@ static void gh_help_init(void) {   /* 같은 표에서 helpline 번역표를 만
  * 탭 = 그 줄로 이동 + 결정(Enter) · 4:3 틀 바깥 탭 = 취소(Esc) · 세로 끌기 = 위/아래 한 칸씩. 좌표는 gh_publish 의 소프트웨어 경로(논리 640x480 레터박스; 16:10 이면 400줄 가운데, 4:3 이면 세로 늘림)와 같은 식. */
 static void gh_touch_key(SDL_Keycode k) { SDL_Event ke; SDL_zero(ke); ke.type = SDL_KEYDOWN; ke.key.keysym.sym = k; ke.key.state = SDL_PRESSED; SDL_PushEvent(&ke); ke.type = SDL_KEYUP; ke.key.state = SDL_RELEASED; SDL_PushEvent(&ke); }
 static int gh_touch_fl(double v) { int i = (int)v; return (v < (double)i) ? i - 1 : i; }
+static void gh_kb_warp(double & u, double & v);   /* kbd_event.h */
 static bool gh_touch_pos(float fx, float fy, int & vx, int & vy) {   /* finger (window 0..1) to menu canvas (640x400); outside the frame gives out-of-range values */
     if (gApp.use_gl && gApp.win) {   /* t57a: GL output -- same rectangle the render thread draws into (gl_rect) */
         int dw = 0, dh = 0, x = 0, y = 0, rw = 0, rh = 0; SDL_GL_GetDrawableSize(gApp.win, &dw, &dh); if (dw <= 0 || dh <= 0) return false;
         gl_rect(dw, dh, gApp.pub_w > 0 ? gApp.pub_w : 640, gApp.pub_h > 0 ? gApp.pub_h : 400, gh_fit_eff(), x, y, rw, rh); if (rw <= 0 || rh <= 0) return false;
-        vx = gh_touch_fl(((double)fx * dw - x) * 640.0 / rw); vy = gh_touch_fl(((double)fy * dh - y) * 400.0 / rh); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
+        double fu = ((double)fx * dw - x) / rw, fv = ((double)fy * dh - y) / rh;   /* kx-touch: 곡면이면 마우스 경로와 같은 warp */
+        if ((int)gApp.shader == (int)SH_CRT && (int)gApp.fit != (int)FIT_INT && gApp.curve > 0.0f) gh_kb_warp(fu, fv);
+        vx = gh_touch_fl(fu * 640.0); vy = gh_touch_fl(fv * 400.0); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
     }
     int ow = 0, oh = 0; if (!gApp.ren || SDL_GetRendererOutputSize(gApp.ren, &ow, &oh) != 0 || ow <= 0 || oh <= 0) return false;
     double sx = ow / 640.0, sy = oh / 480.0, sc = sx < sy ? sx : sy, ox = (ow - 640.0 * sc) / 2.0, oy = (oh - 480.0 * sc) / 2.0;
