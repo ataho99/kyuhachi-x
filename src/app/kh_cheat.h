@@ -115,17 +115,22 @@ static int mism(const std::vector<uint8_t> & ram, const std::string & pat, long 
         if (h < 0 || l < 0) return 999; if (ram[(size_t)(start + i)] != (uint8_t)(h * 16 + l) && ++m > lim) return m; }
     return m;
 }
-/* 앞뒤 바이트가 조금 달라져도(커서·시계 같은 값) 찾는다: 무늬 바이트의 1/4 까지 달라도 받고, 덜 다른 쪽 → 기대 위치에 가까운 쪽 */
-static bool relocate(const Saved & s, uint32_t & addr) {
-    std::vector<uint8_t> ram; snapshot(ram); const long long n = (long long)s.pat.size() / 2;
-    const long long start = base_addr() + s.off - s.pre; int fixedn = 0;
-    for (long long i = 0; i < n; i++) if (s.pat[i * 2] != '?') fixedn++;
-    const int lim = fixedn / 4; long long best = -1, bd = 0; int bm = lim + 1;
-    for (long long a = 0; a + n <= RAMTOP; a++) {
-        int m = mism(ram, s.pat, a, lim); if (m > lim) continue; long long d = a > start ? a - start : start - a;
-        if (best < 0 || m < bm || (m == bm && d < bd)) { best = a; bm = m; bd = d; }
-    }
-    if (best < 0) return false; addr = (uint32_t)(best + s.pre); return true;
+static uint32_t pend_a = 0; static int pend_i = -1;   /* 확인 대기 중인 불확실 위치 */
+/* 위치 찾기: 1순위 = 기준+offset 자리에서 무늬 3/4 이상 일치 -> 1 · 2순위 = RAM 전체에서 정확 일치만 -> 1 ·
+ * 오차 허용 후보가 딴 자리에서만 나오면 2(불확실: 쓰지 않고 확인을 받는다) · 없으면 0 */
+static int relocate(const Saved & s, uint32_t & addr) {
+    std::vector<uint8_t> ram; snapshot(ram); const long long n = (long long)s.pat.size() / 2, start = base_addr() + s.off - s.pre;
+    int fixedn = 0; for (long long i = 0; i < n; i++) if (s.pat[i * 2] != '?') fixedn++;
+    const int lim = fixedn / 4;
+    if (mism(ram, s.pat, start, lim) <= lim) { addr = (uint32_t)(start + s.pre); return 1; }
+    long long ex = -1, ed = 0, fz = -1, fd = 0; int fm = lim + 1;
+    for (long long a = 0; a + n <= RAMTOP; a++) { int m = mism(ram, s.pat, a, lim); if (m > lim) continue;
+        long long d = a > start ? a - start : start - a;
+        if (m == 0 && (ex < 0 || d < ed)) { ex = a; ed = d; }
+        if (fz < 0 || m < fm || (m == fm && d < fd)) { fz = a; fm = m; fd = d; } }
+    if (ex >= 0) { addr = (uint32_t)(ex + s.pre); return 1; }
+    if (fz >= 0) { addr = (uint32_t)(fz + s.pre); return 2; }
+    return 0;
 }
 static bool make_saved(int idx, int64_t v, bool freeze, const std::string & id) {
     if (idx < 0 || idx >= (int)cand.size() || !fits(v, cand[idx].w)) return false;
@@ -143,8 +148,14 @@ static std::string saved_lines(const std::string & id) {
         o += saved[i].name + (saved[i].freeze ? "  [F]" : "  [W]") + (saved[i].lost ? "  [?]" : "") + "\n"; } return o;
 }
 static int apply_saved(int idx, const std::string & id) {
-    load_file(id); if (idx < 0 || idx >= (int)saved.size()) return -1; Saved & s = saved[idx]; uint32_t a = 0;
-    if (!relocate(s, a)) { s.lost = true; return 0; } s.lost = false; return do_write(a, s.w, s.value, s.freeze) ? 1 : -1;
+    load_file(id); if (idx < 0 || idx >= (int)saved.size()) return -1; Saved & s = saved[idx]; uint32_t a = 0; int r = relocate(s, a);
+    if (r == 2) { pend_a = a; pend_i = idx; s.lost = false; return 2; }
+    if (r == 0) { s.lost = true; return 0; }
+    s.lost = false; return do_write(a, s.w, s.value, s.freeze) ? 1 : -1;
+}
+static int apply_pending(int idx, const std::string & id) {   /* 확인창에서 「예」 */
+    load_file(id); if (idx != pend_i || idx < 0 || idx >= (int)saved.size()) return -1;
+    const Saved & s = saved[idx]; pend_i = -1; return do_write(pend_a, s.w, s.value, s.freeze) ? 1 : -1;
 }
 static bool del_saved(int idx, const std::string & id) { load_file(id); if (idx < 0 || idx >= (int)saved.size()) return false;
     saved.erase(saved.begin() + idx); return save_file(id); }
@@ -166,6 +177,7 @@ static int gh_cheat_op(int op, int idx, int64_t v, std::string & io) {
     case 8: return kc::apply_saved(idx, id);
     case 9: return kc::make_saved(idx, v, io == "f", id) ? 1 : 0;
     case 10: return kc::del_saved(idx, id) ? 1 : 0;
+    case 13: return kc::apply_pending(idx, id);   /* 불확실한 위치에 그래도 적용(확인창 「예」) */
     case 11: return (int)kc::frz.size();
     case 12: return kc::searched ? (int)kc::cand.size() : -1;
     }

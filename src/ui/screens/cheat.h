@@ -92,10 +92,14 @@ inline void Ui::k_cheat(UKey k, Act & a) {
         else if (k == UK_OK && n > 0) { ch_buf = ch_wval; ch_tgt = 1; ch_pad = 0; ch_lvl = 1; ch_msg.clear(); }
     } else if (ch_lvl == 3) {
         int n = (int)ch_lines.size();
-        if (k == UK_UP && n > 0) ch_pick = (ch_pick + n - 1) % n; else if (k == UK_DOWN && n > 0) ch_pick = (ch_pick + 1) % n;
+        if (ch_conf >= 0) { int ci = ch_conf; ch_conf = -1;   /* 위치 불확실 확인: ○ 만 「예」, 나머지는 전부 「아니오」 */
+            if (k == UK_OK) ch_msg = ch_op(13, ci, 0, io) == 1 ? std::string(phr_("ch_applied")) : std::string(phr_("ch_fail"));
+            else ch_msg = phr_("ch_declined"); }
+        else if (k == UK_UP && n > 0) ch_pick = (ch_pick + n - 1) % n; else if (k == UK_DOWN && n > 0) ch_pick = (ch_pick + 1) % n;
         else if (k == UK_CANCEL) { ch_lvl = 0; ch_msg.clear(); }
-        else if (k == UK_OK && n > 0) { int r = ch_op(8, ch_pick, 0, io);
-            ch_msg = r == 1 ? std::string(phr_("ch_applied")) : r == 0 ? std::string(phr_("ch_lost")) : std::string(phr_("ch_fail"));
+        else if (k == UK_OK && n > 0) { int r = ch_op(8, ch_pick, 0, io); if (r == 2) ch_conf = ch_pick;
+            ch_msg = r == 1 ? std::string(phr_("ch_applied")) : r == 2 ? std::string(phr_("ch_uncertain")) :
+                r == 0 ? std::string(phr_("ch_lost")) : std::string(phr_("ch_fail"));
             ch_op(7, 0, 0, io); ch_lines_of(io); if (ch_pick >= (int)ch_lines.size()) ch_pick = 0; }
         else if (k == UK_TRI && n > 0) { ch_op(10, ch_pick, 0, io); ch_op(7, 0, 0, io); ch_lines_of(io);
             if (ch_pick >= (int)ch_lines.size()) ch_pick = 0; ch_msg = phr_("ch_deleted"); }

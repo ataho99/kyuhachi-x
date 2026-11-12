@@ -150,7 +150,7 @@ struct Ui {
     void tidy_apply_goto() { if (tidy_goto.empty() || tidy_rows.empty()) return; std::vector<int> v = tidy_vis(); for (size_t i = 0; i < v.size(); i++) if (tidy_rows[v[i]].id == tidy_goto) { sel = (int)i; break; } tidy_goto.clear(); }
     void d_tidy(Canvas & c); void k_tidy(UKey k, Act & a); void tidy_menu_do(int mi, Act & a);
     /* kx-cheat: in-game cheat screen (screens/cheat.h, host side app/kh_cheat.h) */
-    int ch_lvl = 0, ch_sel = 0, ch_pad = 0, ch_pick = 0, ch_tgt = 0, ch_n = -1; std::string ch_buf, ch_val, ch_wval, ch_msg; std::vector<std::string> ch_lines;
+    int ch_lvl = 0, ch_sel = 0, ch_pad = 0, ch_pick = 0, ch_tgt = 0, ch_n = -1, ch_conf = -1; std::string ch_buf, ch_val, ch_wval, ch_msg; std::vector<std::string> ch_lines;
     int ch_op(int op, int idx, long long v, std::string & io); long long ch_num(const std::string & s) const; void ch_lines_of(const std::string & io);
     void open_cheat(); void d_cheat(Canvas & c); void k_cheat(UKey k, Act & a);
     static std::string ttl_full(const UiGame & g, int px) { return fit_title(g.title, px); }
