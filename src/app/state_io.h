@@ -61,7 +61,7 @@ static bool gh_z_pack(const std::string & path, std::vector<uint8_t> & out, uint
 }
 static bool gh_z_unpack(const uint8_t * p, size_t n, uint64_t rawsz, FILE * f) {
     z_stream z; memset(&z, 0, sizeof z); if (inflateInit(&z) != Z_OK) return false;
-    std::vector<uint8_t> ob(1 << 20); z.next_in = (Bytef *)p; z.avail_in = (uInt)n; uint64_t tot = 0; bool ok = fseeko64(f, 0, SEEK_SET) == 0; int r = Z_OK;
+    std::vector<uint8_t> ob(1 << 20); z.next_in = (Bytef *)p; z.avail_in = (uInt)n; uint64_t tot = 0; errno = 0; bool ok = fseeko64(f, 0, SEEK_SET) == 0; if (!ok) gh_log("DSK unpack seek FAIL errno=%d fileno=%d f=%p", errno, fileno(f), (void *)f); int r = Z_OK;
     while (ok && r != Z_STREAM_END) {
         z.next_out = ob.data(); z.avail_out = (uInt)ob.size(); r = inflate(&z, Z_NO_FLUSH);
         if (r != Z_OK && r != Z_STREAM_END) { ok = false; break; }
