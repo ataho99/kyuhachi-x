@@ -25,7 +25,7 @@ struct Settings {
     int fpsd = 0;
     int cpuspd = 0;   /* t665: 0 표준 1 빠름 2 매우빠름 3 최대 */       /* FPS / speed display 0 off 1 on (ini key fpsdisp) */
     int stk_l = 0, stk_r = 2, dz_l = 0, dz_r = 0, stk_sp = 2;   /* #624: stick role 0 off 1 d-pad 2 mouse (left default off, right default mouse); deadzone level 0 default .. 3 largest; mouse speed 1 slow .. 3 fast */
-    int bgfx = 1, bgspd = 0, bgbri = 0;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise / speed / brightness */
+    int bgfx = 1, bgspd = 0, bgbri = 1;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise / speed / brightness */
     int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) — phos_norm() moves it. 0 = all off */
     static int phos_norm(int v) {   /* #S1: clamp + move an old-format persistence (bits 2-3) to bits 8-10: old 40 -> 27 ms, old 90/160 -> 40 ms */
         v = v < 0 ? 0 : v > 2047 ? 2047 : v; int lg = (v >> 2) & 3;
