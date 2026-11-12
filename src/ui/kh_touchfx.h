@@ -63,20 +63,31 @@ static inline uint32_t pm(uint32_t a, uint32_t r, uint32_t g, uint32_t b) { retu
 static inline void put(uint32_t * b, int x, int y, uint32_t c) { if (x >= 0 && y >= 0 && x < 16 && y < 16) b[y * 16 + x] = c; }
 /* 16x16 BGRA(곱한 알파). age = 누른 뒤 ms · rel = 뗀 뒤 ms(-1 = 누르는 중). 십자는 누르는 동안 유지, 뗄 때 200ms 안에 사라짐 */
 static void sprite(uint32_t * b, int age, int rel) {
-    for (int i = 0; i < 256; i++) b[i] = 0;
-    int a = 235; if (rel >= 0) { a = 235 - rel * 235 / 200; if (a < 0) a = 0; }
+    uint8_t m[256], w[256]; for (int i = 0; i < 256; i++) { m[i] = 0; w[i] = 0; }   /* m: 1 시안 · 2 흰색 */
+    const int a = rel >= 0 ? (235 - rel * 235 / 200 > 0 ? 235 - rel * 235 / 200 : 0) : 235;
     if (a > 0) {
-        for (int d = 2; d <= 5; d++) { const uint32_t c = pm((uint32_t)a, 0, 238, 238);
-            put(b, 8 + d, 8, c); put(b, 8 - d, 8, c); put(b, 8, 8 + d, c); put(b, 8, 8 - d, c); }
-        put(b, 8, 8, pm((uint32_t)a, 255, 255, 255));
+        for (int d = 2; d <= 6; d++) for (int t = 7; t <= 8; t++) { m[t * 16 + 8 + d - (d > 0 ? 0 : 0)] = 1; m[t * 16 + 7 - d] = 1; m[(8 + d) * 16 + t] = 1; m[(7 - d) * 16 + t] = 1; }
+        m[7 * 16 + 7] = m[7 * 16 + 8] = m[8 * 16 + 7] = m[8 * 16 + 8] = 2;
     }
-    int ra = (rel < 0 && age < 220) ? 255 - age * 255 / 220 : 0;
+    const int ra = (rel < 0 && age < 260) ? 255 - age * 255 / 260 : 0;
     if (ra > 0) {
-        const double R = 3.0 + 4.0 * (age < 180 ? age / 180.0 : 1.0);
+        const double R = 3.5 + 3.5 * (age < 200 ? age / 200.0 : 1.0);
         for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
-            const double dx = x - 8, dy = y - 8, d = sqrt(dx * dx + dy * dy);
-            if (fabs(d - R) < 0.55) put(b, x, y, pm((uint32_t)ra, 255, 255, 255));
+            const double dx = x - 7.5, dy = y - 7.5, d = sqrt(dx * dx + dy * dy);
+            if (fabs(d - R) < 0.6 && !m[y * 16 + x]) w[y * 16 + x] = 1;
         }
+    }
+    for (int i = 0; i < 256; i++) b[i] = 0;
+    const int aa = a > 0 ? a : 0;
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        const int i = y * 16 + x;
+        if (m[i]) b[i] = m[i] == 2 ? pm((uint32_t)aa, 255, 255, 255) : pm((uint32_t)aa, 0, 238, 238);
+        else if (w[i]) b[i] = pm((uint32_t)ra, 255, 255, 255);
+    }
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {   /* 어두운 남색 테두리: 비어 있는 칸이 이웃 4방향 중 하나라도 칠해졌으면 */
+        const int i = y * 16 + x; if (b[i]) continue;
+        const bool nb = (x > 0 && (m[i - 1] || w[i - 1])) || (x < 15 && (m[i + 1] || w[i + 1])) || (y > 0 && (m[i - 16] || w[i - 16])) || (y < 15 && (m[i + 16] || w[i + 16]));
+        if (nb) { const int oa = ra > aa ? ra : aa; b[i] = pm((uint32_t)(oa * 200 / 255), 51, 0, 119); }
     }
 }
 }   /* namespace tfx */

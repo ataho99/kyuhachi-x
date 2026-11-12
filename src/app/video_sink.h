@@ -373,7 +373,7 @@ static int SDLCALL gl_thread(void *) {
             if (!tfx::g_reg) { tfx::g_reg = true; SDL_AddEventWatch(tfx::watch, NULL); }
             tfx::V tv[tfx::NP]; const int tn = tfx::collect(SDL_GetTicks(), gApp.ui_.g.tfxmouse != 0, tv);
             if (tn > 0) {
-                int tk = dh / 360; if (tk < 2) tk = 2; if (gApp.ui_.g.tfxsz > 0) tk = tk * 5 / 3;
+                int tk = dh / 270; if (tk < 2) tk = 2; if (gApp.ui_.g.tfxsz > 0) tk = tk * 5 / 3;
                 const int ts = 16 * tk;
                 if (tx_tex == 0) { glGenTextures(1, &tx_tex); glBindTexture(GL_TEXTURE_2D, tx_tex);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
