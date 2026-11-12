@@ -109,18 +109,22 @@ static void load_file(const std::string & id) {
         if (s.w >= 1 && s.w <= 4 && !s.pat.empty() && (s.pat.size() % 2) == 0) saved.push_back(s); }
 }
 static int hv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'f' ? (c | 32) - 'a' + 10 : -1; }
-static bool pat_at(const std::vector<uint8_t> & ram, const std::string & pat, long long start) {
-    long long n = (long long)pat.size() / 2; if (start < 0 || start + n > RAMTOP) return false;
+static int mism(const std::vector<uint8_t> & ram, const std::string & pat, long long start, int lim) {   /* 무늬와 다른 바이트 수 */
+    long long n = (long long)pat.size() / 2; if (start < 0 || start + n > RAMTOP) return 999; int m = 0;
     for (long long i = 0; i < n; i++) { if (pat[i * 2] == '?') continue; int h = hv(pat[i * 2]), l = hv(pat[i * 2 + 1]);
-        if (h < 0 || l < 0) return false; if (ram[(size_t)(start + i)] != (uint8_t)(h * 16 + l)) return false; }
-    return true;
+        if (h < 0 || l < 0) return 999; if (ram[(size_t)(start + i)] != (uint8_t)(h * 16 + l) && ++m > lim) return m; }
+    return m;
 }
+/* 앞뒤 바이트가 조금 달라져도(커서·시계 같은 값) 찾는다: 무늬 바이트의 1/4 까지 달라도 받고, 덜 다른 쪽 → 기대 위치에 가까운 쪽 */
 static bool relocate(const Saved & s, uint32_t & addr) {
-    std::vector<uint8_t> ram; snapshot(ram); long long exp = base_addr() + s.off, start = exp - s.pre;
-    if (pat_at(ram, s.pat, start)) { addr = (uint32_t)exp; return true; }
-    long long best = -1, bd = 0; long long n = (long long)s.pat.size() / 2;
-    for (long long a = 0; a + n <= RAMTOP; a++) if (pat_at(ram, s.pat, a)) { long long d = a > start ? a - start : start - a;
-        if (best < 0 || d < bd) { best = a; bd = d; } }
+    std::vector<uint8_t> ram; snapshot(ram); const long long n = (long long)s.pat.size() / 2;
+    const long long start = base_addr() + s.off - s.pre; int fixedn = 0;
+    for (long long i = 0; i < n; i++) if (s.pat[i * 2] != '?') fixedn++;
+    const int lim = fixedn / 4; long long best = -1, bd = 0; int bm = lim + 1;
+    for (long long a = 0; a + n <= RAMTOP; a++) {
+        int m = mism(ram, s.pat, a, lim); if (m > lim) continue; long long d = a > start ? a - start : start - a;
+        if (best < 0 || m < bm || (m == bm && d < bd)) { best = a; bm = m; bd = d; }
+    }
     if (best < 0) return false; addr = (uint32_t)(best + s.pre); return true;
 }
 static bool make_saved(int idx, int64_t v, bool freeze, const std::string & id) {
