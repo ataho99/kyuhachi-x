@@ -1,3 +1,4 @@
+#include <cerrno>   /* t738: 진단 로그 errno */
 /* app/state_io.h -- S9a: dump helpers, save/load state, publish, apply settings, boost update. Moved unchanged from gensei_host.cpp lines 1400-1527 (as of t54s). Included in place; single translation unit. */
 /* ------------------------------------------------------------------ events (called every emulated 1 ms tick) */
 static void gh_dump_shot(unsigned int ms) {
@@ -67,7 +68,9 @@ static bool gh_z_unpack(const uint8_t * p, size_t n, uint64_t rawsz, FILE * f) {
         size_t g = ob.size() - z.avail_out; if (g && fwrite(ob.data(), 1, g, f) != g) { ok = false; break; } tot += g;
         if (r == Z_OK && g == 0 && z.avail_in == 0) { ok = false; break; }
     }
-    inflateEnd(&z); fflush(f); return ok && tot == rawsz;
+    inflateEnd(&z); fflush(f); bool res = ok && tot == rawsz;
+    if (!res) gh_log("DSK unpack FAIL ok=%d zr=%d tot=%llu raw=%llu in_left=%u errno=%d ferror=%d", (int)ok, r, (unsigned long long)tot, (unsigned long long)rawsz, (unsigned)z.avail_in, errno, ferror(f));   /* t738 진단 */
+    return res;
 }
 static uint32_t gh_state_tailcrc(const std::string & sp) {   /* 상태 파일 맨 끝 4바이트 = 전체 CRC32 (동반 파일과의 짝 확인용) */
     FILE * f = fopen(sp.c_str(), "rb"); if (!f) return 0; uint8_t b[4] = { 0, 0, 0, 0 }; if (fseeko64(f, -4, SEEK_END) == 0) { if (fread(b, 1, 4, f) != 4) b[0] = b[1] = b[2] = b[3] = 0; } fclose(f);
