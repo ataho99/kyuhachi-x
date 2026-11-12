@@ -92,7 +92,7 @@ struct Ui {
                 if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
                 else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
             if (scope == 0 && (!conf_grp || conf_grp == 2)) r.push_back(15); if (scope == 1) r.push_back(14);
-            if (scope == 0 && (!conf_grp || conf_grp == 2)) { r.push_back(29); r.push_back(30); r.push_back(31); }   /* kx-touch */
+            if (scope == 0 && (!conf_grp || conf_grp == 2)) { r.push_back(29); r.push_back(30); r.push_back(31); r.push_back(32); }   /* kx-touch */
             if (!conf_grp || conf_grp == 3) r.push_back(18);
 #if defined(__ANDROID__)
             if (scope == 0 && (!conf_grp || conf_grp == 3)) r.push_back(27);   /* E3R: 글꼴 폴더(전역만, 27; E2R 22와 분리) */

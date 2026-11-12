@@ -1199,3 +1199,7 @@ tfx_large=Large
 desc_touchfx=Shows a dot cross and a ring where a finger touches (menus and game; not in screenshots). Off hides it.
 desc_tfxsz=Chooses the size of the touch marker.
 desc_tfxmouse=On Windows, also shows the marker while the left mouse button is held.
+tmouse=Game mouse touch
+tmouse_pad=Trackpad
+tmouse_abs=Absolute
+desc_tmouse=Touch mode in games that use the mouse. Trackpad: drag to move the cursor; tap = left, two-finger tap = right, three-finger tap = middle click; hold 0.2 s then drag to drag. Absolute: the cursor jumps to where you touch.

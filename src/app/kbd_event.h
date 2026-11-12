@@ -225,7 +225,37 @@ static void gh_kbtest_tick(unsigned since) {
     if (phase == 0) { if (hold) { ci++; nextat = since + 300; } else { phase = 1; nextat = since + (lng ? 900 : 80); } } else { phase = 0; ci++; nextat = since + 300; }
 }
 /* 게임 중 이벤트(메뉴가 닫혀 있을 때). true = 소비 */
+static void gh_tp_btn(int btn, bool down) { SDL_Event e; SDL_zero(e); e.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP; e.button.button = (Uint8)btn; e.button.state = down ? SDL_PRESSED : SDL_RELEASED; e.button.x = -1; e.button.y = -1; SDL_PushEvent(&e); }
+static Uint32 SDLCALL gh_tp_tim(Uint32, void * p) { gh_tp_btn((int)(intptr_t)p, false); return 0; }
+static void gh_tp_click(int btn) { gh_tp_btn(btn, true); SDL_AddTimer(60, gh_tp_tim, (void *)(intptr_t)btn); }
+static bool gh_tpad_finger(const SDL_Event & e) {   /* kx-touch: 게임 마우스 트랙패드. 끌기=커서 이동 · 탭=왼쪽 · 두 손가락 탭=오른쪽 · 세 손가락 탭=가운데 · 0.2초 누르고 끌기=드래그 */
+    struct F { bool on; SDL_FingerID id; float x, y; };
+    static F fs[4]; static int maxn = 0; static unsigned t0 = 0; static float mv = 0; static bool drag = false;
+    int ww = 640, wh = 400; if (gApp.win) SDL_GetWindowSize(gApp.win, &ww, &wh); if (ww <= 0) ww = 640; if (wh <= 0) wh = 400;
+    const unsigned now = SDL_GetTicks(); int n = 0; for (int i = 0; i < 4; i++) if (fs[i].on) n++;
+    int si = -1; for (int i = 0; i < 4; i++) if (fs[i].on && fs[i].id == e.tfinger.fingerId) si = i;
+    if (e.type == SDL_FINGERDOWN) {
+        if (si < 0) for (int i = 0; i < 4; i++) if (!fs[i].on) { si = i; break; }
+        if (si < 0) return true;
+        if (n == 0) { t0 = now; mv = 0; maxn = 0; drag = false; }
+        fs[si].on = true; fs[si].id = e.tfinger.fingerId; fs[si].x = e.tfinger.x; fs[si].y = e.tfinger.y; n++; if (n > maxn) maxn = n; return true; }
+    if (si < 0) return true;
+    if (e.type == SDL_FINGERMOTION) {
+        const float px = (e.tfinger.x - fs[si].x) * (float)ww, py = (e.tfinger.y - fs[si].y) * (float)wh; fs[si].x = e.tfinger.x; fs[si].y = e.tfinger.y;
+        mv += fabsf(px) + fabsf(py);
+        if (n == 1 && maxn == 1) {
+            if (!drag && now - t0 >= 200u && mv < 12.0f) { drag = true; gh_tp_btn(SDL_BUTTON_LEFT, true); gh_log("TPAD drag start"); }
+            if (mv >= 12.0f || drag) { const float sc = 1.5f * 640.0f / (float)ww; kh_vmouse_move_rel(px * sc, py * sc); } }
+        return true; }
+    fs[si].on = false; n--;
+    if (n == 0) {
+        if (drag) { gh_tp_btn(SDL_BUTTON_LEFT, false); drag = false; gh_log("TPAD drag end"); }
+        else if (mv < 16.0f) { const int b = maxn >= 3 ? SDL_BUTTON_MIDDLE : maxn == 2 ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT; gh_log("TPAD click fingers=%d button=%d dt=%u", maxn, b, now - t0); gh_tp_click(b); } }
+    return true; }
 static bool gh_game_event(const SDL_Event & e) {
+    if (gApp.ui_.g.tmouse == 0 && gApp.mouse_game && gApp.boot_tick && !gApp.menu_open) {   /* kx-touch: 트랙패드 — 손가락은 직접 처리하고 SDL 의 터치→마우스 흉내는 삼킨다 */
+        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERUP || e.type == SDL_FINGERMOTION) return gh_tpad_finger(e);
+        if ((e.type == SDL_MOUSEMOTION && e.motion.which == SDL_TOUCH_MOUSEID) || ((e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) && e.button.which == SDL_TOUCH_MOUSEID)) return true; }
     switch (e.type) {
     case SDL_CONTROLLERBUTTONDOWN: case SDL_CONTROLLERBUTTONUP: {
         bool d = e.type == SDL_CONTROLLERBUTTONDOWN;
