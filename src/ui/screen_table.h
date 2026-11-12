@@ -9,8 +9,10 @@
 #include "ui/screens/quit.h"
 #include "ui/screens/lang.h"
 #include "ui/screens/stem.h"
+#include "ui/kh_bgfx.h"
 #include "ui/screens/tidy.h"
 #include "ui/screens/cheat.h"
+#include "ui/screens/bgfx.h"
 #include "ui/screens/sort.h"
 #include "ui/screens/swap.h"
 #include "ui/screens/swapi.h"
@@ -57,7 +59,11 @@ inline void Ui::draw(Canvas & c) {
 inline void Ui::draw_body(Canvas & c) {
     hits.clear(); ov::g_chit.clear();
     jp_refresh();   /* t52h (#134) */
-    if (scr != S_GAME && scr != S_KEYS && !(in_game && (scr == S_QUIT || scr == S_SWAP || scr == S_SWAPI))) c.rect(0, 0, c.w, c.h, K);
+    c.bgfill = false;
+    if (scr != S_GAME && scr != S_KEYS && !(in_game && (scr == S_QUIT || scr == S_SWAP || scr == S_SWAPI))) {
+        c.rect(0, 0, c.w, c.h, K);
+        if (!in_game && g.bgfx > 0) { c.bgfill = true; bgx::draw(c, g, ts_ms); }   /* kx-bg: behind everything */
+    }
     switch (scr) {
     case S_MAIN: d_main(c, 0); break;
     case S_START: if (start_ret == S_PICK) { d_pick(c); d_main(c, 3); } else d_main(c, 1); break;

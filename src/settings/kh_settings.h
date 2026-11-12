@@ -25,6 +25,7 @@ struct Settings {
     int fpsd = 0;
     int cpuspd = 0;   /* t665: 0 표준 1 빠름 2 매우빠름 3 최대 */       /* FPS / speed display 0 off 1 on (ini key fpsdisp) */
     int stk_l = 0, stk_r = 2, dz_l = 0, dz_r = 0, stk_sp = 2;   /* #624: stick role 0 off 1 d-pad 2 mouse (left default off, right default mouse); deadzone level 0 default .. 3 largest; mouse speed 1 slow .. 3 fast */
+    int bgfx = 1, bgspd = 0, bgbri = 1;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise / speed / brightness */
     int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) — phos_norm() moves it. 0 = all off */
     static int phos_norm(int v) {   /* #S1: clamp + move an old-format persistence (bits 2-3) to bits 8-10: old 40 -> 27 ms, old 90/160 -> 40 ms */
         v = v < 0 ? 0 : v > 2047 ? 2047 : v; int lg = (v >> 2) & 3;
@@ -79,6 +80,7 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "shim=%d\nshim_amp=%d\nshim_spd=%d\nshim_glow=%d\nshim_col=%d\n", s.shim, s.shim_amp, s.shim_spd, s.shim_glow, s.shim_col);
     fprintf(f, "sk_l=%d\nsk_r=%d\ndz_l=%d\ndz_r=%d\nsk_sp=%d\n", s.stk_l, s.stk_r, s.dz_l, s.dz_r, s.stk_sp);
     fprintf(f, "phos=%d\n", s.phos);
+    fprintf(f, "bgfx=%d\nbgspd=%d\nbgbri=%d\n", s.bgfx, s.bgspd, s.bgbri);
     fprintf(f, "dsnd=%d\ndvol=%d\n", s.dsnd, s.dvol);
     fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
     fprintf(f, "mclick=%d\n", s.mclick);   /* E1R */
@@ -119,6 +121,9 @@ static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587
     if (m & (1u << 25)) fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* 0 도 쓴다 (T252) */
 }
 static bool ini_set(Settings & s, const std::string & k, int v) {
+    if (k == "bgfx") { s.bgfx = v < 0 ? 0 : v > 4 ? 4 : v; return true; }
+    if (k == "bgspd") { s.bgspd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
+    if (k == "bgbri") { s.bgbri = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "phos") { s.phos = Settings::phos_norm(v); return true; }   /* t662 (#635), #S1: 옛 잔광 칸 이전 */
     if (k == "dsnd") { s.dsnd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* #641 */
     if (k == "dvol") { s.dvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
