@@ -619,12 +619,12 @@ static bool gh_touch_pos(float fx, float fy, int & vx, int & vy) {   /* finger (
     if (gApp.use_gl && gApp.win) {   /* t57a: GL output -- same rectangle the render thread draws into (gl_rect) */
         int dw = 0, dh = 0, x = 0, y = 0, rw = 0, rh = 0; SDL_GL_GetDrawableSize(gApp.win, &dw, &dh); if (dw <= 0 || dh <= 0) return false;
         gl_rect(dw, dh, gApp.pub_w > 0 ? gApp.pub_w : 640, gApp.pub_h > 0 ? gApp.pub_h : 400, gh_fit_eff(), x, y, rw, rh); if (rw <= 0 || rh <= 0) return false;
-        vx = gh_touch_fl(((double)fx * dw - x) * 640.0 / rw); vy = gh_touch_fl(((double)fy * dh - y) * 400.0 / rh); return true;
+        vx = gh_touch_fl(((double)fx * dw - x) * 640.0 / rw); vy = gh_touch_fl(((double)fy * dh - y) * 400.0 / rh); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
     }
     int ow = 0, oh = 0; if (!gApp.ren || SDL_GetRendererOutputSize(gApp.ren, &ow, &oh) != 0 || ow <= 0 || oh <= 0) return false;
     double sx = ow / 640.0, sy = oh / 480.0, sc = sx < sy ? sx : sy, ox = (ow - 640.0 * sc) / 2.0, oy = (oh - 480.0 * sc) / 2.0;
     double lx = ((double)fx * ow - ox) / sc, ly = ((double)fy * oh - oy) / sc;
-    vx = gh_touch_fl(lx); vy = (gh_fit_eff() == FIT_1610) ? gh_touch_fl(ly - 40.0) : gh_touch_fl(ly * 400.0 / 480.0); return true;
+    vx = gh_touch_fl(lx); vy = (gh_fit_eff() == FIT_1610) ? gh_touch_fl(ly - 40.0) : gh_touch_fl(ly * 400.0 / 480.0); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
 }
 static void gh_touch_feed(const SDL_Event & e) {
     pwr::mclk::note_touch();   /* E1R: touch input stays silent */

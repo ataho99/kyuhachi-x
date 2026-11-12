@@ -109,7 +109,7 @@ static bool gh_menu_win2virt(int mx, int my, int & vx, int & vy) {   /* t48b: �
     gl_rect(dw, dh, 640, 400, gh_fit_eff(), rx, ry, rw, rh); if (rw <= 0 || rh <= 0) return false;
     double u = ((double)mx * dw / ww - rx) / rw, v = ((double)my * dh / wh - ry) / rh;
     if ((int)gApp.shader == (int)SH_CRT && (int)gApp.fit != (int)FIT_INT && gApp.curve > 0.0f) gh_kb_warp(u, v);
-    vx = (int)(u * 640.0 + (u < 0 ? -0.5 : 0.5)); vy = (int)(v * 400.0 + (v < 0 ? -0.5 : 0.5)); return true;
+    vx = (int)(u * 640.0 + (u < 0 ? -0.5 : 0.5)); vy = (int)(v * 400.0 + (v < 0 ? -0.5 : 0.5)); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
 }
 static bool gh_kb_virt2win(int vx, int vy, int & wx, int & wy) {   /* 시험 전용 역변환: 곡면이면 warp 의 역을 고정점 반복으로 푼다 */
     int ww, wh, dw, dh, rx, ry, rw, rh; if (!gh_kb_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
