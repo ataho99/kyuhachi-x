@@ -202,13 +202,14 @@ static void gh_bk_pause_set(bool on, const char * why) {   /* t47a (#559): 자�
     gApp.bk_paused = on; gh_log("BKPAUSE %s (%s) bk_t=%u next=#%u wall=%u", on ? "정지" : "재개", why, gApp.bk_t, (unsigned)gApp.next_bk, gApp.boot_tick ? SDL_GetTicks() - gApp.boot_tick : 0u);
     gh_osd(on ? phr_("자동 입력 일시정지 (Alt+P 로 재개)") : phr_("자동 입력 재개"), 1500);
 }
+#include "menu_sq.h"
 static void gh_menu_run(void) {
 
     if (gApp.headless || !gApp.use_gl) return;
     kc::presave = gh_autosave;   /* kx-cheat: auto slot is saved before a cheat write */
     kbov::release_all(); gApp.ui_.kb_vis = kbov::g_vis ? 1 : 0; gApp.ui_.kb_btn = kbov::g_btn_on ? 1 : 0; gApp.ui_.kb_sh = gApp.kbshader ? 1 : 0; gApp.menu_open = true; gh_boost_update();
-    static uint32_t snap[640 * 400], buf[640 * 400]; ov::Canvas sc = { snap, 640, 400 }, c = { buf, 640, 400 };
-    sc.rect(0, 0, 640, 400, ov::K); if (!gApp.fb.empty()) ov::blit_scaled(sc, gApp.fb.data(), gApp.fbw, gApp.fbh, 0, 0, 640, 400);
+    static uint32_t snap[640 * 400], buf[640 * 400], dimb[640 * 400]; ov::Canvas sc = { snap, 640, 400 }, c = { buf, 640, 400 };
+    sc.rect(0, 0, 640, 400, ov::K); if (!gApp.fb.empty()) ov::blit_scaled(sc, gApp.fb.data(), gApp.fbw, gApp.fbh, 0, 0, 640, 400); msq::dim_of(dimb, snap);
     ui::Ui & U = gApp.ui_; U.in_game = true; U.cur = gApp.cur_game; U.scr = ui::S_GAME; U.sel = 0;
     gh_refresh_game_slots(gApp.cur_game); U.slotsel = U.games[gApp.cur_game].lastslot >= 0 ? U.games[gApp.cur_game].lastslot : 0;
     bool done = false; bool sendk = false; int sendarg = 0; g_rep_k = ui::UK_NONE;
@@ -253,8 +254,9 @@ static void gh_menu_run(void) {
             if (done) break;
         }
         gh_wm_poll();
-        if (U.scr == ui::S_GAME || U.scr == ui::S_KEYS || U.scr == ui::S_QUIT || U.scr == ui::S_SWAP || U.scr == ui::S_SWAPI) memcpy(buf, snap, sizeof buf);
-        gh_stem_step(); U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks(); U.draw(c); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } if (gApp.osd_until && SDL_GetTicks() < gApp.osd_until) ov::osd_draw(c, gApp.osd, true);
+        const bool snapscr = U.scr == ui::S_GAME || U.scr == ui::S_KEYS || U.scr == ui::S_QUIT || U.scr == ui::S_SWAP || U.scr == ui::S_SWAPI;
+        gh_stem_step(); U.fs_now = gh_fs_now(); U.ts_ms = (int)SDL_GetTicks();
+        if (gh_menu_sq()) msq::compose(U, buf, dimb, snapscr); else { if (snapscr) memcpy(buf, snap, sizeof buf); U.draw(c); } { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } if (gApp.osd_until && SDL_GetTicks() < gApp.osd_until) ov::osd_draw(c, gApp.osd, true);
         gh_publish(buf, 640, 400); SDL_Delay(16);
     }
     if (U.dirty) { ui::settings_save(U, gApp.cfgpath); U.dirty = false; }
