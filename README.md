@@ -9,14 +9,14 @@
 
 **Pick a game. Play.** No config files, no mapper menus.
 
-![version](https://img.shields.io/badge/version-v0.6.9-ff4d6d)
+![version](https://img.shields.io/badge/version-v0.7.0-ff4d6d)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-0078d4)
 ![engine](https://img.shields.io/badge/engine-DOSBox--X%20core-6c5ce7)
 ![license](https://img.shields.io/badge/license-GPL--2.0-2ea44f)
 
 English · [한국어](README.ko.md)
 
-**[⬇ Download v0.6.9 (Windows zip · Android APK · manual)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
+**[⬇ Download v0.7.0 (Windows zip · Android APK · manual)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
 
 **[💖 Sponsor](https://litt.ly/smash99)** — Supports tool development. Game files are not distributed.
 
@@ -35,7 +35,7 @@ Kyuhachi X takes the DOSBox-X PC-98 core, cuts it down to what PC-98 games need,
 | Device | Notes |
 |---|---|
 | Windows 10 / 11 (x64) | `KyuhachiX.exe`, portable folder, nothing written to the registry |
-| Android | `KyuhachiX-v0.6.9-android.apk` (package `io.github.ataho99.kyuhachix`); tuned for the Retroid Pocket Nova, works with other gamepad devices |
+| Android | `KyuhachiX-v0.7.0-android.apk` (package `io.github.ataho99.kyuhachix`); tuned for the Retroid Pocket Nova, works with other gamepad devices |
 | Linux | Planned |
 | Steam Deck | Planned |
 
@@ -57,7 +57,7 @@ Upgrading from the old *Kyuhachi* (v0.5.x): on first run your saves are copied t
 
 **Frontends (ES-DE / Daijisho)** - launch a game straight from a frontend: see [docs/frontends.md](docs/frontends.md) ([한국어](docs/frontends.ko.md)) (also included in the zip in the `docs\` folder).
 
-## Main features (v0.6.9)
+## Main features (v0.7.0)
 
 - **Per-game profiles** — boot method, keys and auto input are stored per game, so titles just start.
 - **Auto launch** — reads D88 / FAT12 disk images and picks the real game executable, skips tools, handles self-extracting disks. Titles that do not start by themselves can be set once in the UI and are remembered.

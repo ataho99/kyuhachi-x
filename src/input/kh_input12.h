@@ -94,7 +94,7 @@ static float kh_vm_px = 0, kh_vm_py = 0; static Uint32 kh_vm_last = 0;
 static void kh_vmouse_move_rel(float dx, float dy) { kh_vm_px += dx; kh_vm_py += dy; }
 static void gh_log(const char * fmt, ...);   /* t744: 정의는 app/opts_log.h(뒤에 포함됨) — 같은 번역단위라 전방 선언으로 충분 */
 /* t744 (CP 309): PM2 는 래치 없이 카운터(int8)를 연속으로 읽어 차로 이동량을 얻는 것으로 보인다. 카운터를 비우거나(t743) 끝에 붙이면(t742 이하: 포화) 차가 틀어진다.
-   → 카운터를 비우지 않고 int8 로 감기게 둔다: 틱당 ±50 이하로 보내고, 카운터+이동량이 ±127 을 넘으면 Mouse_CursorMoved(포화) 대신 레지스터에 감긴 값을 직접 쓴다. 감김 발동 때 전/후 값 로그(최대 60회). */
+   * → 카운터를 비우지 않고 int8 로 감기게 둔다: 틱당 ±50 이하로 보내고, 카운터+이동량이 ±127 을 넘으면 Mouse_CursorMoved(포화) 대신 레지스터에 감긴 값을 직접 쓴다. 감김 발동 때 전/후 값 로그(최대 60회). */
 static void kh_vmouse_pump() {
     extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y, p7fd9_8255_mouse_x_latch, p7fd9_8255_mouse_y_latch;
     int ix = (int)kh_vm_px, iy = (int)kh_vm_py; if (!ix && !iy) return;
