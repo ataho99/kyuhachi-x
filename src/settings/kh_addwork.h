@@ -306,6 +306,74 @@ inline int merge_dups(Ctx & c, std::vector<std::string> * log) {
     return moved;
 }
 
+/* kx-dedup: same srcdir + same image file set = patch update of the same work, not a new entry.
+   key = srcdir (case/separator insensitive) + recognized image basenames (lower).
+   new entries record files= at registration; legacy filename-style disk_* also match. id, title, saves, settings stay. */
+inline std::string norm_path(const std::string & s) {
+    std::string o; for (unsigned char ch : s) { char c = (char)tolower(ch); o += c == '/' ? '\\' : c; }
+    while (o.size() > 1 && o.back() == '\\') o.pop_back(); return o;
+}
+inline std::string base_name_of(const std::string & p) {
+    size_t s = p.find_last_of("\\/"); return s == std::string::npos ? p : p.substr(s + 1);
+}
+inline bool is_hex40(const std::string & v) {
+    if (v.size() != 40) return false; for (unsigned char ch : v) if (!isxdigit(ch)) return false; return true;
+}
+inline std::string find_same_source(Ctx & c, const std::string & srcpath, const std::vector<prof::ImgInfo> & imgs) {
+    std::set<std::string> want;
+    for (auto & i : imgs) { std::string b = lower(acp_to_u8(i.base)); if (!b.empty()) want.insert(b); }
+    if (want.empty()) return std::string();
+    std::string ns = norm_path(acp_to_u8(srcpath));
+    std::vector<std::string> files, subs; list_dir(c.games_dir, files, &subs);
+    for (auto & s : subs) {
+        if (s.empty() || s[0] == '_') continue;
+        prof::Ini gi; if (!prof::ini_load(join(join(c.games_dir, s), "game.ini"), gi) || !gi.count("game")) continue;
+        auto & g = gi["game"]; if (g.count("dup_of")) continue;
+        auto it = g.find("srcdir"); if (it == g.end() || norm_path(it->second) != ns) continue;
+        std::set<std::string> have;
+        auto addv = [&](const std::string & v) {
+            std::string b = lower(base_name_of(v));
+            if (!b.empty() && b != "-" && !is_hex40(b)) have.insert(b);
+        };
+        static const char * const sk[] = { "disk_a", "disk_b", "disk_c", "disk_d", "cd" };
+        for (auto k : sk) { auto jt = g.find(k); if (jt != g.end()) addv(jt->second); }
+        { auto jt = g.find("swap"); if (jt != g.end()) { size_t p = 0;
+            while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
+                addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
+        { auto jt = g.find("files"); if (jt != g.end()) { size_t p = 0;
+            while (p <= jt->second.size()) { size_t q = jt->second.find(',', p); if (q == std::string::npos) q = jt->second.size();
+                addv(jt->second.substr(p, q - p)); if (q == jt->second.size()) break; p = q + 1; } } }
+        if (!have.empty() && have == want) return s;
+    }
+    return std::string();
+}
+/* kx-dedup: retire superseded zip extraction copies (games/_zip/<sha12>) whose images are all in oldshas.
+   move to games/_zip/_old (never delete). keepdir (the fresh extraction) is skipped. */
+inline void retire_zip_copies(Ctx & c, const std::string & keepdir, const std::vector<std::string> & oldshas) {
+    if (oldshas.empty()) return;
+    std::set<std::string> oldset(oldshas.begin(), oldshas.end());
+    std::string zd = join(c.games_dir, "_zip");
+    std::vector<std::string> zf, zs; list_dir(zd, zf, &zs);
+    for (auto & z : zs) {
+        if (z.empty() || z[0] == '_') continue;
+        std::string zdir = join(zd, z); if (zdir == keepdir) continue;
+        std::vector<std::string> zfl; list_dir(zdir, zfl, NULL);
+        std::set<std::string> zh;
+        for (auto & f : zfl) {
+            if (!img_ext(f)) continue;
+            std::string h = c.cache ? c.cache->sha1(join(zdir, f)) : prof::sha1_file(join(zdir, f));
+            if (!h.empty()) zh.insert(h);
+        }
+        if (zh.empty()) continue;
+        bool all = true; for (auto & h : zh) if (!oldset.count(h)) { all = false; break; }
+        if (!all) continue;
+        std::string od = join(zd, "_old"); make_dir(od);
+        std::string dst = join(od, z); int k = 2;
+        while (dir_exists(dst)) dst = join(od, z + "_" + std::to_string(k++));
+        plat::move_file(zdir, dst);
+    }
+}
+
 /* 한 작품을 등록(또는 이미 있으면 건너뜀). 이미지는 w.dir 의 w.files (zip 작품은 먼저 풀어서 같은 흐름으로). */
 inline Result register_core(Ctx & c, const Work & w, const std::string & sig, const std::string & srcpath, bool dry) {
     Result R;
@@ -351,9 +419,49 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             return R;
         }
     }
-    std::string id = make_id(curated ? q.dbhit_id : std::string(), g ? g->gid : std::string(), title, sig, c.ids);
     std::string jshort = curated ? std::string(khtr::tr("확인됨 (DB 일치)")) : r.shortt, judge = curated ? khtr::fmt(khtr::tr("DB 일치 — %s"), (q.title.empty() ? q.reason : q.title).c_str()) : r.text;
-    R.judge = judge; R.id = id; R.title = title; R.grade = curated ? "A" : std::string(1, r.grade); R.jshort = jshort; R.metasrc = msrc; R.year = year; R.maker = maker;
+    R.judge = judge; R.title = title; R.grade = curated ? "A" : std::string(1, r.grade); R.jshort = jshort; R.metasrc = msrc; R.year = year; R.maker = maker;
+    {   /* kx-dedup: same srcdir + same file names = patch update. swap images in place, keep id. */
+        std::string tgt = find_same_source(c, srcpath, imgs);
+        if (!tgt.empty()) {
+            R.st = Result::EXISTS; R.id = tgt;
+            R.note = khtr::fmt(khtr::tr("같은 경로·같은 파일명 → %s 이미지 교체 (제목·세이브·설정 유지)"), tgt.c_str());
+            if (dry) return R;
+            std::string gi_path = join(join(c.games_dir, tgt), "game.ini");
+            std::vector<std::string> oldshas;
+            { prof::Ini gi0; if (prof::ini_load(gi_path, gi0) && gi0.count("game")) {
+                auto sh = gi0["game"].find("sha1s");
+                if (sh != gi0["game"].end()) { size_t p = 0;
+                    while (p <= sh->second.size()) { size_t q = sh->second.find(',', p);
+                        if (q == std::string::npos) q = sh->second.size();
+                        if (q > p) oldshas.push_back(sh->second.substr(p, q - p));
+                        if (q == sh->second.size()) break; p = q + 1; } } } }
+            std::set<std::string> oldset(oldshas.begin(), oldshas.end());
+            std::vector<KVu> u; u.push_back({ "sig", sig, 3 });
+            { std::string sv; for (auto & h : shas) if (!oldset.count(h)) sv += (sv.empty() ? "" : ",") + h;
+                if (!sv.empty()) u.push_back({ "sha1s", sv, 1 }); }
+            { std::string fv; for (auto & i : imgs) { std::string b = acp_to_u8(i.base);
+                    if (!b.empty()) fv += (fv.empty() ? "" : ",") + b; }
+                if (!fv.empty()) u.push_back({ "files", fv, 3 }); }
+            R.block = block_reason(q, std::map<std::string, std::string>());
+            { std::map<std::string, std::string> kv; if (g) { kv["nk_flags"] = g->flags; kv["nk_media"] = g->media; }
+                if (curated) kv["curated"] = "1"; for (auto & k : q.kv) kv[k.first] = k.second; R.block = block_reason(q, kv); }
+            u.push_back({ "grade", R.grade, 3 }); u.push_back({ "jshort", jshort, 3 });
+            u.push_back({ "judge", judge, 3 }); u.push_back({ "auto_note", q.reason, 3 });
+            if (!maker.empty()) u.push_back({ "company", maker, 0 });
+            if (!year.empty()) u.push_back({ "year", year, 0 });
+            if (!msrc.empty()) u.push_back({ "metasrc", msrc, 0 });
+            if (curated && !q.dbhit_id.empty()) u.push_back({ "dbid", q.dbhit_id, 0 });
+            if (g) { u.push_back({ "nk_gid", g->gid, 0 }); u.push_back({ "nk_flags", g->flags, 0 });
+                u.push_back({ "nk_media", g->media, 0 }); }
+            ini_patch(gi_path, u);
+            if (is_zip(srcpath)) retire_zip_copies(c, w.dir, oldshas);
+            c.reg[sig] = tgt; for (auto & h : shas) c.hashidx[h] = tgt;
+            return R;
+        }
+    }
+    std::string id = make_id(curated ? q.dbhit_id : std::string(), g ? g->gid : std::string(), title, sig, c.ids);
+    R.id = id;
     R.block = block_reason(q, std::map<std::string, std::string>());
     {   /* 등록 시점 판정에 쓸 kv (실행 불가는 목록을 만들 때 다시 계산) */
         std::map<std::string, std::string> kv; if (g) { kv["nk_flags"] = g->flags; kv["nk_media"] = g->media; } if (curated) kv["curated"] = "1";
@@ -365,6 +473,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
     auto U = [](const std::string & s) { return acp_to_u8(s); };   /* game.ini 는 UTF-8 (BOM 없음) */
     fprintf(f, "; PC-98 PLAYER 자동 등록 (r019) -- 직접 고쳐도 됩니다. UTF-8. auto=1 은 자동 등록 표시.\n[game]\nauto=1\ntitle=%s\nimgdir=%s\nsrcdir=%s\nsig=%s\n", title.c_str(), U(w.dir).c_str(), U(srcpath).c_str(), sig.c_str());
     { std::string sv; for (auto & h : shas) sv += (sv.empty() ? "" : ",") + h; if (!sv.empty()) fprintf(f, "sha1s=%s\n", sv.c_str()); }
+    { std::string fv; for (auto & i : imgs) { std::string b = U(i.base); if (!b.empty()) fv += (fv.empty() ? "" : ",") + b; } if (!fv.empty()) fprintf(f, "files=%s\n", fv.c_str()); }   /* kx-dedup: update key */
     if (curated && !q.dbhit_id.empty()) fprintf(f, "dbid=%s\n", q.dbhit_id.c_str());
     if (!curated) {   /* DB 큐레이션 작품은 디스크 배치를 DB 가 정하므로 적지 않는다 */
         static const char * const dk[4] = { "disk_a", "disk_b", "disk_c", "disk_d" };
