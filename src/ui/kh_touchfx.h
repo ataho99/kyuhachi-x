@@ -4,6 +4,15 @@
 #include <stdint.h>
 #include <math.h>
 #include <mutex>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <algorithm>
+#include <filesystem>
+#define STBI_ONLY_PNG
+#define STBI_NO_STDIO
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"   /* PNG 전용(사용자 터치 모양) */
 namespace tfx {
 static const int NP = 6;
 struct P { bool used; bool mouse; long long id; float x, y; uint32_t t0, t1, t2; };   /* x,y = 창 0..1 · t1 = 뗀 시각(0 = 누름) */
@@ -109,5 +118,48 @@ static void sprite_bf(uint32_t * b, int age, int rel) {
         const int px[6] = { 1, 14, 0, 15, 3, 12 }, py[6] = { 2, 2, 10, 10, 1, 1 }; for (int i = 0; i < 6; i++) if (g[py[i]][px[i]] == '.') g[py[i]][px[i]] = 'Y'; }
     int a = 255; if (sp) { a = 255 - rel * 255 / 220; if (a < 0) a = 0; }
     for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) b[y * 16 + x] = bf_col(g[y][x], (uint32_t)a);
+}
+/* 사용자 모양: 안드로이드 /sdcard/Kyuhachi/touch/<이름>/ · 윈도 <exe 폴더>\touch\<이름>\ 의 PNG(이름순, 최대 16장, 128x128 이하, 모두 같은 크기).
+ * touch\_use.txt 첫 줄 = 쓸 폴더 이름(없으면 이름순 첫 폴더). 폴더 안 config.txt: frame_ms=90 · fade_ms=200 · scale=1 (모두 선택). 못 읽으면 도트로 돌아간다 */
+struct UFrames { bool tried = false, ok = false; int w = 0, h = 0, ms = 90, fade = 200; float scale = 1.0f; std::vector<std::vector<uint32_t> > fr; };
+static UFrames g_u;
+static std::string trim_(const std::string & s) { size_t a = s.find_first_not_of(" \t\r\n"), b = s.find_last_not_of(" \t\r\n"); return a == std::string::npos ? std::string() : s.substr(a, b - a + 1); }
+static void load_user(const std::string & base) {
+    if (g_u.tried) return; g_u.tried = true;
+    namespace fs = std::filesystem; std::error_code ec;
+    const fs::path root = fs::u8path(base); if (!fs::is_directory(root, ec)) return;
+    std::vector<std::string> names;
+    for (fs::directory_iterator it(root, ec), en; !ec && it != en; it.increment(ec)) { std::error_code e2; if (it->is_directory(e2)) names.push_back(it->path().filename().u8string()); }
+    if (names.empty()) return; std::sort(names.begin(), names.end());
+    std::string use = names[0];
+    { std::ifstream uf(root / "_use.txt"); std::string ln; if (uf && std::getline(uf, ln)) { ln = trim_(ln); for (size_t i = 0; i < names.size(); i++) if (names[i] == ln) use = ln; } }
+    const fs::path dir = root / fs::u8path(use);
+    { std::ifstream cf(dir / "config.txt"); std::string ln;
+      while (cf && std::getline(cf, ln)) { const size_t q = ln.find('='); if (q == std::string::npos) continue; const std::string k = trim_(ln.substr(0, q)), v = trim_(ln.substr(q + 1));
+          if (k == "frame_ms") g_u.ms = std::max(30, std::min(1000, atoi(v.c_str())));
+          else if (k == "fade_ms") g_u.fade = std::max(0, std::min(220, atoi(v.c_str())));
+          else if (k == "scale") g_u.scale = (float)std::max(0.25, std::min(8.0, atof(v.c_str()))); } }
+    std::vector<std::string> pf;
+    for (fs::directory_iterator it(dir, ec), en; !ec && it != en; it.increment(ec)) { std::error_code e2; if (!it->is_regular_file(e2)) continue;
+        std::string fn = it->path().filename().u8string(), ex = it->path().extension().u8string(); for (size_t i = 0; i < ex.size(); i++) ex[i] = (char)tolower((unsigned char)ex[i]);
+        if (ex == ".png") pf.push_back(fn); }
+    std::sort(pf.begin(), pf.end(), [](const std::string & a, const std::string & b) { return a.size() != b.size() ? a.size() < b.size() : a < b; });   /* frame2 < frame10 */
+    for (size_t i = 0; i < pf.size() && g_u.fr.size() < 16; i++) {
+        std::ifstream f(dir / fs::u8path(pf[i]), std::ios::binary); if (!f) continue;
+        std::vector<unsigned char> buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()); if (buf.empty() || buf.size() > 2u * 1024u * 1024u) continue;
+        int w = 0, h = 0, n = 0; unsigned char * px = stbi_load_from_memory(buf.data(), (int)buf.size(), &w, &h, &n, 4); if (!px) continue;
+        if (w < 1 || h < 1 || w > 128 || h > 128 || (!g_u.fr.empty() && (w != g_u.w || h != g_u.h))) { stbi_image_free(px); continue; }
+        g_u.w = w; g_u.h = h; std::vector<uint32_t> fr((size_t)w * h);
+        for (size_t k = 0; k < fr.size(); k++) fr[k] = pm(px[k * 4 + 3], px[k * 4], px[k * 4 + 1], px[k * 4 + 2]);
+        stbi_image_free(px); g_u.fr.push_back(fr); }
+    g_u.ok = !g_u.fr.empty();
+}
+static void sprite_user(uint32_t * b, int age, int rel) {
+    const int n = (int)g_u.fr.size(); int idx = (age / g_u.ms) % n; if (idx < 0) idx = 0;
+    const std::vector<uint32_t> & f = g_u.fr[idx]; const size_t cnt = (size_t)g_u.w * g_u.h;
+    int a = 256; if (rel >= 0) { a = g_u.fade > 0 ? 256 - rel * 256 / g_u.fade : 0; if (a < 0) a = 0; }
+    for (size_t i = 0; i < cnt; i++) { const uint32_t p = f[i]; if (a >= 256) { b[i] = p; continue; }
+        const uint32_t A = ((p >> 24) * (uint32_t)a) >> 8, Rr = (((p >> 16) & 255u) * (uint32_t)a) >> 8, G = (((p >> 8) & 255u) * (uint32_t)a) >> 8, B = ((p & 255u) * (uint32_t)a) >> 8;
+        b[i] = (A << 24) | (Rr << 16) | (G << 8) | B; }
 }
 }   /* namespace tfx */

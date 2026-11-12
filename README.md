@@ -120,3 +120,4 @@ Every line of code here was written by AI agents (Anthropic Claude — Claude Co
 ## Credits
 
 Built on [DOSBox-X](https://github.com/joncampbell123/dosbox-x) — thanks to its developers.
+Third-party: stb_image v2.32 (public domain / MIT, nothings/stb) is used to read user touch-marker PNG files.

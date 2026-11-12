@@ -120,3 +120,4 @@ DOSBox-X 소스를 뺀 모든 것이 이 저장소에 있고, DOSBox-X 는 `thir
 ## 크레딧
 
 [DOSBox-X](https://github.com/joncampbell123/dosbox-x) 위에 만들었습니다. 개발자분들께 감사드립니다.
+서드파티: stb_image v2.32(퍼블릭 도메인 / MIT, nothings/stb) — 사용자 터치 표시 PNG 읽기에 사용합니다.

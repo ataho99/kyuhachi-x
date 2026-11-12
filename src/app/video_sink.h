@@ -370,11 +370,18 @@ static int SDLCALL gl_thread(void *) {
         }
         if (!gApp.shot_req && gApp.ui_.g.touchfx > 0 && srw > 0 && dw > 0 && dh > 0 && gApp.prog_ov.ok) {   /* kx-touch: 터치 표시 */
             static GLuint tx_tex = 0; tfx::g_win = gApp.win;
+#if defined(__ANDROID__)
+            if (gApp.ui_.g.touchfx == 3) tfx::load_user(std::string("/sdcard/Kyuhachi/touch"));
+#else
+            if (gApp.ui_.g.touchfx == 3) tfx::load_user(gApp.exedir + "\\touch");
+#endif
             if (!tfx::g_reg) { tfx::g_reg = true; SDL_AddEventWatch(tfx::watch, NULL); }
             tfx::V tv[tfx::NP]; const int tn = tfx::collect(SDL_GetTicks(), gApp.ui_.g.tfxmouse != 0, tv);
             if (tn > 0) {
                 int tk = dh / 270; if (tk < 2) tk = 2; if (gApp.ui_.g.tfxsz > 0) tk = tk * 5 / 3; if (gApp.ui_.g.touchfx == 2) tk = tk * 2;   /* 나비는 도트 십자보다 크게 */
-                const int ts = 16 * tk;
+                const bool tu = gApp.ui_.g.touchfx == 3 && tfx::g_u.ok; const int sw = tu ? tfx::g_u.w : 16, sh = tu ? tfx::g_u.h : 16;
+                int tvw = sw * tk, tvh = sh * tk; if (tu) { tvw = (int)((float)tvw * tfx::g_u.scale); tvh = (int)((float)tvh * tfx::g_u.scale); }
+                if (tvw > dh / 2) tvw = dh / 2; if (tvh > dh / 2) tvh = dh / 2; if (tvw < 1) tvw = 1; if (tvh < 1) tvh = 1;
                 if (tx_tex == 0) { glGenTextures(1, &tx_tex); glBindTexture(GL_TEXTURE_2D, tx_tex);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); }
@@ -383,9 +390,9 @@ static int SDLCALL gl_thread(void *) {
                 F.BindBuffer(GL_ARRAY_BUFFER, gApp.vbo); F.EnableVertexAttribArray(0); F.EnableVertexAttribArray(1);
                 F.VertexAttribPointer(0, 2, GL_FLOAT, 0, 16, (const void *)0); F.VertexAttribPointer(1, 2, GL_FLOAT, 0, 16, (const void *)8);
                 for (int ti = 0; ti < tn; ti++) {
-                    uint32_t tsp[256]; if (gApp.ui_.g.touchfx == 2) tfx::sprite_bf(tsp, tv[ti].age, tv[ti].rel); else tfx::sprite(tsp, tv[ti].age, tv[ti].rel);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 16, 0, GL_BGRA, GL_UNSIGNED_BYTE, tsp);
-                    glViewport((int)(tv[ti].x * (float)dw) - ts / 2, dh - (int)(tv[ti].y * (float)dh) - ts / 2, ts, ts);
+                    static uint32_t tsp[128 * 128]; if (tu) tfx::sprite_user(tsp, tv[ti].age, tv[ti].rel); else if (gApp.ui_.g.touchfx == 2) tfx::sprite_bf(tsp, tv[ti].age, tv[ti].rel); else tfx::sprite(tsp, tv[ti].age, tv[ti].rel);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, sw, sh, 0, GL_BGRA, GL_UNSIGNED_BYTE, tsp);
+                    glViewport((int)(tv[ti].x * (float)dw) - tvw / 2, dh - (int)(tv[ti].y * (float)dh) - tvh / 2, tvw, tvh);
                     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
                 }
                 glViewport(0, 0, dw, dh); glDisable(GL_BLEND); glBindTexture(GL_TEXTURE_2D, gApp.tex_gl);

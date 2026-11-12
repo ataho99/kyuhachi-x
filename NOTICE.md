@@ -18,3 +18,4 @@ Kyuhachi X is distributed under GPL-2.0 (see `LICENSE`). It bundles or links the
 The full license texts of the bundled fonts and the GPL are in the `LICENSE` file shipped with each package.
 
 Not distributed (and never committed): game images, NEC BIOS / font ROMs, FREECG98, original game fonts, YM2608 rhythm samples.
+- stb_image v2.32 (https://github.com/nothings/stb, Sean Barrett) — public domain / MIT. PNG decoding for user touch-marker images (src/ui/stb_image.h, unmodified).

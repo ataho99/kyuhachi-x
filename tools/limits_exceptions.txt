@@ -93,3 +93,4 @@ stem.h v0.6.8 신규·확장 파일 — 줄 길이 140자 초과(기능 작업 �
 tidy.h lines=123 bytes=9470 long=9 — kx-clean 신규 화면(S_TIDY): 줄 길이는 기존 screens/*.h 와 같은 한 줄 꼴. 분리는 다음 정리 때.
 tidy_host.h lines=105 bytes=9692 long=13 — kx-clean 신규 host 쪽(목록 정리): 같은 사유.
 kh_touchfx.h  kx-touch: 효과 한 파일(도트 스프라이트·이벤트 감시)
+stb_image.h 외부 공개 도메인 단일 헤더(nothings/stb v2.32) — 사용자 터치 모양 PNG 읽기용, 수정 없이 그대로
