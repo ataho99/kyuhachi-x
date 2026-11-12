@@ -95,7 +95,7 @@ inline void Ui::draw_body(Canvas & c) {
 #endif
         if (sb && scr != S_MAIN && scr != S_START) {
             c.rect(2, 2, 44, 28, K); c.rect(2, 2, 44, 1, WH); c.rect(2, 29, 44, 1, WH); c.rect(2, 2, 1, 28, WH); c.rect(45, 2, 1, 28, WH);
-            for (int i = 0; i < 7; i++) c.rect(10 + i, 16 - i, 1, 1 + 2 * i);
+            for (int i = 0; i < 7; i++) c.rect(10 + i, 16 - i, 1, 1 + 2 * i, WH);
             c.rect(17, 15, 20, 3, WH);
         }
     }
