@@ -96,6 +96,7 @@ static size_t gh_dsk_save(const std::string & sp) {   /* 돌려주는 값 = 동�
     plat::remove_file(dp.c_str()); if (!plat::move_file(tmp, dp)) return 0;
     return o.size();
 }
+static std::string gh_bn_(const std::string & s) { size_t p = s.find_last_of("/\\"); return p == std::string::npos ? s : s.substr(p + 1); }   /* t736: .dsk 복원도 파일명으로 맞춤 */
 static bool gh_dsk_load(const std::string & sp) {   /* 상태 적용이 성공한 뒤 호출. 동반 파일이 없으면 true(옛 저장) */
     std::string dp = sp + ".dsk"; FILE * f = fopen(dp.c_str(), "rb"); if (!f) return true;
     std::vector<uint8_t> b; { std::vector<uint8_t> t(1 << 20); for (;;) { size_t n = fread(t.data(), 1, t.size(), f); if (!n) break; b.insert(b.end(), t.begin(), t.begin() + n); } } fclose(f);
@@ -106,7 +107,7 @@ static bool gh_dsk_load(const std::string & sp) {   /* 상태 적용이 성공�
         if (pos + 6 > end) { all = false; break; } uint32_t d = gh_dg32(&b[pos]); pos += 4; size_t nl = (size_t)b[pos] | ((size_t)b[pos + 1] << 8); pos += 2;
         if (pos + nl + 16 > end) { all = false; break; } std::string nm((const char *)&b[pos], nl); pos += nl; uint64_t raw = gh_dg64(&b[pos]), zs = gh_dg64(&b[pos + 8]); pos += 16;
         if (pos + zs > end) { all = false; break; }
-        if (d < 4 && gApp.disk_fh[d] && !gApp.disk_wp[d].empty() && gApp.disk_nm[d] == nm) { bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; }
+        if (d < 4 && gApp.disk_fh[d] && !gApp.disk_wp[d].empty() && gh_bn_(gApp.disk_nm[d]) == gh_bn_(nm)) { bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; }
         else gh_log("DSK skip drive %u %s (no matching disk in that drive)", d, nm.c_str());
         pos += (size_t)zs;
     }

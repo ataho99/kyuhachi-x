@@ -164,6 +164,8 @@ void Rollback(const std::map<std::string, std::string> &snap) {
     }
 }
 
+/* t736: 디스크 이름 비교는 파일명만 — 같은 이미지가 상대경로·절대경로·SD카드 경로로 다르게 불려도(user.ini 항목 경로 vs game.ini 파일명) 상태 불러오기가 거부되지 않게 (노바 쾌락의 정 퀵세이브: 저장본 이름 = 파일명, 지금 = 전체 경로 → disk image mismatch) */
+static std::string BaseNm_(const std::string &s) { size_t p = s.find_last_of("/\\"); return p == std::string::npos ? s : s.substr(p + 1); }
 /* t53a/F1: 헤더 검사 공용(불러오기·기존 파일 분류). 빌드ID 는 판정에서 뺀다(정보용). 형식 번호(v3) 와 기종·메모리·디스크만 본다.
  * 통과하면 r 은 THMB 길이 필드 앞에 서 있다. */
 bool ParseHeader(const uint8_t *buf, size_t len, Reader &r, const std::vector<Pc98StateDisk> &disks, std::string &build, uint32_t &ver, std::string &err) {
@@ -194,7 +196,7 @@ bool ParseHeader(const uint8_t *buf, size_t len, Reader &r, const std::vector<Pc
         uint64_t sz = r.U64();
         uint32_t cc = r.U32();
         if (r.fail) { err = "truncated disk header"; return false; }
-        if (nm != disks[i].name || sz != disks[i].size || cc != disks[i].crc32) {
+        if (BaseNm_(nm) != BaseNm_(disks[i].name) || sz != disks[i].size || cc != disks[i].crc32) {
             std::ostringstream idx; idx << i;
             err = std::string("disk image mismatch at index ") + idx.str() + " ('" + disks[i].name + "')";
             return false;
