@@ -57,11 +57,15 @@ Upgrading from the old *Kyuhachi* (v0.5.x): on first run your saves are copied t
 
 **Frontends (ES-DE / Daijisho)** - launch a game straight from a frontend: see [docs/frontends.md](docs/frontends.md) ([한국어](docs/frontends.ko.md)) (also included in the zip in the `docs\` folder).
 
-## Main features (v0.6.0)
+## Main features (v0.6.9)
 
 - **Per-game profiles** — boot method, keys and auto input are stored per game, so titles just start.
 - **Auto launch** — reads D88 / FAT12 disk images and picks the real game executable, skips tools, handles self-extracting disks. Titles that do not start by themselves can be set once in the UI and are remembered.
-- **Save states** — quick save / load and slots; the Windows build migrates v0.5.x saves automatically.
+- **Save states** — quick save / load and slots, also for hard-disk titles: the disk working copy (`.dsk`) is restored together with the state, even when the image is referenced by a different name or path than when it was saved. The Windows build migrates v0.5.x saves automatically.
+- **Library upkeep** — adding the same game again updates it in place instead of creating a duplicate (also for entries with a manually set DB, and re-adding un-hides a hidden game); a new list-cleanup screen takes care of entries whose source is missing; Korean / Japanese source paths are recognized correctly.
+- **Disk menu** — the in-game disk swap list shows the real image names, and long disk names keep their tail visible.
+- **Hard-disk titles on Android** — run with the normal CPU core (fixes the boot crash of v0.6.8).
+- **Madou Monogatari A.R.S** — the three scenario entries in the demo menu start correctly.
 - **Gamepad first** — Japanese-style confirm / cancel, fully remappable; Nova buttons are labelled by position and name in the help screen.
 - **Pixel-perfect display** — integer scaling, aspect modes, optional CRT shader; window / fullscreen switching in place.
 - **Hangul-ready** — built-in font derived from Neodgm for Korean fan translations; menus in English, Japanese and Korean (`strings_en.txt`, `strings_ja.txt`, `strings_ko.txt` — edit them in any text editor).
