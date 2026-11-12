@@ -40,6 +40,8 @@ static int play(const int16_t * p, size_t n, int rate) {
     SDL_LockAudioDevice(dev); sweep(); if (vs.size() >= 24) vs.erase(vs.begin()); v.id = next_id++; if (next_id <= 0) next_id = 1; const int id = v.id; vs.push_back(v); SDL_UnlockAudioDevice(dev);
     return id;
 }
+/* t742: 코어 믹서가 장치를 열기 전에 공유 장치를 닫는다(안드로이드 SDL2 는 한 번에 하나만 열림 — 메뉴 소리가 열어 둔 장치 때문에 게임이 무음이 되던 문제) */
+static void close_all(void) { if (!dev) return; SDL_LockAudioDevice(dev); vs.clear(); SDL_UnlockAudioDevice(dev); SDL_CloseAudioDevice(dev); dev = 0; }
 static void stop(int id) { if (!dev || id <= 0) return; SDL_LockAudioDevice(dev); for (size_t k = 0; k < vs.size(); k++) if (vs[k].id == id) { vs.erase(vs.begin() + (long)k); break; } SDL_UnlockAudioDevice(dev); }
 static bool playing(int id) { if (!dev || id <= 0) return false; bool r = false; SDL_LockAudioDevice(dev); for (size_t k = 0; k < vs.size(); k++) if (vs[k].id == id && vs[k].pos < vs[k].pcm.size()) { r = true; break; } SDL_UnlockAudioDevice(dev); return r; }
 }   /* namespace gau */

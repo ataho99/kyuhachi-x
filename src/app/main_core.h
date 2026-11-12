@@ -118,7 +118,7 @@ static void gh_main_devinit() {
         GH_INIT(Init_VGABIOS());
         GH_INIT(PROGRAMS_Init());
         GH_INIT(PCSPEAKER_Init());
-        GH_INIT(MIXER_Init());
+        gau::close_all(); GH_INIT(MIXER_Init());   /* t742 */
         GH_INIT(CPU_Init());
         GH_INIT(Weitek_Init());
         GH_INIT(FPU_Init());
