@@ -92,10 +92,21 @@ static void kh_plogf(const char* fmt, ...) {
 /* t34 (#268): 코어 버스마우스 이동량 레지스터는 int8 — 한 틱에 127 넘게 몰아 주면 부호가 뒤집힌다(실측: y -150 한 번에 → 이동 안 됨). 대기열에 모아 20ms 마다 ±100 이하로 나눠 넣는다. */
 static float kh_vm_px = 0, kh_vm_py = 0; static Uint32 kh_vm_last = 0;
 static void kh_vmouse_move_rel(float dx, float dy) { kh_vm_px += dx; kh_vm_py += dy; }
+static void gh_log(const char * fmt, ...);   /* t743: 정의는 app/opts_log.h(뒤에 포함됨) — 같은 번역단위라 전방 선언으로 충분 */
+/* t743 (CP 309): 코어 버스마우스 카운터(int8)는 게임이 비우지 않아 끝(-128/127)에 붙고, 예전 pump 는 그 값으로 이동량을 깎아 총 이동폭이 ≈255 카운트로 막혔다(프메2 가동 범위 272x263 실측).
+   → 카운터가 한쪽으로 64 넘게 쌓이거나 입력이 100ms 멈추면 카운터·래치를 0 으로 되돌린다. 되돌릴 때마다 전/후 값을 로그(최대 60회). */
+static void kh_vm_recenter(const char * why) {
+    extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y, p7fd9_8255_mouse_x_latch, p7fd9_8255_mouse_y_latch;
+    static int nlog = 0; if (nlog < 60) { nlog++; gh_log("t743 mouse recenter(%s): x=%d y=%d latchx=%d latchy=%d -> 0 (%d/60)", why, (int)p7fd9_8255_mouse_x, (int)p7fd9_8255_mouse_y, (int)p7fd9_8255_mouse_x_latch, (int)p7fd9_8255_mouse_y_latch, nlog); }
+    p7fd9_8255_mouse_x = 0; p7fd9_8255_mouse_y = 0; p7fd9_8255_mouse_x_latch = 0; p7fd9_8255_mouse_y_latch = 0;
+}
 static void kh_vmouse_pump() {
     extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y;
-    int ix = (int)kh_vm_px, iy = (int)kh_vm_py; if (!ix && !iy) return;
-    Uint32 now = SDL_GetTicks(); if (now - kh_vm_last < 20) return; kh_vm_last = now;
+    Uint32 now = SDL_GetTicks();
+    int ix = (int)kh_vm_px, iy = (int)kh_vm_py;
+    if (!ix && !iy) { if ((p7fd9_8255_mouse_x || p7fd9_8255_mouse_y) && kh_vm_last && now - kh_vm_last >= 100) { kh_vm_recenter("idle"); kh_vm_last = 0; } return; }
+    if (now - kh_vm_last < 20) return; kh_vm_last = now;
+    if (p7fd9_8255_mouse_x > 64 || p7fd9_8255_mouse_x < -64 || p7fd9_8255_mouse_y > 64 || p7fd9_8255_mouse_y < -64) kh_vm_recenter("sat");
     int lox = -100, hix = 100, loy = -100, hiy = 100;
     { int a = -128 - (int)p7fd9_8255_mouse_x, b = 127 - (int)p7fd9_8255_mouse_x; if (a > lox) lox = a; if (b < hix) hix = b; }
     { int a = -128 - (int)p7fd9_8255_mouse_y, b = 127 - (int)p7fd9_8255_mouse_y; if (a > loy) loy = a; if (b < hiy) hiy = b; }
