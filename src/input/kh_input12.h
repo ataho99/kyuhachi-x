@@ -92,14 +92,22 @@ static void kh_plogf(const char* fmt, ...) {
 /* t34 (#268): 코어 버스마우스 이동량 레지스터는 int8 — 한 틱에 127 넘게 몰아 주면 부호가 뒤집힌다(실측: y -150 한 번에 → 이동 안 됨). 대기열에 모아 20ms 마다 ±100 이하로 나눠 넣는다. */
 static float kh_vm_px = 0, kh_vm_py = 0; static Uint32 kh_vm_last = 0;
 static void kh_vmouse_move_rel(float dx, float dy) { kh_vm_px += dx; kh_vm_py += dy; }
+static void gh_log(const char * fmt, ...);   /* t744: 정의는 app/opts_log.h(뒤에 포함됨) — 같은 번역단위라 전방 선언으로 충분 */
+/* t744 (CP 309): PM2 는 래치 없이 카운터(int8)를 연속으로 읽어 차로 이동량을 얻는 것으로 보인다. 카운터를 비우거나(t743) 끝에 붙이면(t742 이하: 포화) 차가 틀어진다.
+   → 카운터를 비우지 않고 int8 로 감기게 둔다: 틱당 ±50 이하로 보내고, 카운터+이동량이 ±127 을 넘으면 Mouse_CursorMoved(포화) 대신 레지스터에 감긴 값을 직접 쓴다. 감김 발동 때 전/후 값 로그(최대 60회). */
 static void kh_vmouse_pump() {
-    extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y;
+    extern int8_t p7fd9_8255_mouse_x, p7fd9_8255_mouse_y, p7fd9_8255_mouse_x_latch, p7fd9_8255_mouse_y_latch;
     int ix = (int)kh_vm_px, iy = (int)kh_vm_py; if (!ix && !iy) return;
     Uint32 now = SDL_GetTicks(); if (now - kh_vm_last < 20) return; kh_vm_last = now;
-    int lox = -100, hix = 100, loy = -100, hiy = 100;
-    { int a = -128 - (int)p7fd9_8255_mouse_x, b = 127 - (int)p7fd9_8255_mouse_x; if (a > lox) lox = a; if (b < hix) hix = b; }
-    { int a = -128 - (int)p7fd9_8255_mouse_y, b = 127 - (int)p7fd9_8255_mouse_y; if (a > loy) loy = a; if (b < hiy) hiy = b; }
-    int ax = ix < lox ? lox : ix > hix ? hix : ix, ay = iy < loy ? loy : iy > hiy ? hiy : iy;
+    int ax = ix < -50 ? -50 : ix > 50 ? 50 : ix, ay = iy < -50 ? -50 : iy > 50 ? 50 : iy;
+    int nx = (int)p7fd9_8255_mouse_x + ax, ny = (int)p7fd9_8255_mouse_y + ay;
+    if (nx < -128 || nx > 127 || ny < -128 || ny > 127) {
+        static int nlog = 0; if (nlog < 60) { nlog++; gh_log("t744 mouse wrap: x=%d y=%d latchx=%d latchy=%d + (%d,%d) -> (%d,%d) (%d/60)", (int)p7fd9_8255_mouse_x, (int)p7fd9_8255_mouse_y, (int)p7fd9_8255_mouse_x_latch, (int)p7fd9_8255_mouse_y_latch, ax, ay, (int)(int8_t)nx, (int)(int8_t)ny, nlog); }
+        const bool lx = p7fd9_8255_mouse_x_latch == p7fd9_8255_mouse_x, ly = p7fd9_8255_mouse_y_latch == p7fd9_8255_mouse_y;
+        p7fd9_8255_mouse_x = (int8_t)nx; p7fd9_8255_mouse_y = (int8_t)ny;
+        if (lx) p7fd9_8255_mouse_x_latch = p7fd9_8255_mouse_x; if (ly) p7fd9_8255_mouse_y_latch = p7fd9_8255_mouse_y;
+        kh_vm_px -= (float)ax; kh_vm_py -= (float)ay; return;
+    }
     if (ax || ay) { Mouse_CursorMoved((float)ax, (float)ay, 0, 0, false); kh_vm_px -= (float)ax; kh_vm_py -= (float)ay; }
 }
 static void kh_vmouse_button(int b /*0 L,1 R,2 M*/, bool down) {
