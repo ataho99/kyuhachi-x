@@ -94,8 +94,12 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         if (scr == S_CONF && sel == 15 && (k == UK_LEFT || k == UK_RIGHT || k == UK_OK)) { g.fpsd = g.fpsd ? 0 : 1; a.t = A_APPLY; dirty = true; return a; }   /* #639: FPS display is global only */
         if (sel == 0 && k == UK_OK && scope == 0) { sel = sidx; yn_open(scr0, YN_INDIVALL, phr_("indiv_allq1"), phr_("indiv_q2")); break; }   /* t147d: 전역 범위에서 ○ = 전역 일괄 적용 켬/끔 */
         Settings & s = (sel == 0) ? eff() : edit();
-        if (k == UK_LEFT || k == UK_RIGHT) {
-            int d = (k == UK_RIGHT) ? 1 : -1;
+        UKey kk = k;   /* kx-touch: 선택지 없는 값 줄을 탭(○)하면 오른쪽 절반 = 오른쪽 키, 왼쪽 절반 = 왼쪽 키 */
+        if (k == UK_OK && ov::g_tap_half != 0) { const int th = ov::g_tap_half; const bool fresh = ov::tap_now_ms() - ov::g_tap_ms < 400; ov::g_tap_half = 0;
+            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = sel >= 1 && sel <= 8; else sl = (sel >= 1 && sel <= 2) || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || (sel >= 29 && sel <= 32); }
+            if (sl) kk = th > 0 ? UK_RIGHT : UK_LEFT; }
+        if (kk == UK_LEFT || kk == UK_RIGHT) {
+            int d = (kk == UK_RIGHT) ? 1 : -1;
             if (scr_s && sel == 8) {   /* 창 배율(전역): 모니터에 들어가는 다음/이전 배율 */
                 int m = wm_next(d); if (m > 0) { wmult = m; a.t = A_WINMULT; a.arg = m; dirty = true; }
                 return a;

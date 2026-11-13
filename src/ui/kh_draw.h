@@ -1,6 +1,7 @@
 /* kh_draw.h -- r012 UI/OSD 그리기 도구: 640x400 가상 화면(Canvas) · FONTX2 비트맵 글꼴 · 둥근 흰 1선 창 · 막대 · OSD
  * 호스트 gensei_host.cpp 가 include(단일 번역 단위). PC-98 디지털 8색 + 회색, 안티앨리어싱 없음. */
 #pragma once
+#include <chrono>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -179,6 +180,8 @@ static void barv(Canvas & c, int x, int y, int w, double v, const char * l, cons
 /* 선택지 나열: 현재값 반전. 반환 = 끝 x */
 struct ChHit { int x, y, w, h, idx, n, cur; };   /* #638: option rects of the last drawn frame (touch) */
 static std::vector<ChHit> g_chit;
+static int g_tap_half = 0; static long long g_tap_ms = 0;   /* kx-touch: 값 줄 탭 — 오른쪽 절반 +1 / 왼쪽 절반 -1 (○ 로 들어온 탭 한 번만, 0.4초 안에서만 유효) */
+static long long tap_now_ms() { return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 static int choices(Canvas & c, int x, int y, const char * const * arr, int n, int cur, uint32_t fg, bool rowsel) {
     int cx = x;
     for (int i = 0; i < n; i++) {

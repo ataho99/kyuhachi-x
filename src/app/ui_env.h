@@ -666,6 +666,7 @@ static void gh_touch_feed(const SDL_Event & e) {
             if (vx >= t.x && vx < t.x + t.w && vy >= t.y && vy < t.y + t.h) {
                 int d = t.i - t.sel; gh_log("TOUCH tap v=(%d,%d) row %d (sel %d, move %d) -> ok", vx, vy, t.i, t.sel, d);
                 for (; d > 0; d--) gh_touch_key(SDLK_DOWN); for (; d < 0; d++) gh_touch_key(SDLK_UP);
+                ov::g_tap_half = (U.scr == ui::S_CONF || U.scr == ui::S_SCREEN) ? ((vx >= t.x + t.w / 2) ? 1 : -1) : 0; ov::g_tap_ms = ov::tap_now_ms();   /* kx-touch: 값 줄 절반 탭 */
                 gh_touch_key(SDLK_RETURN); return; } }
         gh_log("TOUCH tap v=(%d,%d) no row (ignored)", vx, vy);
     }
