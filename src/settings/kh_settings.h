@@ -52,6 +52,7 @@ struct Settings {
     int hvol = 3;     /* t667: 0..8(기본 3) */
     int mclick = 1;   /* E1R: 0 끔 1 켬(기본 켬, 전역 전용) */
     int touchfx = 1;   /* kx-touch: 터치 표시 0 끔 1 도트(기본 켬, 전역 전용) */
+    int backpos = 0;   /* kx-touch: 뒤로 화살표 위치 0 좌상 1 우상 2 좌하 3 우하 4 숨김(전역 전용) */
     int tfxsz = 0;     /* kx-touch: 터치 표시 크기 0 작게 1 크게 */
     int tfxmouse = 0;  /* kx-touch: 윈도 마우스 클릭에도 표시 0 끔(기본) 1 켬 */
     int tmouse = 0;    /* kx-touch: 게임 마우스 터치 방식 0 트랙패드(기본) 1 절대 위치 */
@@ -89,6 +90,7 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
     fprintf(f, "mclick=%d\n", s.mclick);   /* E1R */
     fprintf(f, "touchfx=%d\ntfxsz=%d\ntfxmouse=%d\ntmouse=%d\n", s.touchfx, s.tfxsz, s.tfxmouse, s.tmouse);   /* kx-touch */
+    fprintf(f, "backpos=%d\n", s.backpos);   /* kx-touch */
     fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* t665 */
     fprintf(f, "ovpos_mode=%d\novpos_edge=%d\n", s.ovpos_mode, s.ovpos_edge);   /* E2R */
     fprintf(f, "ovpos_align=%d\novpos_free=%d\n", s.ovpos_align, s.ovpos_free);   /* E2R */
@@ -137,6 +139,7 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "hvol") { s.hvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
     if (k == "mclick") { s.mclick = v ? 1 : 0; return true; }   /* E1R */
     if (k == "touchfx") { s.touchfx = v < 0 ? 0 : v > 3 ? 3 : v; return true; }   /* kx-touch */
+    if (k == "backpos") { s.backpos = v < 0 ? 0 : v > 4 ? 4 : v; return true; }   /* kx-touch */
     if (k == "tfxsz") { s.tfxsz = v < 0 ? 0 : v > 1 ? 1 : v; return true; }
     if (k == "tfxmouse") { s.tfxmouse = v < 0 ? 0 : v > 1 ? 1 : v; return true; }
     if (k == "tmouse") { s.tmouse = v < 0 ? 0 : v > 1 ? 1 : v; return true; }

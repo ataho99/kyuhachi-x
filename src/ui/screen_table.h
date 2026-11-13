@@ -94,11 +94,20 @@ inline void Ui::draw_body(Canvas & c) {
 #else
         static const bool sb = getenv("KH_BACKARROW") != NULL;
 #endif
-        if (sb && scr != S_MAIN) {
-            c.rect(2, 2, 44, 28, K); c.rect(2, 2, 44, 1, WH); c.rect(2, 29, 44, 1, WH); c.rect(2, 2, 1, 28, WH); c.rect(45, 2, 1, 28, WH);
-            for (int i = 0; i < 7; i++) c.rect(10 + i, 16 - i, 1, 1 + 2 * i, WH);
-            c.rect(17, 15, 20, 3, WH);
+        int bx0 = 0, by0 = 0;   /* kx-touch: thick outline-only arrow (interior transparent) with a faint glow; position = setting backpos */
+        if (sb && scr != S_MAIN && back_xy(bx0, by0)) {
+            auto in = [](int x, int y) { const int dy = y < 14 ? 14 - y : y - 14; return (x >= 0 && x < 14 && dy <= x) || (x >= 13 && x < 34 && dy <= 5); };
+            const int ox = bx0 + 6, oy = by0 + 2;
+            for (int y = -3; y < 31; y++) for (int x = -3; x < 38; x++) {
+                if (in(x, y)) {
+                    if (!(in(x - 1, y) && in(x + 1, y) && in(x, y - 1) && in(x, y + 1) && in(x - 2, y) && in(x + 2, y) && in(x, y - 2) && in(x, y + 2)))
+                        c.set(ox + x, oy + y, WH);
+                } else if (in(x - 1, y) || in(x + 1, y) || in(x, y - 1) || in(x, y + 1)) c.set(ox + x, oy + y, 0x16525E);
+                else if (in(x - 2, y) || in(x + 2, y) || in(x, y - 2) || in(x, y + 2) || in(x - 1, y - 1) || in(x + 1, y - 1) || in(x - 1, y + 1) || in(x + 1, y + 1))
+                    c.set(ox + x, oy + y, 0x0A2C34);
+            }
         }
+
     }
 }
 

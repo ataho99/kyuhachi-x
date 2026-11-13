@@ -13,8 +13,9 @@ inline void Ui::d_bgfx(Canvas & c) {
     titlebar(c, phr_("bg_title"));
     rbox(c, 16, 24, 232, 36 + N * 16, WH, phr_("bg_fx"));
     std::vector<std::string> n;
-    for (int i = 0; i < N; i++) n.push_back(std::string(g.bgfx == i ? "* " : "  ") + phr_(bgx_fxkey(i)));
+    for (int i = 0; i < N; i++) n.push_back(phr_(bgx_fxkey(i)));
     items(c, 40, 44, 200, n, sel, 16);
+    for (int i = 0; i < N; i++) if (g.bgfx == i) text(c, 22, 44 + i * 16, "*", sel == i ? K : YL, sel == i ? WH : K);   /* in use */
     rbox(c, 256, 24, 368, 72, WH, phr_("bg_choices"));
     std::vector<std::string> v = { phr_("bg_spd"), phr_("bg_bri") }; std::vector<bool> dm = { off, off };
     items(c, 280, 44, 130, v, sel - N, 16, &dm);
@@ -23,7 +24,7 @@ inline void Ui::d_bgfx(Canvas & c) {
     for (int i = 0; i < 2; i++) text(c, 424, 44 + i * 16, std::string("< ") + sv[i] + " >", off ? GY : (sel == N + i ? CY : WH), K);
     text(c, 264, 112, std::string(phr_("bg_prev")) + ": " + phr_(bgx_fxkey(sel < N ? sel : g.bgfx)), CY, K);
     const char * dk = sel < N ? "desc_bg_fx" : sel == N ? "desc_bg_spd" : "desc_bg_bri";
-    desc_mq(c, 324, 100, std::string(dkey(phr_(dk))) + "  " + phr_("bg_note"));
+    desc_mq(c, 324, 40, std::string(dkey(phr_(dk))) + "  " + phr_("bg_note"));
     helpline(c, phr_("bg_help"));
 }
 inline Act Ui::k_bgfx(UKey k, Act & a) {

@@ -1262,6 +1262,12 @@ tmouse=Game mouse touch
 tmouse_pad=Trackpad
 tmouse_abs=Absolute
 desc_tmouse=Touch mode in games that use the mouse. Trackpad: drag to move the cursor; tap = left, two-finger tap = right, three-finger tap = middle click; hold 0.2 s then drag to drag. Absolute: the cursor jumps to where you touch.
+backpos=Back button position
+bp_tl=Top L
+bp_tr=Top R
+bp_bl=Bot L
+bp_br=Bot R
+desc_backpos=Corner for the back arrow. Off hides it (the Android back key/gesture still works). The bottom corners sit just above the help line.
 tfx_butterfly=Butterfly
 tfx_user=Custom
 sv_over=Press again to overwrite

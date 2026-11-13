@@ -92,7 +92,7 @@ struct Ui {
                 if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
                 else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
             if (scope == 0 && (!conf_grp || conf_grp == 2)) r.push_back(15); if (scope == 1) r.push_back(14);
-            if (scope == 0 && (!conf_grp || conf_grp == 2)) { r.push_back(29); r.push_back(30); r.push_back(31); r.push_back(32); }   /* kx-touch */
+            if (scope == 0 && (!conf_grp || conf_grp == 2)) { r.push_back(29); r.push_back(30); r.push_back(31); r.push_back(32); r.push_back(33); }   /* kx-touch */
             if (!conf_grp || conf_grp == 3) r.push_back(18);
 #if defined(__ANDROID__)
             if (scope == 0 && (!conf_grp || conf_grp == 3)) r.push_back(27);   /* E3R: 글꼴 폴더(전역만, 27; E2R 22와 분리) */
@@ -642,7 +642,7 @@ struct Ui {
     void d_add(Canvas & c);
     void d_screen(Canvas & c);
     void d_phos(Canvas & c); Act k_phos(UKey k, Act & a); bool phos_pg = false;
-    void d_bgfx(Canvas & c); Act k_bgfx(UKey k, Act & a); bool bgfx_pg = false; int bgfx_pv() const { return bgfx_pg && scr == S_SCREEN && sel >= 0 && sel < 13 ? sel : -1; }   /* kx-bg */   /* t662 (#635): phosphor sub-page of S_SCREEN */
+    void d_bgfx(Canvas & c); Act k_bgfx(UKey k, Act & a); bool bgfx_pg = false; bool back_xy(int & x, int & y) const { const int p = g.backpos; if (p < 0 || p > 3) return false; x = (p & 1) ? 592 : 0; y = (p & 2) ? 336 : 0; return true; } int bgfx_pv() const { return bgfx_pg && scr == S_SCREEN && sel >= 0 && sel < 13 ? sel : -1; }   /* kx-bg */   /* t662 (#635): phosphor sub-page of S_SCREEN */
     void d_screen_t48b2_old(Canvas & c) {
         titlebar(c, phr_("화면 설정"));
         Settings & s = eff(); bool crt = s.shader == 1;
