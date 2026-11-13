@@ -597,11 +597,11 @@ static void gh_batest(void) {
 }
 /* ---- 입력 → UI 키 */
 /* t49a (#812): 메뉴 키 매핑 표 — gh_ev2uk 가 읽고 조작 설명(helpline) 번역도 같은 표에서 이름을 만든다(키 이름 한 곳). 설정 노출 없음 */
-struct GhKeyRow { ui::UKey uk; const char * sym; const char * name; int n; SDL_Keycode k[3]; };
+struct GhKeyRow { ui::UKey uk; const char * sym; const char * name; int n; SDL_Keycode k[4]; };
 static const GhKeyRow GH_KEYTAB[] = {
     { ui::UK_UP, "↑", "↑", 1, { SDLK_UP } }, { ui::UK_DOWN, "↓", "↓", 1, { SDLK_DOWN } }, { ui::UK_LEFT, "←", "←", 1, { SDLK_LEFT } }, { ui::UK_RIGHT, "→", "→", 1, { SDLK_RIGHT } },
     { ui::UK_OK, "○", "Enter", 3, { SDLK_RETURN, SDLK_KP_ENTER, SDLK_SPACE } },
-    { ui::UK_CANCEL, "×", "Esc", 3, { SDLK_ESCAPE, SDLK_BACKSPACE, SDLK_F12 } },
+    { ui::UK_CANCEL, "×", "Esc", 4, { SDLK_ESCAPE, SDLK_BACKSPACE, SDLK_F12, SDLK_AC_BACK } },
     { ui::UK_SQ, "□", "S", 1, { SDLK_s } }, { ui::UK_TRI, "△", "D", 1, { SDLK_d } }, { ui::UK_SELECT, "SEL", "Tab", 1, { SDLK_TAB } },
     { ui::UK_L, "L", "Q", 1, { SDLK_q } }, { ui::UK_R, "R", "E", 1, { SDLK_e } }, { ui::UK_PROF, "R3", "P", 1, { SDLK_p } },   /* v0.6.8: 작품 선택 화면 실행 방법 바꾸기 */
 };
@@ -650,6 +650,9 @@ static void gh_touch_feed(const SDL_Event & e) {
         if (ba && vx < 48 && vy < 32) { gh_log("TOUCH tap v=(%d,%d) back arrow -> cancel", vx, vy); gh_touch_key(SDLK_ESCAPE); return; }
         ui::Ui & U = gApp.ui_;
         if (U.scr == ui::S_PICK && U.prof_w > 0 && vx >= U.prof_x && vx < U.prof_x + U.prof_w && vy >= U.prof_y && vy < U.prof_y + U.prof_h) { gh_log("TOUCH tap v=(%d,%d) 실행 줄 -> 다음 방법", vx, vy); gh_touch_key(SDLK_p); return; }   /* v0.6.8 */
+        if ((U.scr == ui::S_START || U.scr == ui::S_QUIT || U.scr == ui::S_YN) && U.cbw > 0
+            && (vx < U.cbx || vx >= U.cbx + U.cbw || vy < U.cby || vy >= U.cby + U.cbh)) {   /* kx-touch: 가벼운 팝업 바깥 탭 = 취소 */
+            gh_log("TOUCH tap v=(%d,%d) outside popup -> cancel", vx, vy); gh_touch_key(SDLK_ESCAPE); return; }
         if (U.scr == ui::S_CONF || U.scr == ui::S_SCREEN) {   /* #638: tap on an option of a choice line = select that option (move to its row, then left/right) */
             for (const ov::ChHit & ch : ov::g_chit) {
                 if (vx < ch.x || vx >= ch.x + ch.w || vy < ch.y || vy >= ch.y + ch.h) continue;

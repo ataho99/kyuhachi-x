@@ -122,6 +122,7 @@ static void gh_main_logsdl(const std::string & exedir, const bool & ui_mode, std
     }
     if (gApp.headless) { plat::putenv_a("SDL_AUDIODRIVER=dummy"); }   /* 무음: 헤드리스/시험은 소리 장치를 아예 열지 않는다 */
 #if defined(__ANDROID__)
+    SDL_SetHint("SDL_ANDROID_TRAP_BACK_BUTTON", "1");   /* kx-touch: 안드로이드 시스템 뒤로 = 메뉴 취소 키(SDLK_AC_BACK) */
     SDL_SetHint("SDL_ENABLE_SCREEN_KEYBOARD", "0");   /* no Android soft keyboard over the game (our own kbov handles on-screen keys) */
 #endif
     SDL_SetHint("SDL_IME_SHOW_UI", "1"); SDL_SetHint("SDL_MOUSE_FOCUS_CLICKTHROUGH", "1"); if (gApp.log) gh_log("HINT SDL_MOUSE_FOCUS_CLICKTHROUGH=1 (t48c #639 ②)");   /* t48a: Windows IME 조합·후보 창을 시스템이 그리게 한다 */

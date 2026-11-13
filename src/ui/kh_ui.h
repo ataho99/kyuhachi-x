@@ -387,9 +387,11 @@ struct Ui {
     }
     static void menu_names(std::vector<std::string> & v) { v = { phr_("게임 시작"), phr_("작품 선택"), phr_("mm_settings"), phr_("세이브 관리"), phr_("부가"), phr_("끝내기") }; }
     static std::string play_str(int s) { char b[48]; if (s >= 3600) snprintf(b, sizeof b, phr_("%d시간 %02d분"), s / 3600, (s / 60) % 60); else snprintf(b, sizeof b, phr_("%d분"), s / 60); return b; }
+    int cbx = 0, cby = 0, cbw = 0, cbh = 0;   /* kx-touch: 마지막으로 그린 팝업 상자(바깥 탭 = 취소) */
     /* 확인 창: 화면 가운데, 뒤 화면 어둡게. 반환 = 창 왼쪽 위 x,y */
     void confirm_box(Canvas & c, int w, int h, const char * title, int & bx, int & by) {
         dim(c); bx = (c.w - w) / 2; by = (c.h - h) / 2; c.rect(bx, by, w, h, K); rbox(c, bx, by, w, h, YL, title);
+        cbx = bx; cby = by; cbw = w; cbh = h;
     }
     void sample_or_game(Canvas & c, int x, int y, int w, int h) { thumb(c, game(), x, y, w, h); }
 
