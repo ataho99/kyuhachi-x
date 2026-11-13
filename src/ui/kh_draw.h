@@ -157,7 +157,7 @@ static int text_bmp(Canvas & c, const BmpFont & f, int x, int y, const std::stri
 }
 static std::string fit(const std::string & s, int maxw);
 static void rbox(Canvas & c, int x, int y, int w, int h, uint32_t col, const char * title) {
-    if (c.bgfill) c.rect(x + 1, y + 1, w - 2, h - 2, K);
+    /* kx-nova: 상자 안쪽은 비워 둔다(배경 효과가 비침). 글자·선택 막대·테두리는 그대로 불투명 */
     c.rect(x + 3, y, w - 6, 1, col); c.rect(x + 3, y + h - 1, w - 6, 1, col); c.rect(x, y + 3, 1, h - 6, col); c.rect(x + w - 1, y + 3, 1, h - 6, col);
     c.set(x + 2, y + 1, col); c.set(x + 1, y + 2, col); c.set(x + w - 3, y + 1, col); c.set(x + w - 2, y + 2, col);
     c.set(x + 2, y + h - 2, col); c.set(x + 1, y + h - 3, col); c.set(x + w - 3, y + h - 2, col); c.set(x + w - 2, y + h - 3, col);
