@@ -9,14 +9,14 @@
 
 **게임을 고르고 바로 시작.** 설정 파일도, 매퍼 메뉴도 없습니다.
 
-![version](https://img.shields.io/badge/version-v0.7.0-ff4d6d)
+![version](https://img.shields.io/badge/version-v0.7.1-ff4d6d)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-0078d4)
 ![engine](https://img.shields.io/badge/engine-DOSBox--X%20core-6c5ce7)
 ![license](https://img.shields.io/badge/license-GPL--2.0-2ea44f)
 
 [English](README.md) · 한국어
 
-**[⬇ v0.7.0 내려받기 (윈도 zip · 안드로이드 APK · 설명서)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
+**[⬇ v0.7.1 내려받기 (윈도 zip · 안드로이드 APK · 설명서)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
 
 **[💖 후원](https://litt.ly/smash99)** — 도구 개발 후원입니다. 게임 파일은 배포하지 않습니다.
 
@@ -35,7 +35,7 @@
 | 기기 | 비고 |
 |---|---|
 | 윈도우 10 / 11 (x64) | `KyuhachiX.exe`, 폴더 하나로 동작하는 포터블. 레지스트리에 쓰지 않음 |
-| 안드로이드 | `KyuhachiX-v0.7.0-android.apk` (패키지 `io.github.ataho99.kyuhachix`). 레트로이드 포켓 노바에 맞춰 다듬었고 다른 패드 기기에서도 동작 |
+| 안드로이드 | `KyuhachiX-v0.7.1-android.apk` (패키지 `io.github.ataho99.kyuhachix`). 레트로이드 포켓 노바에 맞춰 다듬었고 다른 패드 기기에서도 동작 |
 | 리눅스 | 예정 |
 | 스팀덱 | 예정 |
 
@@ -57,7 +57,7 @@
 
 **프런트엔드 연동 (ES-DE / Daijisho)** - 프런트엔드에서 게임을 바로 실행하는 방법: [docs/frontends.ko.md](docs/frontends.ko.md) · [English](docs/frontends.md) (zip 안에도 `docs\` 폴더로 들어 있습니다).
 
-## 주요 기능 (v0.7.0)
+## 주요 기능 (v0.7.1)
 
 - **작품별 프로필** — 부팅 방식·키·자동 입력을 작품마다 저장해 그냥 켜집니다.
 - **자동 실행** — D88·FAT12 디스크 이미지를 읽어 실제 게임 실행 파일을 고르고, 도구류는 건너뛰며, 압축 디스크도 풉니다. 저절로 안 뜨는 작품은 화면에서 한 번 정해 두면 기억합니다.
@@ -68,6 +68,9 @@
 - **마도물어 A.R.S** — 데모 메뉴의 시나리오 3항목이 정상 기동합니다.
 - **패드 우선** — 일본식 결정·취소 배치가 기본이고 자유롭게 바꿀 수 있습니다. 도움말 화면은 노바 버튼을 위치+이름으로 표기합니다.
 - **픽셀 그대로** — 정수 배율, 화면 비율, 선택형 CRT 셰이더. 창/전체화면을 그 자리에서 전환합니다.
+- **터치 조작** — 뒤로 화살표(위치 선택 · 굵은 외곽선형)와 시스템 뒤로 키 = 취소, 작은 팝업은 바깥 탭으로 취소, 게임 중 터치패드 마우스, 터치 표시 모양 선택.
+- **메뉴 배경 효과** — 별 · 반짝임 · 워프 · 노이즈 · 래스터 바 · 사인 점줄 · 리사주 · 터널 · 비 · 속도선 · 플라즈마 · 무아레 13종, 고르는 중 미리보기.
+- **게임 중 메뉴 · 치트** — 게임 중 메뉴가 게임 비율을 유지하고(16:10 은 16:10), 치트 1단계(값 찾기 · 쓰기 · 고정).
 - **한글 대응** — 한글패치용으로 Neodgm 기반 내장 글꼴. 메뉴는 영·일·한(`strings_en.txt`, `strings_ja.txt`, `strings_ko.txt`)이며 메모장으로 고칠 수 있습니다.
 - **리듬 음원** — `res/rhythm/` 에 YM2608 리듬 WAV 를 넣으면 드럼이 납니다(저작권상 동봉하지 않음).
 

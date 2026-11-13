@@ -17,8 +17,8 @@ android {
         applicationId "io.github.ataho99.kyuhachix"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 13
-        versionName "0.7.0"
+        versionCode 14
+        versionName "0.7.1"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_APP_PLATFORM=android-21", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"

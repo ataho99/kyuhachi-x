@@ -33,11 +33,11 @@ file(WRITE ${GEN}/kh_version.h.tmp "/* kh_version.h -- single source of the vers
 #define KH_VERSION_H
 #define KH_VER_MAJOR 0
 #define KH_VER_MINOR 7
-#define KH_VER_PATCH 0
+#define KH_VER_PATCH 1
 #define KH_VER_BUILD ${KH_VER_BUILD_N}
 #define KH_BUILD \"${KH_BUILD}\"
-#define KH_VER_BASE \"0.7.0\"   /* E1R: display base, no tag */
-#define KH_VERSION \"0.7.0-${KH_BUILD}\"   /* E1R: internal, tag kept */
+#define KH_VER_BASE \"0.7.1\"   /* E1R: display base, no tag */
+#define KH_VERSION \"0.7.1-${KH_BUILD}\"   /* E1R: internal, tag kept */
 #endif
 ")
 file(WRITE ${GEN}/gensei_build_id.h.tmp "#define GENSEI_BUILD_ID \"r024${KH_BUILD}\"\n")
