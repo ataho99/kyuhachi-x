@@ -704,6 +704,12 @@ struct Ui {
     static std::string parent_of(const std::string & p) { size_t d = p.find_last_of("\\/"); return d == std::string::npos || d == 0 ? std::string() : p.substr(0, d); }
     static std::vector<std::string> split_commas(const std::string & s) { std::vector<std::string> r; size_t p = 0; while (p <= s.size() && !s.empty()) { size_t e = s.find(',', p); if (e == std::string::npos) e = s.size(); if (e > p) r.push_back(s.substr(p, e - p)); p = e + 1; } return r; }
     static std::string join_commas(const std::vector<std::string> & v) { std::string o; for (auto & x : v) { if (!o.empty()) o += ","; o += x; } return o; }
+    int lst_top = 0;   /* kx-nova: 설정 목록 스크롤 — 맨 위에 보이는 줄 번호. 커서를 따라간다 */
+    int lst_win(int n, int sel, int cap) { if (n <= cap) { lst_top = 0; return 0; } if (sel < lst_top) lst_top = sel; if (sel >= lst_top + cap) lst_top = sel - cap + 1; if (lst_top > n - cap) lst_top = n - cap; if (lst_top < 0) lst_top = 0; return lst_top; }
+    void lst_arrows(Canvas & c, int top, int n, int cap, int x, int yu, int yd) {   /* 위/아래에 숨은 줄이 있으면 ▲▼ */
+        if (top > 0) for (int i = 0; i < 5; i++) c.rect(x - i, yu + i, 1 + 2 * i, 1, CY);
+        if (top + cap < n) for (int i = 0; i < 5; i++) c.rect(x - i, yd + 4 - i, 1 + 2 * i, 1, CY);
+    }
     int sv_arm = -1;   /* kx-touch: 이미 쓴 슬롯에 저장 = 두 번 눌러야 덮어쓴다 */
     void yn_open(Scr ret, int act, const std::string & a0, const std::string & a1 = std::string(), const std::string & a2 = std::string(), int arg = 0) { yn_msg[0] = a0; yn_msg[1] = a1; yn_msg[2] = a2; yn_act = act; yn_ret = ret; ynsel = 1; yn_arg = arg; scr = S_YN; }
     std::string default_label(int g) const { return games[g].lang == "jp" ? std::string(phr_("원판 일본어")) : games[g].lang == "ko" ? std::string(phr_("한글판")) : std::string(phr_("기본")); }

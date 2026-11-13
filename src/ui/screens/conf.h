@@ -24,10 +24,12 @@ inline void Ui::d_conf(Canvas & c) {
         phr_("touchfx"), phr_("tfxsz"), phr_("tfxmouse"), phr_("tmouse") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
       for (int id : ri) n.push_back(id == 15 ? std::string("FPS / Speed") : ((own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id])); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
-    items(c, 40, 44, 256, n, sel, 19);
+    const int NR = (int)ri.size(), CAP = 14; const int top = lst_win(NR, sel, CAP);   /* kx-nova: 상자에 안 들어가면 스크롤 */
+    { std::vector<std::string> n2(n.begin() + top, n.begin() + std::min(NR, top + CAP)); items(c, 40, 44, 256, n2, sel - top, 19); }
+    lst_arrows(c, top, NR, CAP, 296, 29, 304);
     rbox(c, 320, 24, 304, 296, WH, phr_("인포메이션"));
     auto row = [&](int i) { return rs == i; };
-    auto ry = [&](int id) { int k = -1000; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; return 44 + 19 * k; };
+    auto ry = [&](int id) { int k = -1000; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; if (k < top || k >= top + CAP) return -20000; return 44 + 19 * (k - top); };
     const char * sc[] = { phr_("전역"), phr_("scope_this") }; choices(c, 344, ry(0), sc, 2, scope, WH, row(0));
     char b[8];
     snprintf(b, sizeof b, "%d", s.bgm); barv(c, 340, ry(1), 232, s.bgm / 8.0, "OFF", phr_("최대"), WH, row(1)); text(c, 590, ry(1), b, WH, K);

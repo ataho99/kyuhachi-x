@@ -1,7 +1,7 @@
 #pragma once
 /* ui/kh_bgfx.h -- menu background effect (kx-bg). Drawn right after the black fill, BEHIND every menu element, only on
  * Kyuhachi's own screens (never in the in-game pause menu or the game picture). Pure function of time: no state, no allocation.
- * Legibility rules: dots are at most 1/4 of the menu text brightness (level 0x40 of 255), slow, normal level by default, one effect at a
+ * Legibility rules: dots are at most 1/2 of the menu text brightness (level 0x80 of 255), slow, normal level by default, one effect at a
  * time (star field + noise together would double the dot density, so the choice is one of five). Dot count is capped (MAXN). */
 namespace bgx {
 static const int MAXN = 96, NOISEN = 140;
@@ -13,7 +13,7 @@ static inline int cl3(int v, int hi) { return v < 0 ? 0 : v > hi ? hi : v; }
 static inline void dot(Canvas & c, int x, int y, int sz, uint32_t col) { if (sz > 1) c.rect(x, y, sz, sz, col); else c.set(x, y, col); }
 static inline void draw(Canvas & c, const Settings & s, int ms) {
     if (s.bgfx <= 0) return;
-    static const int LV[3] = { 0x28, 0x34, 0x40 };   /* dim / normal / bright: 16 / 20 / 25 % of full white (cap 1/4) */
+    static const int LV[3] = { 0x48, 0x64, 0x80 };   /* dim/normal/bright 28/39/50 % of white (Nova; was 16/20/25) */
     const int L = LV[cl3(s.bgbri, 2)], sp = cl3(s.bgspd, 2), fx = s.bgfx; const double t = (double)ms / 1000.0;
     const int W = c.w, H = c.h;
     if (fx == 1) {   /* star field: 3 layers, different speeds, flowing left */
@@ -21,7 +21,7 @@ static inline void draw(Canvas & c, const Settings & s, int ms) {
         for (int i = 0; i < MAXN; i++) {
             const int ly = i % 3; const uint32_t h = hash((uint32_t)i * 7919u + 13u);
             double x = (double)(h % (uint32_t)W) - V[sp] * (double)(1 << ly) * t; x = std::fmod(x, (double)W); if (x < 0) x += W;
-            dot(c, (int)x, (int)((h >> 10) % (uint32_t)H), ly == 2 ? 2 : 1, sc(ly == 2 ? CY : WH, L * (ly + 3) / 5));
+            dot(c, (int)x, (int)((h >> 10) % (uint32_t)H), ly == 2 ? 2 : 1, sc(ly == 2 ? CY : WH, L * (ly + 5) / 7));
         }
     } else if (fx == 2) {   /* twinkle in place */
         static const double P[3] = { 3.2, 1.8, 0.9 };

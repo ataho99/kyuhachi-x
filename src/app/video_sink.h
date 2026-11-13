@@ -359,7 +359,7 @@ static int SDLCALL gl_thread(void *) {
                 glBindTexture(GL_TEXTURE_2D, vp_tex);
                 if (vm != vp_mask || dw != vp_w || dh != vp_h || sx != vp_sx || srw != vp_sw) {
                     vp_buf.assign((size_t)dw * dh, 0); vpad::render(vp_buf.data(), dw, dh, vg, vm);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, dw, dh, 0, GL_BGRA, GL_UNSIGNED_BYTE, vp_buf.data());
+                    glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, dw, dh, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(vp_buf, (size_t)dw * dh, sw));
                     vp_mask = vm; vp_w = dw; vp_h = dh; vp_sx = sx; vp_sw = srw;
                 }
                 glViewport(0, 0, dw, dh); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -381,8 +381,8 @@ static int SDLCALL gl_thread(void *) {
             tfx::V tv[tfx::NP]; const int tn = tfx::collect(SDL_GetTicks(), gApp.ui_.g.tfxmouse != 0, tv);
             if (tn > 0) {
                 int tk = dh / 270; if (tk < 2) tk = 2; if (gApp.ui_.g.tfxsz > 0) tk = tk * 5 / 3; if (gApp.ui_.g.touchfx == 2) tk = tk * 2;   /* 나비는 도트 십자보다 크게 */
-                const bool tu = gApp.ui_.g.touchfx == 3 && tfx::g_u.ok; const int sw = tu ? tfx::g_u.w : 16, sh = tu ? tfx::g_u.h : 16;
-                int tvw = sw * tk, tvh = sh * tk; if (tu) { tvw = (int)((float)tvw * tfx::g_u.scale); tvh = (int)((float)tvh * tfx::g_u.scale); }
+                const bool tu = gApp.ui_.g.touchfx == 3 && tfx::g_u.ok; const int spw = tu ? tfx::g_u.w : 16, sph = tu ? tfx::g_u.h : 16;
+                int tvw = spw * tk, tvh = sph * tk; if (tu) { tvw = (int)((float)tvw * tfx::g_u.scale); tvh = (int)((float)tvh * tfx::g_u.scale); }
                 if (tvw > dh / 2) tvw = dh / 2; if (tvh > dh / 2) tvh = dh / 2; if (tvw < 1) tvw = 1; if (tvh < 1) tvh = 1;
                 if (tx_tex == 0) { glGenTextures(1, &tx_tex); glBindTexture(GL_TEXTURE_2D, tx_tex);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -393,7 +393,7 @@ static int SDLCALL gl_thread(void *) {
                 F.VertexAttribPointer(0, 2, GL_FLOAT, 0, 16, (const void *)0); F.VertexAttribPointer(1, 2, GL_FLOAT, 0, 16, (const void *)8);
                 for (int ti = 0; ti < tn; ti++) {
                     static uint32_t tsp[128 * 128]; if (tu) tfx::sprite_user(tsp, tv[ti].age, tv[ti].rel); else if (gApp.ui_.g.touchfx == 2) tfx::sprite_bf(tsp, tv[ti].age, tv[ti].rel); else tfx::sprite(tsp, tv[ti].age, tv[ti].rel);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, sw, sh, 0, GL_BGRA, GL_UNSIGNED_BYTE, tsp);
+                    static std::vector<uint32_t> tsv; glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, spw, sph, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(std::vector<uint32_t>(tsp, tsp + (size_t)spw * sph), (size_t)spw * sph, tsv));   /* 안드 GLES2: GL_RGBA8/BGRA 직업로드는 텍스처 불완전 → 검정 네모. 오버레이와 같은 gh_up 경로 */
                     glViewport((int)(tv[ti].x * (float)dw) - tvw / 2, dh - (int)(tv[ti].y * (float)dh) - tvh / 2, tvw, tvh);
                     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
                 }

@@ -14,10 +14,13 @@ inline void Ui::d_screen(Canvas & c) {   /* t48c (#624·#625): 필터 1줄 + 효
     { const std::string nm[14] = { phr_("적용 범위"), phr_("비율"), phr_("필터"), phr_("주사선"), phr_("마스크"), phr_("RGB 번짐"), phr_("빛 번짐"), phr_("곡면"), phr_("창 배율"), phr_("전체화면"), "FPS / Speed", phr_("indiv_reset"), phr_("preset"), phr_("ph_title") };
       for (int id : ri) n.push_back(id == 14 ? std::string(phr_("bg_row")) : (own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id]); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
-    { std::vector<bool> dm(n.size(), false); for (size_t q = 0; q < ri.size(); q++) if (ri[q] == 13 && s.ratio == 2) dm[q] = true; items(c, 40, 44, 256, n, sel, PY, &dm); }
+    const int NR = (int)ri.size(), CAP = 180 / PY + 1; const int top = lst_win(NR, sel, CAP);   /* kx-nova: 스크롤 */
+    { std::vector<bool> dm(n.size(), false); for (size_t q = 0; q < ri.size(); q++) if (ri[q] == 13 && s.ratio == 2) dm[q] = true;
+      const size_t e2 = (size_t)std::min(NR, top + CAP); std::vector<std::string> n2(n.begin() + top, n.begin() + e2); std::vector<bool> d2(dm.begin() + top, dm.begin() + e2); items(c, 40, 44, 256, n2, sel - top, PY, &d2); }
+    lst_arrows(c, top, NR, CAP, 296, 29, 228);
     rbox(c, 320, 24, 304, 220, WH, phr_("선택지"));
     auto row = [&](int i) { return rs == i; };
-    auto Y = [&](int id) { int k = 0; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; return 44 + k * PY; };
+    auto Y = [&](int id) { int k = 0; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; if (k < top || k >= top + CAP) return -20000; return 44 + (k - top) * PY; };
     const char * sc[] = { phr_("전역"), phr_("scope_this") }; choices(c, 344, Y(0), sc, 2, scope, WH, row(0));
     { const int pp = pre_pos(); const int nb = PRE_NB + (int)presets.size(); const std::string pn = pp >= 0 ? pre_name(pp) : std::string(phr_("preset_custom")); (void)nb; text(c, 344, Y(12), std::string("< ") + pn + " >", row(12) ? CY : WH, K); }   /* 빌드 6: 프리셋 줄 */
     const char * rt[] = { "4:3", "16:10", phr_("정수배") }; choices(c, 344, Y(1), rt, 3, s.ratio, WH, row(1));
