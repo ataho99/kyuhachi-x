@@ -40,13 +40,15 @@ static inline void draw(Canvas & c, const Settings & s, int ms) {
             if (x < 0 || y < 0 || x >= W || y >= H) continue;
             dot(c, x, y, u > 0.6 ? 3 : 2, sc(i % 3 == 0 ? CY : WH, (int)(L * (0.2 + 0.8 * u))));
         }
-    } else {   /* noise: ~300 dots per frame at <= 30 % brightness, re-drawn every period (not a CRT overlay) */
-        static const unsigned PER[3] = { 250u, 120u, 60u };
-        const uint32_t step = (uint32_t)ms / PER[sp]; const int NL = L < 0x4C ? L : 0x4C;
+    } else {   /* noise: 300 dots, each fades in and out smoothly (own phase) and jumps to a new spot when invisible */
+        static const double CYC[3] = { 2.4, 1.5, 0.9 }; const int NL = L < 0x4C ? L : 0x4C;
         for (int i = 0; i < NOISEN; i++) {
-            const uint32_t h = hash(step * 1315423911u + (uint32_t)i * 2654435761u);
-            const int lv = (int)(NL * (0.4 + 0.6 * (double)((h >> 20) & 255u) / 255.0));
-            dot(c, (int)(h % (uint32_t)W), (int)((h >> 10) % (uint32_t)H), 2, sc(WH, lv));
+            const uint32_t h0 = hash((uint32_t)i * 2654435761u + 3u);
+            const double q = t / CYC[sp] + (double)(h0 & 1023u) / 1024.0;
+            const uint32_t k = (uint32_t)q; const double u = q - (double)k;
+            const uint32_t h = hash(k * 1315423911u + (uint32_t)i * 2246822519u + 11u);
+            const double tri = u < 0.5 ? u * 2.0 : 2.0 - u * 2.0;
+            dot(c, (int)(h % (uint32_t)W), (int)((h >> 10) % (uint32_t)H), 2, sc(WH, (int)(NL * tri)));
         }
     }
 }
