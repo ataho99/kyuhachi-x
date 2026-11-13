@@ -25,7 +25,7 @@ struct Settings {
     int fpsd = 0;
     int cpuspd = 0;   /* t665: 0 표준 1 빠름 2 매우빠름 3 최대 */       /* FPS / speed display 0 off 1 on (ini key fpsdisp) */
     int stk_l = 0, stk_r = 2, dz_l = 0, dz_r = 0, stk_sp = 2;   /* #624: stick role 0 off 1 d-pad 2 mouse (left default off, right default mouse); deadzone level 0 default .. 3 largest; mouse speed 1 slow .. 3 fast */
-    int bgfx = 1, bgspd = 0, bgbri = 1;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise / speed / brightness */
+    int bgfx = 1, bgspd = 0, bgbri = 1;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise 5-12 bars,sine,liss,tunnel,rain,speed,plasma,moire / speed / brightness */
     int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) — phos_norm() moves it. 0 = all off */
     static int phos_norm(int v) {   /* #S1: clamp + move an old-format persistence (bits 2-3) to bits 8-10: old 40 -> 27 ms, old 90/160 -> 40 ms */
         v = v < 0 ? 0 : v > 2047 ? 2047 : v; int lg = (v >> 2) & 3;
@@ -126,7 +126,7 @@ static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587
     if (m & (1u << 25)) fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* 0 도 쓴다 (T252) */
 }
 static bool ini_set(Settings & s, const std::string & k, int v) {
-    if (k == "bgfx") { s.bgfx = v < 0 ? 0 : v > 4 ? 4 : v; return true; }
+    if (k == "bgfx") { s.bgfx = v < 0 ? 0 : v > 12 ? 12 : v; return true; }
     if (k == "bgspd") { s.bgspd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "bgbri") { s.bgbri = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "phos") { s.phos = Settings::phos_norm(v); return true; }   /* t662 (#635), #S1: 옛 잔광 칸 이전 */

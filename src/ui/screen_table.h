@@ -62,7 +62,8 @@ inline void Ui::draw_body(Canvas & c) {
     c.bgfill = false;
     if (scr != S_GAME && scr != S_KEYS && !(in_game && (scr == S_QUIT || scr == S_SWAP || scr == S_SWAPI))) {
         c.rect(0, 0, c.w, c.h, K);
-        if (!in_game && g.bgfx > 0) { c.bgfill = true; bgx::draw(c, g, ts_ms); }   /* kx-bg: behind everything */
+        const int fxe = bgfx_pv() >= 0 ? bgfx_pv() : g.bgfx;   /* kx-bg: the effect page previews the cursor row */
+        if (!in_game && fxe > 0) { c.bgfill = true; bgx::draw(c, g, ts_ms, fxe); }   /* kx-bg: behind everything */
     }
     switch (scr) {
     case S_MAIN: d_main(c, 0); break;
