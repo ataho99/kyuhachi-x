@@ -8,7 +8,8 @@
 #include <string>
 #include <fstream>
 #include <algorithm>
-#include <filesystem>
+#include <functional>
+#include <cstdint>
 #define STBI_ONLY_PNG
 #define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
@@ -124,29 +125,25 @@ static void sprite_bf(uint32_t * b, int age, int rel) {
 struct UFrames { bool tried = false, ok = false; int w = 0, h = 0, ms = 90, fade = 200; float scale = 1.0f; std::vector<std::vector<uint32_t> > fr; };
 static UFrames g_u;
 static std::string trim_(const std::string & s) { size_t a = s.find_first_not_of(" \t\r\n"), b = s.find_last_not_of(" \t\r\n"); return a == std::string::npos ? std::string() : s.substr(a, b - a + 1); }
-static void load_user(const std::string & base) {
+typedef std::function<void(const std::string &, std::vector<std::string> &, std::vector<std::string> *)> LsFn;
+typedef std::function<bool(const std::string &, std::vector<uint8_t> &)> RdFn;
+static void load_user(const std::string & base, char sep, const LsFn & ls, const RdFn & rd) {
     if (g_u.tried) return; g_u.tried = true;
-    namespace fs = std::filesystem; std::error_code ec;
-    const fs::path root = fs::u8path(base); if (!fs::is_directory(root, ec)) return;
-    std::vector<std::string> names;
-    for (fs::directory_iterator it(root, ec), en; !ec && it != en; it.increment(ec)) { std::error_code e2; if (it->is_directory(e2)) names.push_back(it->path().filename().u8string()); }
-    if (names.empty()) return; std::sort(names.begin(), names.end());
-    std::string use = names[0];
-    { std::ifstream uf(root / "_use.txt"); std::string ln; if (uf && std::getline(uf, ln)) { ln = trim_(ln); for (size_t i = 0; i < names.size(); i++) if (names[i] == ln) use = ln; } }
-    const fs::path dir = root / fs::u8path(use);
-    { std::ifstream cf(dir / "config.txt"); std::string ln;
-      while (cf && std::getline(cf, ln)) { const size_t q = ln.find('='); if (q == std::string::npos) continue; const std::string k = trim_(ln.substr(0, q)), v = trim_(ln.substr(q + 1));
-          if (k == "frame_ms") g_u.ms = std::max(30, std::min(1000, atoi(v.c_str())));
-          else if (k == "fade_ms") g_u.fade = std::max(0, std::min(220, atoi(v.c_str())));
-          else if (k == "scale") g_u.scale = (float)std::max(0.25, std::min(8.0, atof(v.c_str()))); } }
-    std::vector<std::string> pf;
-    for (fs::directory_iterator it(dir, ec), en; !ec && it != en; it.increment(ec)) { std::error_code e2; if (!it->is_regular_file(e2)) continue;
-        std::string fn = it->path().filename().u8string(), ex = it->path().extension().u8string(); for (size_t i = 0; i < ex.size(); i++) ex[i] = (char)tolower((unsigned char)ex[i]);
-        if (ex == ".png") pf.push_back(fn); }
+    std::vector<std::string> files, names; ls(base, files, &names); if (names.empty()) return; std::sort(names.begin(), names.end());
+    std::string use = names[0]; std::vector<uint8_t> bu;
+    if (rd(base + sep + "_use.txt", bu) && !bu.empty()) { std::string t((const char *)bu.data(), bu.size()); const size_t nl = t.find('\n'); const std::string ln = trim_(nl == std::string::npos ? t : t.substr(0, nl)); for (size_t i = 0; i < names.size(); i++) if (names[i] == ln) use = ln; }
+    const std::string dir = base + sep + use; std::vector<uint8_t> bc;
+    if (rd(dir + sep + "config.txt", bc) && !bc.empty()) { std::string t((const char *)bc.data(), bc.size()); size_t pos = 0;
+        while (pos < t.size()) { size_t e = t.find('\n', pos); if (e == std::string::npos) e = t.size(); const std::string ln = t.substr(pos, e - pos); pos = e + 1;
+            const size_t q = ln.find('='); if (q == std::string::npos) continue; const std::string k = trim_(ln.substr(0, q)), v = trim_(ln.substr(q + 1));
+            if (k == "frame_ms") g_u.ms = std::max(30, std::min(1000, atoi(v.c_str())));
+            else if (k == "fade_ms") g_u.fade = std::max(0, std::min(220, atoi(v.c_str())));
+            else if (k == "scale") g_u.scale = (float)std::max(0.25, std::min(8.0, atof(v.c_str()))); } }
+    std::vector<std::string> all, pf; ls(dir, all, NULL);
+    for (size_t i = 0; i < all.size(); i++) { std::string l = all[i]; for (size_t k = 0; k < l.size(); k++) l[k] = (char)tolower((unsigned char)l[k]); if (l.size() > 4 && l.compare(l.size() - 4, 4, ".png") == 0) pf.push_back(all[i]); }
     std::sort(pf.begin(), pf.end(), [](const std::string & a, const std::string & b) { return a.size() != b.size() ? a.size() < b.size() : a < b; });   /* frame2 < frame10 */
     for (size_t i = 0; i < pf.size() && g_u.fr.size() < 16; i++) {
-        std::ifstream f(dir / fs::u8path(pf[i]), std::ios::binary); if (!f) continue;
-        std::vector<unsigned char> buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>()); if (buf.empty() || buf.size() > 2u * 1024u * 1024u) continue;
+        std::vector<uint8_t> buf; if (!rd(dir + sep + pf[i], buf) || buf.empty() || buf.size() > 2u * 1024u * 1024u) continue;
         int w = 0, h = 0, n = 0; unsigned char * px = stbi_load_from_memory(buf.data(), (int)buf.size(), &w, &h, &n, 4); if (!px) continue;
         if (w < 1 || h < 1 || w > 128 || h > 128 || (!g_u.fr.empty() && (w != g_u.w || h != g_u.h))) { stbi_image_free(px); continue; }
         g_u.w = w; g_u.h = h; std::vector<uint32_t> fr((size_t)w * h);

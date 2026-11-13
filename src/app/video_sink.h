@@ -228,6 +228,8 @@ static void gl_patch_crt(std::string & src) {
     }
 }
 #include "app/gl_phos.h"
+static void gh_list_dir(const std::string & dir, std::vector<std::string> & files, std::vector<std::string> * subdirs);
+static bool gh_read_all(const std::string & p, std::vector<uint8_t> & out);
 static bool gl_init_all(void) {   /* 메인 스레드, 컨텍스트 current 상태에서 */
 #if defined(GH_GLES)
     if (!gh_gles_load()) return false;
@@ -371,9 +373,9 @@ static int SDLCALL gl_thread(void *) {
         if (!gApp.shot_req && gApp.ui_.g.touchfx > 0 && srw > 0 && dw > 0 && dh > 0 && gApp.prog_ov.ok) {   /* kx-touch: 터치 표시 */
             static GLuint tx_tex = 0; tfx::g_win = gApp.win;
 #if defined(__ANDROID__)
-            if (gApp.ui_.g.touchfx == 3) tfx::load_user(std::string("/sdcard/Kyuhachi/touch"));
+            if (gApp.ui_.g.touchfx == 3) tfx::load_user(std::string("/sdcard/Kyuhachi/touch"), '/', tfx::LsFn([](const std::string & d, std::vector<std::string> & f, std::vector<std::string> * s) { gh_list_dir(d, f, s); }), tfx::RdFn([](const std::string & pth, std::vector<uint8_t> & o) { return gh_read_all(pth, o); }));
 #else
-            if (gApp.ui_.g.touchfx == 3) tfx::load_user(gApp.exedir + "\\touch");
+            if (gApp.ui_.g.touchfx == 3) tfx::load_user(gApp.exedir + "\\touch", '\\', tfx::LsFn([](const std::string & d, std::vector<std::string> & f, std::vector<std::string> * s) { gh_list_dir(d, f, s); }), tfx::RdFn([](const std::string & pth, std::vector<uint8_t> & o) { return gh_read_all(pth, o); }));
 #endif
             if (!tfx::g_reg) { tfx::g_reg = true; SDL_AddEventWatch(tfx::watch, NULL); }
             tfx::V tv[tfx::NP]; const int tn = tfx::collect(SDL_GetTicks(), gApp.ui_.g.tfxmouse != 0, tv);

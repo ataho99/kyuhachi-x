@@ -9,6 +9,7 @@ inline void Ui::d_save(Canvas & c) {
         std::string s = phr_("슬롯 ") + slot_lbl(i) + "   " + (u ? si->stamp : phr_("(비어 있음)"));
         if (i == slotsel) { c.rect(34, yy - 3, 256, 22, WH); text(c, 40, yy, s, K, WH); } else text(c, 40, yy, s, u ? CY : GY, K);
     }
+    if (sv_arm == slotsel && in_game && save_mode) text(c, 40, 192, phr_("sv_over"), YL, K);
     rbox(c, 320, 24, 304, 296, WH, phr_("인포메이션"));
     const SlotInfo * si = gm ? &gm->slot[slotsel] : NULL;
     if (si && si->used) {
@@ -21,7 +22,8 @@ inline void Ui::d_save(Canvas & c) {
 }
 inline void Ui::k_save(UKey k, Act & a) {
     do {
-        if (k == UK_OK && in_game && save_mode) { a.t = A_SAVE; a.game = cur; a.slot = slotsel; }
+        if (k != UK_OK) sv_arm = -1;
+        if (k == UK_OK && in_game && save_mode) { const UiGame * gq = game(); if (gq && slotsel >= 0 && slotsel < 5 && gq->slot[slotsel].used && sv_arm != slotsel) { sv_arm = slotsel; break; } sv_arm = -1; a.t = A_SAVE; a.game = cur; a.slot = slotsel; }
         else if (k == UK_OK) { if (!in_game && !blk_cur().empty()) { startsel = 1; start_ret = S_MAIN; go(S_START, 1); break; } a.t = A_LOAD; a.game = cur; a.slot = slotsel; }   /* t48b2 (#632): 메뉴에서 슬롯 불러오기도 block 이면 같은 「게임 시작」 팝업(사유 표시)으로 막는다. 게임 안(in_game)은 이미 돌고 있어 해당 없음 */
         else if (k == UK_SQ && in_game) { a.t = A_SAVE; a.game = cur; a.slot = slotsel; }
         else if (k == UK_TRI) { const UiGame * gm0 = game(); if (gm0 && slotsel >= 0 && slotsel < 5 && gm0->slot[slotsel].used) yn_open(S_SAVE, YN_DELSLOT, phr_("슬롯 ") + slot_lbl(slotsel) + phr_("의 저장을 지웁니다."), phr_("지운 저장은 되돌릴 수 없습니다."), phr_("지울까요?"), slotsel); }   /* t52e (#131 ②) */
