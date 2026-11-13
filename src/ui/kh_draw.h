@@ -157,7 +157,11 @@ static int text_bmp(Canvas & c, const BmpFont & f, int x, int y, const std::stri
 }
 static std::string fit(const std::string & s, int maxw);
 static void rbox(Canvas & c, int x, int y, int w, int h, uint32_t col, const char * title) {
-    /* kx-nova: 상자 안쪽은 비워 둔다(배경 효과가 비침). 글자·선택 막대·테두리는 그대로 불투명 */
+    /* kx-nova: 상자 안쪽은 비워 둔다(배경 효과가 비침). 글자·선택 막대·테두리는 그대로 불투명. 상자 안쪽 점은 바깥의 70% 밝기 */
+    if (c.bgfill) for (int j = y + 1; j < y + h - 1; j++) for (int i = x + 1; i < x + w - 1; i++) {
+        if ((unsigned)i >= (unsigned)c.w || (unsigned)j >= (unsigned)c.h) continue;
+        uint32_t & q = c.p[(size_t)j * c.w + i]; q = ((((q >> 16) & 255u) * 7 / 10) << 16) | ((((q >> 8) & 255u) * 7 / 10) << 8) | ((q & 255u) * 7 / 10);
+    }
     c.rect(x + 3, y, w - 6, 1, col); c.rect(x + 3, y + h - 1, w - 6, 1, col); c.rect(x, y + 3, 1, h - 6, col); c.rect(x + w - 1, y + 3, 1, h - 6, col);
     c.set(x + 2, y + 1, col); c.set(x + 1, y + 2, col); c.set(x + w - 3, y + 1, col); c.set(x + w - 2, y + 2, col);
     c.set(x + 2, y + h - 2, col); c.set(x + 1, y + h - 3, col); c.set(x + w - 3, y + h - 2, col); c.set(x + w - 2, y + h - 3, col);
