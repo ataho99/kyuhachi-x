@@ -170,6 +170,16 @@ public class KhActivity extends SDLActivity {
     }
 
     // t145: 프로세스 재시작 -- 별 프로세스 KhPhoenix 가 이 프로세스를 끝내고 앱을 다시 띄운다(next_args.txt 의 인자로 시작).
+    /* t789: 진동 — ms 길이, amp 1..255(API26+ 세기 지원, 아래는 길이만). 실패는 조용히 무시 */
+    public void khVibrate(int ms, int amp) {
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+            if (v == null || !v.hasVibrator()) return;
+            if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createOneShot(ms, amp < 1 ? 1 : (amp > 255 ? 255 : amp)));
+            else v.vibrate(ms);
+        } catch (Throwable t) { }
+    }
+
     public void khRestart() {
         try {
             Intent i = new Intent(this, KhPhoenix.class);

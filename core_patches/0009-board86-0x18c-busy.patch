@@ -1,0 +1,35 @@
+--- a/board86.c
++++ b/board86.c
+@@ -125,11 +125,12 @@
+ 
+ static REG8 IOINPCALL opna_i18c(UINT port) {
+ 
++	/* kh806: bit7(busy) is never set; when the extension is off return status instead of 0xff (Viper CTR polls 0x18c bit7 forever) */
++	(void)port;
+ 	if (opn.extend) {
+-		return((fmtimer.status & 3) | (opn.adpcmmask & 8));
++		return((REG8)(((fmtimer.status & 3) | (opn.adpcmmask & 8)) & 0x7f));
+ 	}
+-	(void)port;
+-	return(0xff);
++	return((REG8)(fmtimer.status & 3));
+ }
+ 
+ static REG8 IOINPCALL opna_i18e(UINT port) {
+@@ -225,12 +226,12 @@
+ 
+ static REG8 IOINPCALL opnac_i18c(UINT port) {
+ 
++	/* kh806: same as opna_i18c */
++	(void)port;
+ 	if (opn.extend) {
+-		return((fmtimer.status & 3) | adpcm_status(&adpcm));
+-//		return((fmtimer.status & 3) | (opn.adpcmmask & 8));
++		return((REG8)(((fmtimer.status & 3) | adpcm_status(&adpcm)) & 0x7f));
+ 	}
+-	(void)port;
+-	return(0xff);
++	return((REG8)(fmtimer.status & 3));
+ }
+ 
+ static REG8 IOINPCALL opnac_i18e(UINT port) {

@@ -113,10 +113,31 @@ static bool gh_dsk_load(const std::string & sp) {   /* 상태 적용이 성공�
         if (d < 4 && gApp.disk_fh[d] && !gApp.disk_wp[d].empty() && gh_bn_(gApp.disk_nm[d]) == gh_bn_(nm)) {
             if (fileno(gApp.disk_fh[d]) < 0) { std::string rn = gApp.disk_nm[d]; bool ra = gh_attach((int)d, rn.c_str(), true); gh_log("DSK reattach drive %u %s %s (t740: 불러오기 중 디스크 핸들이 닫혀 있었음)", d, rn.c_str(), ra ? "OK" : "FAIL"); }   /* t740 */
             bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; }
+        else if (d < 2 && gh_bn_(gApp.disk_nm[d]) != gh_bn_(nm) && gh_attach((int)d, gh_bn_(nm).c_str(), true)) {   /* t796: 디스크를 바꿔 끼운 채 저장 → 이어하기 때 저장된 디스크를 다시 끼운 뒤 쓰기 데이터 복원 */
+            gh_log("DSK remount drive %u %s (resume: swapped in the disk from save time)", d, gh_bn_(nm).c_str());
+            if (!gApp.disk_wp[d].empty()) { bool ok = gh_z_unpack(&b[pos], (size_t)zs, raw, gApp.disk_fh[d]); gh_log("DSK restore drive %u %s %s", d, nm.c_str(), ok ? "OK" : "FAIL"); if (!ok) all = false; } }
         else gh_log("DSK skip drive %u %s (no matching disk in that drive)", d, nm.c_str());
         pos += (size_t)zs;
     }
     return all;
+}
+/* t799: 슬롯 정보란용 — .dsk 머리의 드라이브 0·1 디스크 이름을 「A: …이름끝」 꼴 문자열로 (없으면 빈 문자열) */
+static std::string gh_dsk_label(const char * dl, const std::string & nm0) {
+    std::string n = gh_bn_(nm0); size_t dot = n.find_last_of('.'); if (dot != std::string::npos && n.size() - dot <= 5) n = n.substr(0, dot);
+    if (n.size() > 32) { size_t cut = n.size() - 32; while (cut < n.size() && ((unsigned char)n[cut] & 0xC0) == 0x80) cut++; n = "..." + n.substr(cut); }
+    return std::string(dl) + ": " + n; }
+static void gh_dsk_names(const std::string & sp, std::string & la, std::string & lb) {
+    std::string dp = sp + ".dsk"; FILE * f = fopen(dp.c_str(), "rb"); if (!f) return;
+    std::vector<uint8_t> b; { std::vector<uint8_t> t(1 << 20); for (;;) { size_t n = fread(t.data(), 1, t.size(), f); if (!n) break; b.insert(b.end(), t.begin(), t.begin() + n); } } fclose(f);
+    if (b.size() < 20 || memcmp(b.data(), "G98D", 4) != 0 || gh_dg32(&b[b.size() - 4]) != gh_crc(b.data(), b.size() - 4)) return;
+    uint32_t cnt = gh_dg32(&b[12]); size_t pos = 16, end = b.size() - 4;
+    for (uint32_t k = 0; k < cnt; k++) {
+        if (pos + 6 > end) break; uint32_t d = gh_dg32(&b[pos]); pos += 4; size_t nl = (size_t)b[pos] | ((size_t)b[pos + 1] << 8); pos += 2;
+        if (pos + nl + 16 > end) break; std::string nm((const char *)&b[pos], nl); pos += nl; uint64_t zs = gh_dg64(&b[pos + 8]); pos += 16;
+        if (pos + zs > end) break;
+        if (d == 0) la = gh_dsk_label("A", nm); else if (d == 1) lb = gh_dsk_label("B", nm);
+        pos += (size_t)zs;
+    }
 }
 static bool gh_do_save(const std::string & path, bool test_extract) {
     gh_state_diag("before-save");
@@ -138,8 +159,24 @@ static bool gh_do_save(const std::string & path, bool test_extract) {
     }
     return ok;
 }
+/* t799: 상태 로드 전에 .dsk 머리의 디스크 이름을 읽어, 지금 끼운 것과 다르면(드라이브 0·1) 저장 당시 디스크로 먼저 바꿔 끼운다 — 코어의 disk image mismatch 검사 통과용 */
+static void gh_dsk_preattach(const std::string & sp) {
+    std::string dp = sp + ".dsk"; FILE * f = fopen(dp.c_str(), "rb"); if (!f) return;
+    std::vector<uint8_t> b; { std::vector<uint8_t> t(1 << 20); for (;;) { size_t n = fread(t.data(), 1, t.size(), f); if (!n) break; b.insert(b.end(), t.begin(), t.begin() + n); } } fclose(f);
+    if (b.size() < 20 || memcmp(b.data(), "G98D", 4) != 0 || gh_dg32(&b[b.size() - 4]) != gh_crc(b.data(), b.size() - 4)) return;
+    if (gh_dg32(&b[8]) != gh_state_tailcrc(sp)) return;
+    uint32_t cnt = gh_dg32(&b[12]); size_t pos = 16, end = b.size() - 4;
+    for (uint32_t k = 0; k < cnt; k++) {
+        if (pos + 6 > end) break; uint32_t d = gh_dg32(&b[pos]); pos += 4; size_t nl = (size_t)b[pos] | ((size_t)b[pos + 1] << 8); pos += 2;
+        if (pos + nl + 16 > end) break; std::string nm((const char *)&b[pos], nl); pos += nl; uint64_t zs = gh_dg64(&b[pos + 8]); pos += 16;
+        if (pos + zs > end) break;
+        if (d < 2 && gApp.disk_fh[d] && gh_bn_(gApp.disk_nm[d]) != gh_bn_(nm)) { bool ok = gh_attach((int)d, gh_bn_(nm).c_str(), true); gh_log("DSK preattach drive %u %s %s (t799: swapped in the saved disk before state load)", d, gh_bn_(nm).c_str(), ok ? "OK" : "FAIL"); }
+        pos += (size_t)zs;
+    }
+}
 static bool gh_do_load(const std::string & path) {
     gh_state_diag("before-load");
+    gh_dsk_preattach(path);
     std::string err;
     bool ok = PC98_SaveState_FromFile(path.c_str(), gApp.disks, err);
     gh_log("LOAD %s <- %s %s", path.c_str(), ok ? "OK" : "FAIL", err.c_str());
@@ -165,6 +202,7 @@ static std::string gh_slot_n(int gi, int slot /*1b: 0 자동 · 1 퀵 · 2~4 일
 }
 static void gh_autosave(void) {   /* 1b: 「메인 메뉴로」·「끝내기」 때 자동 슬롯에 저장 */
     if (!gApp.boot_tick || gApp.cur_game < 0 || gApp.cur_game >= (int)gApp.ui_.games.size()) return;
+    if (gApp.resume_slot) { gh_log("AUTOSAVE skipped: before resume load (t798 - keeps the pre-load state out of the auto slot)"); return; }
     plat::mkdir(gApp.savedir.c_str()); plat::mkdir((gApp.savedir + "\\" + gApp.ui_.games[gApp.cur_game].id).c_str());
     bool ok = gh_do_save(gh_slot_n(gApp.cur_game, 0), false); gh_log("AUTOSAVE %s", ok ? "OK" : "FAIL");
 }

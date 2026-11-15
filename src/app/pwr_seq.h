@@ -268,7 +268,7 @@ static void handler(Bitu len) {
     }
 }
 static void apply(int pwrseq, int hddhum, int hvol, const std::string & rd) {
-    if (pwrseq < 0) pwrseq = 0; if (pwrseq > 1) pwrseq = 1;
+    if (pwrseq < 0) pwrseq = 0; if (pwrseq > 2) pwrseq = 2;
     if (hddhum < 0) hddhum = 0; if (hddhum > 2) hddhum = 2;   /* C1R5: 3-state */
     if (hvol < 0) hvol = 0; if (hvol > 8) hvol = 8;
     S.pwrseq = pwrseq; S.hddhum = hddhum; S.hvol = hvol;

@@ -99,7 +99,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         Settings & s = (sel == 0) ? eff() : edit();
         UKey kk = k;   /* kx-touch: 선택지 없는 값 줄을 탭(○)하면 오른쪽 절반 = 오른쪽 키, 왼쪽 절반 = 왼쪽 키 */
         if (k == UK_OK && ov::g_tap_half != 0) { const int th = ov::g_tap_half; const bool fresh = ov::tap_now_ms() - ov::g_tap_ms < 400; ov::g_tap_half = 0;
-            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = sel >= 1 && sel <= 8; else sl = (sel >= 1 && sel <= 2) || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || (sel >= 29 && sel <= 32); }
+            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = sel >= 1 && sel <= 8; else sl = (sel >= 1 && sel <= 2) || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || sel == 34 || (sel >= 29 && sel <= 32); }
             if (sl) kk = th > 0 ? UK_RIGHT : UK_LEFT; }
         if (kk == UK_LEFT || kk == UK_RIGHT) {
             int d = (kk == UK_RIGHT) ? 1 : -1;
@@ -122,10 +122,11 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 7) s.bsound = clampi(s.bsound + d, 0, 2);
                 if (sel == 16) s.dsnd = clampi(s.dsnd + d, 0, 2);   /* #641 */
                 if (sel == 17) s.dvol = clampi(s.dvol + d, 0, 8);
-                if (sel == 19) s.pwrseq = clampi(s.pwrseq + d, 0, 1);
+                if (sel == 19) s.pwrseq = clampi(s.pwrseq + d, 0, 2);
                 if (sel == 20) s.hddhum = clampi(s.hddhum + d, 0, 2);
                 if (sel == 21) s.hvol = clampi(s.hvol + d, 0, 8);
                 if (sel == 26) s.mclick = clampi(s.mclick + d, 0, 1); /*E1R*/
+                if (sel == 34) s.vibe = clampi(s.vibe + d, 0, 1);   /* t794 */
                 if (sel == 29) s.touchfx = clampi(s.touchfx + d, 0, 3);   /* kx-touch */
                 if (sel == 30) s.tfxsz = clampi(s.tfxsz + d, 0, 1);
                 if (sel == 31) s.tfxmouse = clampi(s.tfxmouse + d, 0, 1);
@@ -146,7 +147,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         else { e.bgm = def.bgm; e.se = def.se; e.bmult = def.bmult; e.cpuspd = def.cpuspd;
             e.bmode = def.bmode; e.boot = def.boot; e.bosd = def.bosd; e.bsound = def.bsound;
             if (conf_grp == 1) { e.dsnd = def.dsnd; e.dvol = def.dvol; e.pwrseq = def.pwrseq;
-                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; /*E1R*/
+                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; e.vibe = def.vibe; /*E1R*/
                 e.touchfx = def.touchfx; e.tfxsz = def.tfxsz; e.tfxmouse = def.tfxmouse; e.tmouse = def.tmouse; e.backpos = def.backpos;   /* kx-touch */ }
             e.ovbtn = def.ovbtn; e.ovpos_mode = def.ovpos_mode; e.ovpos_edge = def.ovpos_edge;
             e.ovpos_align = def.ovpos_align; e.ovpos_free = def.ovpos_free;

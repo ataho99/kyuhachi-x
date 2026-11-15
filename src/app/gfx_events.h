@@ -1,5 +1,32 @@
 static void gh_finish(int rc);   /* t139: 전방 선언 */
 /* app/gfx_events.h -- S9b: GFX_Events. Moved unchanged from gensei_host.cpp lines 1795-1992 (as of t54t). Included in place; single translation unit. */
+/* t789: 효과음 감지 진동(안드로이드) — 믹서 출력 에너지(gensei_out_sumsq/n 누적값)의 짧은 구간 RMS 가 느린 평균보다 갑자기 크면 짧게 울린다.
+   android.ini: vibe_snd=0 off (default on) - vibe_sens=20..500 sensitivity (default 100, higher = stronger response). No vibration in menus or while paused. */
+extern double gensei_out_sumsq; extern unsigned long long gensei_out_n;
+static void gh_vibe(int ms, int amp);
+static void gh_vibe_audio_tick(unsigned now) {
+#ifdef __ANDROID__
+    static double ps = 0; static unsigned long long pn = 0; static float avg = -1.0f; static unsigned lastv = 0, lastt = 0; static int on = -1; static float sens = 1.0f; static int logn = 0;
+    if (on < 0) { on = 1; sens = 1.0f; FILE * f = fopen((gApp.exedir + "\\android.ini").c_str(), "r");
+        if (f) { char ln[300]; while (fgets(ln, sizeof ln, f)) { if (!strncmp(ln, "vibe_snd=", 9)) on = atoi(ln + 9) ? 1 : 0; else if (!strncmp(ln, "vibe_sens=", 10)) { int v = atoi(ln + 10); if (v < 20) v = 20; if (v > 500) v = 500; sens = (float)v / 100.0f; } } fclose(f); }
+        gh_log("vibe_snd: %s sens=%.2f", on ? "on" : "off", (double)sens); }
+    if (!on || gApp.menu_open || gApp.headless) { pn = gensei_out_n; ps = gensei_out_sumsq; return; }
+    if (now - lastt < 24u) return;
+    const unsigned long long n = gensei_out_n; const double sq = gensei_out_sumsq;
+    if (n < pn || sq < ps) { pn = n; ps = sq; lastt = now; return; }   /* 다른 쪽(RMS 창 시작 등)이 누적값을 0 으로 되돌림 */
+    const unsigned long long dn = n - pn; if (dn < 800ull) return;
+    const float rms = (float)sqrt((sq - ps) / (double)dn); pn = n; ps = sq; lastt = now;
+    if (avg < 0.0f) avg = rms;
+    const float thr = avg * (1.0f + 0.9f / sens) + 350.0f / sens;
+    if (rms > thr && now - lastv >= 110u) {
+        const float d = rms - avg; int amp = 70 + (int)(d / 40.0f); if (amp > 255) amp = 255; int ms = 14 + (int)(d / 400.0f); if (ms > 40) ms = 40;
+        lastv = now; gh_vibe(ms, amp); if (logn < 24) { logn++; gh_log("vibe_snd #%d rms=%.0f avg=%.0f -> %dms amp=%d", logn, (double)rms, (double)avg, ms, amp); }
+    }
+    avg += (rms - avg) * 0.04f;
+#else
+    (void)now;
+#endif
+}
 void GFX_Events(void) {
     static unsigned int last_ev = 0;
     unsigned int now = SDL_GetTicks();
@@ -58,7 +85,7 @@ void GFX_Events(void) {
                 gh_log("automouse #%u at %u ms dx=%.0f dy=%.0f act=%d", (unsigned)gApp.next_mouse, since, (double)m.dx, (double)m.dy, m.act); gApp.next_mouse++;
             }
             while (gApp.next_inj < gApp.inj.size() && since + gApp.inj_base >= gApp.inj[gApp.next_inj].at) { gh_inj_run(gApp.inj[gApp.next_inj], since + gApp.inj_base); gApp.next_inj++; }   /* t48e (#648): --inject · t51a: 창 안 전환을 건너도 시험 시계가 이어지게 g_inj_base 를 더한다 */
-            kbov::tick(); gh_vpad_tick();   /* t52f: 빠른 불러오기 길게 누름(0.6초) 판정 */
+            kbov::tick(); gh_vpad_tick(); gh_vibe_audio_tick(now);   /* t52f: 빠른 불러오기 길게 누름(0.6초) 판정 */
             if (!gApp.headless && gApp.win && gApp.use_gl) gh_kbtest_tick(since);   /* t46x 시험 전용(옵션이 없으면 아무 일도 안 함) */
             kh_vmouse_pump();   /* t34: 호스트 마우스 이동량을 20ms 마다 ±100 이하로 코어에 */
 #if defined(__ANDROID__)
@@ -96,7 +123,7 @@ void GFX_Events(void) {
                 gh_do_load(gApp.state_path.empty() ? gh_slot_path() : gApp.state_path);
                 gApp.ev_tick = now ? now : 1;
             }
-            if (gApp.resume_slot && since >= 2000) {   /* r012: UI 에서 「이어하기」로 시작 */
+            if (gApp.resume_slot && since >= 300) {   /* r012: UI 에서 「이어하기」로 시작 (t798: 2000→300 ms — 2초 안에 메뉴를 열면 로드가 안 불리던 문제) */
                 int sl = gApp.resume_slot - 1; gApp.resume_slot = 0;
                 bool ok = gh_do_load(gh_slot_n(gApp.cur_game, sl)); gh_log("RESUME slot %d %s", sl + 1, ok ? "OK" : "FAIL"); gh_osd(ok ? phr_("슬롯 ") + ui::Ui::slot_lbl(sl) + phr_(" 에서 이어합니다") : std::string(phr_("이어하기에 실패했습니다")), 2000);
             }

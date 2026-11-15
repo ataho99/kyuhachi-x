@@ -87,7 +87,7 @@ struct Ui {
             r.push_back(13); if (scope == 0) r.push_back(14); if (scope == 1) r.push_back(11); }   /* t662: 13 = phosphor page */
         else { for (int i = 0; i <= 13; i++) { const bool skip = (scope == 1 && (i == 3   /* E2R */
             || i >= 11)) || (conf_grp && i != 0 && conf_grp_of(i) != conf_grp); if (!skip) r.push_back(i);
-            if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) r.push_back(26); /*E1R*/ }
+            if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) { r.push_back(26); r.push_back(34); /*t794 진동*/ } }
             if (i == 10 && scope == 0 && (!conf_grp || conf_grp == 2)) {   /* E2R */
                 if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
                 else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
@@ -231,7 +231,7 @@ struct Ui {
     std::string en_orig; bool enew = false; ent::Kv ed, ed0; std::string ed_name, ed_name0; bool ed_setdef = false;
     std::string msg;             /* 한 줄 알림 */
     std::string yn_msg[3]; int yn_act = 0, ynsel = 1; Scr yn_ret = S_MAIN; int yn_arg = 0;
-    enum { YN_DISCARD, YN_DELETE, YN_TEST, YN_INSTDONE, YN_RESET, YN_TITLE, YN_MAINMENU, YN_DELSLOT, YN_DISKRESET, YN_INDIVRESET, YN_INDIVALL, YN_PREDEL, YN_TIDYHIDE, YN_TIDYMERGE };   /* t52e (#131) */
+    enum { YN_DISCARD, YN_DELETE, YN_TEST, YN_INSTDONE, YN_RESET, YN_TITLE, YN_MAINMENU, YN_DELSLOT, YN_DISKRESET, YN_INDIVRESET, YN_INDIVALL, YN_PREDEL, YN_TIDYHIDE, YN_TIDYMERGE, YN_TIDYDEL };   /* t52e (#131) */
     /* 파일 고르기 */
     std::string fl_key, fl_dir; std::vector<std::pair<std::string, std::string> > fl_roots; int fl_ri = 0, fl_swapi = -1; std::vector<FileItem> fl_items; bool fl_sort_kind = false; Scr fl_ret = S_EDIT;
     /* 자동 입력 · 교체 목록 */
@@ -259,7 +259,7 @@ struct Ui {
     void shr_open_make(int g, int menu_i); void shr_open_import(); void shr_preview(const std::string & code);
     void d_share(Canvas & c); void k_share(UKey k, Act & a); void d_shimp(Canvas & c); void k_shimp(UKey k, Act & a);
     void d_shprev(Canvas & c); void k_shprev(UKey k, Act & a);
-    static int conf_grp_of(int i) { if (i == 28) return 3; if (i >= 22) return 2;   /* E2R: overlay pos rows */
+    static int conf_grp_of(int i) { if (i == 34) return 1; if (i == 28) return 3; if (i >= 22) return 2;   /* E2R: overlay pos rows */
         return (i >= 1 && i <= 3) || i == 16 || i == 17 || i == 19 || i == 20 || i == 21 || i == 26 /*E1R*/ ? 1 : (i == 8 || (i >= 11 && i != 15)) ? 3 : 2; }
     void leave_cfg() {   /* leaving S_SCREEN / S_CONF: back to the settings hub when it was opened from there */
         const bool sc = scr == S_SCREEN;
@@ -829,6 +829,7 @@ struct Ui {
         else if (act == YN_PREDEL) { if (yn_arg >= PRE_NB && yn_arg < PRE_NB + (int)presets.size()) { presets.erase(presets.begin() + (yn_arg - PRE_NB)); pre_i = clampi(pre_i, 0, pre_total() - 1); dirty = true; } scr = yn_ret; }   /* 빌드 6: 내 프리셋 삭제(지금 화면 값은 그대로) */
         else if (act == YN_TIDYHIDE) { a.t = A_TIDY; a.arg = 1; a.slot = yn_arg; scr = S_TIDY; tidy_lvl = 0; }   /* kx-clean: slot=1 이면 세이브도 _old 로 */
         else if (act == YN_TIDYMERGE) { a.t = A_TIDY; a.arg = 2; scr = S_TIDY; tidy_lvl = 0; }
+        else if (act == YN_TIDYDEL) { a.t = A_TIDY; a.arg = 5; a.slot = yn_arg; scr = S_TIDY; tidy_lvl = 0; }   /* t798: 완전삭제 (slot 0 유지 · 1 백업 후 · 2 전부) */
         else if (act == YN_MAINMENU) { a.t = A_MAINMENU; scr = S_GAME; }   /* t52e (#131 ①) */
         else if (act == YN_DELSLOT) { a.t = A_DELSLOT; a.game = cur; a.slot = yn_arg; scr = S_SAVE; }   /* t52e (#131 ②) */
         else if (act == YN_DISKRESET) { a.t = A_EXTRA; a.arg = 6; a.game = cur; scr = S_EXTRA; }   /* t52e (#131 ②) */

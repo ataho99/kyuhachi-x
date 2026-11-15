@@ -49,9 +49,10 @@ static bool gh_ui_main_(std::string & out_id) {
                 continue; }
             if (gh_wm_hotkey(e)) continue;
 #if defined(__ANDROID__)
-            if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { gh_touch_feed(e); continue; }   /* t55a: menu touch */
+            if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { if (e.type == SDL_FINGERDOWN) gh_vibe_menu(); gh_touch_feed(e); continue; }   /* t55a: menu touch */
 #endif
             ui::UKey k = gh_ev2uk(e, NULL); if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) gh_log("DIAG btn -> ev2uk=%d none=%d", (int)k, k == ui::UK_NONE ? 1 : 0); if (k == ui::UK_NONE) continue;
+            if (e.type != SDL_KEYUP && e.type != SDL_CONTROLLERBUTTONUP && e.type != SDL_JOYBUTTONUP && e.type != SDL_MOUSEBUTTONUP) gh_vibe_menu();   /* t791: 런처 메뉴도 미세 진동 */
             ui::Act a = U.key(k);
             pwr::mclk::key(k);   /* E1R: main-menu click */
             switch (a.t) {

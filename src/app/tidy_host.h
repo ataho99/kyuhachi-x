@@ -56,6 +56,22 @@ static bool gh_tidy_move_saves(const std::string & id) {   /* saves\<id> → sav
     std::string dst = root + "\\" + id; int k = 2; while (aw::dir_exists(dst)) dst = root + "\\" + id + "_" + std::to_string(k++);
     return plat::move_file(src, dst);
 }
+#include <ctime>
+/* t798: 완전삭제 보조 — 폴더째 지움(파일 → 하위 폴더 → 자기 자신). 8단계를 넘으면 중단 */
+static bool gh_tidy_rmtree(const std::string & dir, int depth = 0) {
+    if (depth > 8) return false; std::vector<std::string> f, sb; gh_list_dir(dir, f, &sb); bool ok = true;
+    for (auto & n : f) if (!plat::remove_file(dir + "\\" + n)) ok = false;
+    for (auto & n : sb) if (!gh_tidy_rmtree(dir + "\\" + n, depth + 1)) ok = false;
+    return plat::remove_dir(dir) && ok;
+}
+static bool gh_tidy_safe_id(const std::string & id) { return !id.empty() && id.find_first_of("\\/") == std::string::npos && id.find("..") == std::string::npos && id[0] != '_'; }
+/* 원본(srcdir·imgdir)이 작품 폴더 안에 있으면 true — 그런 폴더는 지우지 않는다 */
+static bool gh_tidy_src_inside(const std::string & gdir) {
+    prof::Ini gi; if (!prof::ini_load(gdir + "\\game.ini", gi) || !gi.count("game")) return false; std::map<std::string, std::string> & G = gi["game"];
+    const std::string base = aw::lower(aw::norm_path(gdir)); const char * ks[2] = { "srcdir", "imgdir" };
+    for (int q = 0; q < 2; q++) { auto it = G.find(ks[q]); if (it == G.end() || it->second.empty()) continue; const std::string p = aw::lower(aw::norm_path(it->second)); if (p.size() >= base.size() && p.compare(0, base.size(), base) == 0) return true; }
+    return false;
+}
 static void gh_tidy_do(int arg, int slot) {
     ui::Ui & U = gApp.ui_; const std::string gd = gApp.exedir + "\\games";
     if (arg == 0) { gh_tidy_scan(); return; }
@@ -77,6 +93,20 @@ static void gh_tidy_do(int arg, int slot) {
         bool ok = prof::set_game_key(dd, "tidy_hidden", "1"); if (ok) prof::set_game_key(dd, "merged_into", U.tidy_keep_id);
         gh_log("TIDY merge %s <- %s (saves moved %d) ok=%d", U.tidy_keep_id.c_str(), U.tidy_drop_id.c_str(), mv, ok ? 1 : 0);
         gh_tidy_after_reload(); U.tidy_msg = ok ? phr_("합쳤습니다.") : phr_("합치지 못했습니다."); return;
+    }
+    if (arg == 5) {   /* t798 완전삭제: slot 0 = 작품 폴더만(세이브 유지) · 1 = 세이브·작품 폴더를 세이브\_삭제백업\<id>_<시각> 으로 옮긴 뒤 · 2 = 작품 폴더와 세이브 모두. 원본 이미지는 건드리지 않는다 */
+        int n = 0, bad = 0; char ts[32]; { time_t tt = time(NULL); struct tm * lt = localtime(&tt); if (lt) strftime(ts, sizeof ts, "%Y%m%d_%H%M%S", lt); else snprintf(ts, sizeof ts, "0"); }
+        for (auto & id : U.tidy_ids) {
+            const std::string dir = gd + "\\" + id, sv = gApp.savedir + "\\" + id;
+            if (!gh_tidy_safe_id(id) || !aw::dir_exists(dir) || gh_tidy_src_inside(dir)) { gh_log("TIDY purge skip id=%s", id.c_str()); bad++; continue; }
+            bool ok = true;
+            if (slot == 1) { const std::string root = gApp.savedir + "\\_삭제백업", bk = root + "\\" + id + "_" + ts; aw::make_dir(root); aw::make_dir(bk);
+                if (aw::dir_exists(sv) && !plat::move_file(sv, bk + "\\saves")) ok = false;
+                if (ok && !plat::move_file(dir, bk + "\\game")) { ok = false; if (aw::dir_exists(bk + "\\saves")) plat::move_file(bk + "\\saves", sv); } }
+            else { ok = gh_tidy_rmtree(dir); if (slot == 2 && aw::dir_exists(sv) && !gh_tidy_rmtree(sv)) ok = false; }
+            gh_log("TIDY purge id=%s slot=%d ok=%d", id.c_str(), slot, ok ? 1 : 0); if (ok) n++; else bad++;
+        }
+        gh_tidy_after_reload(); U.tidy_msg = bad ? (n ? phr_("tidy_msg_part") : phr_("tidy_msg_fail")) : phr_("tidy_msg_done"); return;
     }
     if (arg == 3) {   /* 숨긴 항목 되살리기 */
         int n = 0; for (auto & id : U.tidy_ids) { const std::string dir = gd + "\\" + id; if (aw::dir_exists(dir) && prof::set_game_key(dir, "tidy_hidden", "")) n++; }

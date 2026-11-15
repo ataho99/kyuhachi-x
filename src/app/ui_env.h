@@ -19,6 +19,7 @@ static void gh_refresh_game_slots(int gi) {
         if (t >= best) { best = t; G.lastslot = i; }
         std::vector<uint8_t> png; std::string err;
         if (PC98_SaveState_ReadThumb(p.c_str(), png, err) && !png.empty()) gh_png_decode(png, s.th, s.tw_, s.th_);
+        gh_dsk_names(p, s.da, s.db);   /* t799: 슬롯 정보란 디스크 이름 */
     }
     if (G.lastslot >= 0) { G.thmb = G.slot[G.lastslot].th; G.tw_ = G.slot[G.lastslot].tw_; G.th_ = G.slot[G.lastslot].th_; }
 }
@@ -360,8 +361,11 @@ static void gh_ui_init_games(void) {
               prof::Profile q; q.install_required = p.install_required; q.reason = p.reason; q.disk.assign(4, std::string()); for (int i = 0; i < 4; i++) if (p.disk[i]) q.disk[i] = p.disk[i];
               std::map<std::string, std::string> kv = p.kv; if (curated) kv["curated"] = "1"; kv["__id"] = d; if (!autoreg) kv.erase("mouse");   /* 직접 정한 작품은 마우스 때문에 막지 않는다 */
               e.g.dosnote = aw::dos_note(q, kv); e.g.block = aw::block_reason(q, kv); if (e.g.block.empty() && !kvs("block").empty() && kvs("block").find("마우스 필수") == std::string::npos) e.g.block = kvs("block");   /* t48a (#615): 마우스 필수 문구는 막는 사유가 아님 */
-              if (autoreg) { std::string sd, idr; { prof::Ini gi_; if (prof::ini_load(gApp.exedir + "\\games\\" + d + "/game.ini", gi_) && gi_.count("game")) { auto & G_ = gi_["game"]; if (G_.count("srcdir")) sd = G_["srcdir"]; if (G_.count("imgdir")) idr = G_["imgdir"]; } }   /* t724: p.kv 값은 ANSI 로 바뀐 것이라 한글 경로가 깨진다 — game.ini 의 UTF-8 원문으로 본다(목록 정리와 같은 읽기) */
-                  if (gh_path_gone(sd, false) || gh_path_gone(idr, true)) { e.g.nosrc = true; e.g.block = phr_("원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기"); } }   /* #144-2: 원본이 없는 작품은 실행하지 않는다 */
+              if (autoreg) { std::string sd, idr, fls; { prof::Ini gi_; if (prof::ini_load(gApp.exedir + "\\games\\" + d + "/game.ini", gi_) && gi_.count("game")) { auto & G_ = gi_["game"]; if (G_.count("srcdir")) sd = G_["srcdir"]; if (G_.count("imgdir")) idr = G_["imgdir"]; if (G_.count("files")) fls = G_["files"]; } }   /* t724: p.kv 값은 ANSI 로 바뀐 것이라 한글 경로가 깨진다 — game.ini 의 UTF-8 원문으로 본다(목록 정리와 같은 읽기) */
+                  bool fgone_ = false;   /* t798: 폴더는 남았는데 이미지 파일만 지운 작품 — files= 의 이름(전체·|·, 로 쪼갠 것) 중 하나도 폴더에 없으면 「원본 없음」 */
+                  if (!fls.empty() && !idr.empty() && !gh_path_gone(idr, true)) { std::vector<std::string> cand; cand.push_back(fls); for (char sp_ : { '|', ',' }) { size_t b_ = 0; for (;;) { size_t e_ = fls.find(sp_, b_); std::string t_ = fls.substr(b_, e_ == std::string::npos ? std::string::npos : e_ - b_); while (!t_.empty() && t_[0] == ' ') t_.erase(0, 1); while (!t_.empty() && t_.back() == ' ') t_.pop_back(); if (!t_.empty()) cand.push_back(t_); if (e_ == std::string::npos) break; b_ = e_ + 1; } }
+                      bool any_ = false; for (auto & cf_ : cand) if (!gh_path_gone(idr + "/" + cf_, false)) { any_ = true; break; } fgone_ = !any_; }
+                  if (gh_path_gone(sd, false) || gh_path_gone(idr, true) || fgone_) { e.g.nosrc = true; e.g.block = phr_("원본 없음 — 작품 추가 > 목록 정리에서 다시 찾기 / 목록에서 빼기"); } }   /* #144-2: 원본이 없는 작품은 실행하지 않는다 */
               gh_log("LISTBLK id=%s src=%s auto=%d curated=%d mouse=%s entry_req='%s' block='%s' boot=%s/%s", d.c_str(), p.src.c_str(), autoreg ? 1 : 0, curated ? 1 : 0, kvs("mouse").c_str(), prof::g_entry_req.c_str(), e.g.block.c_str(), kvs("__val.boot").c_str(), kvs("__src.boot").c_str()); }
           auto flb = [&](const std::string & f) -> std::string {
               if (p.disk[0] && f == p.disk[0] && !kvs("label_a").empty()) return kvs("label_a"); if (p.disk[1] && f == p.disk[1] && !kvs("label_b").empty()) return kvs("label_b");

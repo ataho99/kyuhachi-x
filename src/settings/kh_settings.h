@@ -45,11 +45,13 @@ struct Settings {
     int ovpos_free = 0;   /* E2R: free pos 0..100 */
     int padbtn = 2;     // virtual pad in the side bands: 0 off, 1 on, 2 auto (on with a touch screen and no real pad)
     int bsound = 2;     /* r017 배속 중 소리: 0 끔 1 빠르게(음높이 상승) 2 음높이 유지 */
-    int dsnd = 0;       /* #641: disk drive sound 0 off 1 seek only 2 on (default off) */
+    int dsnd = 2;       /* #641: disk drive sound 0 off 1 seek only 2 on (t798: 슨상 결정 2026-11-14 — 기본 켬) */
     int dvol = 4;       /* #641: disk sound volume 0..8 */
-    int pwrseq = 1;   /* t667: 0 끔 1 켬(기본 켬) */
+    int pwrseq = 2;   /* t807: 0 끔 1 짧게 2 길게(기본 길게 — 슨상 2026-11-15) */
     int hddhum = 1;   /* t673: 0 끔 1 게임 중만 2 메뉴 포함(기본 1) */
     int hvol = 3;     /* t667: 0..8(기본 3) */
+    int vibe = 1;   /* t794: 진동 0 끔 1 켬(전역 전용) */
+    int vibe_pct = 100;   /* t798: 진동 세기 20..300 %(기본 100 = 지금 세기, 전역 전용) */
     int mclick = 1;   /* E1R: 0 끔 1 켬(기본 켬, 전역 전용) */
     int touchfx = 1;   /* kx-touch: 터치 표시 0 끔 1 도트(기본 켬, 전역 전용) */
     int backpos = 0;   /* kx-touch: 뒤로 화살표 위치 0 좌상 1 우상 2 좌하 3 우하 4 숨김(전역 전용) */
@@ -88,6 +90,8 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "bgfx=%d\nbgspd=%d\nbgbri=%d\n", s.bgfx, s.bgspd, s.bgbri);
     fprintf(f, "dsnd=%d\ndvol=%d\n", s.dsnd, s.dvol);
     fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
+    fprintf(f, "vibe=%d\n", s.vibe);   /* t794 */
+    fprintf(f, "vibe_pct=%d\n", s.vibe_pct);   /* t798 */
     fprintf(f, "mclick=%d\n", s.mclick);   /* E1R */
     fprintf(f, "touchfx=%d\ntfxsz=%d\ntfxmouse=%d\ntmouse=%d\n", s.touchfx, s.tfxsz, s.tfxmouse, s.tmouse);   /* kx-touch */
     fprintf(f, "backpos=%d\n", s.backpos);   /* kx-touch */
@@ -134,9 +138,11 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "phos") { s.phos = Settings::phos_norm(v); return true; }   /* t662 (#635), #S1: 옛 잔광 칸 이전 */
     if (k == "dsnd") { s.dsnd = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* #641 */
     if (k == "dvol") { s.dvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
-    if (k == "pwrseq") { s.pwrseq = v ? 1 : 0; return true; }
+    if (k == "pwrseq") { s.pwrseq = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "hddhum") { s.hddhum = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     if (k == "hvol") { s.hvol = v < 0 ? 0 : v > 8 ? 8 : v; return true; }
+    if (k == "vibe") { s.vibe = v ? 1 : 0; return true; }   /* t794 */
+    if (k == "vibe_pct") { s.vibe_pct = v < 20 ? 20 : v > 300 ? 300 : v; return true; }   /* t798 */
     if (k == "mclick") { s.mclick = v ? 1 : 0; return true; }   /* E1R */
     if (k == "touchfx") { s.touchfx = v < 0 ? 0 : v > 3 ? 3 : v; return true; }   /* kx-touch */
     if (k == "backpos") { s.backpos = v < 0 ? 0 : v > 4 ? 4 : v; return true; }   /* kx-touch */

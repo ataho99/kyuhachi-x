@@ -14,7 +14,7 @@ inline void Ui::d_save(Canvas & c) {
     const SlotInfo * si = gm ? &gm->slot[slotsel] : NULL;
     if (si && si->used) {
         c.rect(343, 43, 258, 162, GY); c.rect(344, 44, 256, 160, K); if (!si->th.empty()) blit_fit(c, si->th.data(), si->tw_, si->th_, 344, 44, 256, 160);   /* #M3: 비율 유지 */ else sample_picture(c, 344, 44, 256, 160);
-        std::string l[4] = { phr_("저장 시각  ") + si->stamp, phr_("상태 파일  ") + std::to_string(si->bytes / 1048576) + "." + std::to_string((si->bytes / 104858) % 10) + "MB", gm->disk[0], gm->disk[1] };
+        std::string l[4] = { phr_("저장 시각  ") + si->stamp, phr_("상태 파일  ") + std::to_string(si->bytes / 1048576) + "." + std::to_string((si->bytes / 104858) % 10) + "MB", si->da.empty() ? gm->disk[0] : si->da, si->db.empty() ? gm->disk[1] : si->db };
         for (int i = 0; i < 4; i++) if (!l[i].empty()) text(c, 344, 214 + i * 20, l[i], WH, K);
     } else text(c, 344, 120, phr_("비어 있는 슬롯입니다."), GY, K);
     desc(c, 328, 44, { in_game ? (save_mode ? phr_("sv_desc_save") : phr_("고른 슬롯에 저장하거나 불러옵니다.")) : phr_("선택한 슬롯에서 이어서 시작합니다.") }, -1, in_game ? (save_mode ? phr_("sv_help_save") : phr_("↑↓:선택, ○:불러오기, □:이 슬롯에 저장, △:삭제, ×:취소")) : phr_("↑↓:선택, ○:불러오기, △:삭제, ×:취소"));
