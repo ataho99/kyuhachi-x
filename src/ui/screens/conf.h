@@ -6,12 +6,12 @@ inline void Ui::d_conf(Canvas & c) {
     rbox(c, 16, 24, 288, 296, WH, phr_("동작 환경 설정"));
     const std::vector<int> ri = rowids(S_CONF);
     const bool own = scope == 1 && cur >= 0 && cur < MAXG; const bool ind = own && ovm[cur] != 0u;
-    static const unsigned rb[35] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
+    static const unsigned rb[36] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
         1u << 10, 1u << 11,   /* E3R */ 1u << 14, 1u << 12, 1u << 13, 1u << 15,
         0u, 0u, 0u, 0u, 0u, 1u << 23,   /* E3R */ 1u << 24, 1u << 25, 1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u,
-        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u }; /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
+        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u }; /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
     std::vector<std::string> n;
-    { const std::string nm[35] = { /*E1R*/ /* E3R */ phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"),   /* E2R */
+    { const std::string nm[36] = { /*E1R*/ /* E3R */ phr_("적용 범위"), phr_("BGM 음량"), phr_("효과음 음량"),   /* E2R */
       KH_SNDLABEL,   /* E3R */
         phr_("조작 설정"), phr_("배속 배율"), phr_("배속 방식"), phr_("배속 중 소리"),
       phr_("부팅 시퀀스"), phr_("배속 표시"), phr_("오버레이 버튼 표시"),
@@ -21,16 +21,23 @@ inline void Ui::d_conf(Canvas & c) {
       phr_("HDD 회전음"), phr_("회전음 음량"), phr_("오버레이 위치 모드"), phr_("오버레이 변"),
       phr_("오버레이 정렬"), phr_("오버레이 직접 위치"), phr_("메뉴 클릭음"),
         phr_("글꼴 폴더"), phr_("cpu_core"),
-        phr_("touchfx"), phr_("tfxsz"), phr_("tfxmouse"), phr_("tmouse"), phr_("backpos"), phr_("set_vibe") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
+        phr_("touchfx"), phr_("tfxsz"), phr_("tfxmouse"), phr_("tmouse"), phr_("backpos"), phr_("set_vibe"), phr_("진동 세기") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
       for (int id : ri) n.push_back(id == 15 ? std::string("FPS / Speed") : ((own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id])); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
     const int NR = (int)ri.size(), CAP = 14; const int top = lst_win(NR, sel, CAP);   /* kx-nova: 상자에 안 들어가면 스크롤 */
     { std::vector<std::string> n2(n.begin() + top, n.begin() + std::min(NR, top + CAP)); items(c, 40, 44, 256, n2, sel - top, 19); }
+    { const int e2_ = std::min(NR, top + CAP); for (int q_ = top; q_ < e2_; q_++) { const int id_ = ri[q_]; if (id_ == 0) continue;   /* 정리안 A안: 줄마다 값 출처 꼬리표 (전역 = 회색 · 이 작품이 따로 가진 값 = 노랑) */
+        const bool ov_ = own && (ovm[cur] & rb[id_]) != 0u; const bool sl_ = q_ == sel;
+        int ex_ = 0; if (scope == 0 && rb[id_]) for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[id_]) ex_++;   /* t822: 예외 N작품 */
+        const bool fa_ = !ov_ && ex_ == 0 && kh_factory_row(false, id_, s);   /* t822: 출하값 */
+        char tg_[24]; snprintf(tg_, sizeof tg_, "%s%d", phr_("예외"), ex_ > 9 ? 9 : ex_);
+        text(c, 258, 44 + 19 * (q_ - top), ov_ ? phr_("이 작품") : ex_ > 0 ? tg_ : fa_ ? phr_("출하값") : phr_("전역"), ov_ ? YL : ex_ > 0 ? OR : fa_ ? CY : GY, sl_ ? WH : K); } }
+    row_name_now.clear(); if (sel >= 0 && sel < (int)n.size()) { row_name_now = n[sel]; if (row_name_now.compare(0, 4, "● ") == 0) row_name_now.erase(0, 4); }
     lst_arrows(c, top, NR, CAP, 296, 29, 304);
     rbox(c, 320, 24, 304, 296, WH, phr_("인포메이션"));
     auto row = [&](int i) { return rs == i; };
     auto ry = [&](int id) { int k = -1000; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; if (k < top || k >= top + CAP) return -20000; return 44 + 19 * (k - top); };
-    const char * sc[] = { phr_("전역"), phr_("scope_this") }; choices(c, 344, ry(0), sc, 2, scope, WH, row(0));
+    const char * sc[] = { phr_("전역"), phr_("scope_this") }; if (scope_lock) text(c, 344, ry(0), scope == 1 ? phr_("이 작품 고정") : phr_("전역 기본값 고정"), scope == 1 ? YL : WH, K); else choices(c, 344, ry(0), sc, 2, scope, WH, row(0));
     char b[8];
     snprintf(b, sizeof b, "%d", s.bgm); barv(c, 340, ry(1), 232, s.bgm / 8.0, "OFF", phr_("최대"), WH, row(1)); text(c, 590, ry(1), b, WH, K);
     snprintf(b, sizeof b, "%d", s.se); barv(c, 340, ry(2), 232, s.se / 8.0, "OFF", phr_("최대"), WH, row(2)); text(c, 590, ry(2), b, WH, K);
@@ -55,6 +62,7 @@ inline void Ui::d_conf(Canvas & c) {
     { const char * mc[] = { phr_("끔"), phr_("켬") }; /*E1R*/
       choices(c, 344, ry(26), mc, 2, s.mclick, WH, row(26)); } /*E1R*/
     { const char * vb[] = { phr_("vibe_off"), phr_("vibe_on") }; choices(c, 344, ry(34), vb, 2, s.vibe, WH, row(34)); }   /* t794 */
+    { char pb_[16]; snprintf(pb_, sizeof pb_, "%d%%", s.vibe_pct); barv(c, 340, ry(35), 232, (s.vibe_pct - 20) / 280.0, "20%", "300%", WH, row(35)); text(c, 590, ry(35), pb_, WH, K); }   /* t822: 진동 세기 */
     { const char * tf[] = { phr_("끔"), phr_("tfx_dot"), phr_("tfx_butterfly"), phr_("tfx_user") }; choices(c, 344, ry(29), tf, 4, s.touchfx, WH, row(29)); }   /* kx-touch */
     { const char * tz[] = { phr_("tfx_small"), phr_("tfx_large") }; choices(c, 344, ry(30), tz, 2, s.tfxsz, WH, row(30)); }
     { const char * tm[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(31), tm, 2, s.tfxmouse, WH, row(31)); }
@@ -95,11 +103,15 @@ inline void Ui::d_conf(Canvas & c) {
         ? "desc_fontdir" : rs == 22 ? "desc_ovpos_mode" : rs == 23 ?   /* E2R */
       "desc_ovpos_edge" : rs == 24 ? "desc_ovpos_align" : rs == 25 ? "desc_ovpos_free" :
       rs == 19 ? "desc_pwrseq" : rs == 20 ? "desc_hddhum" : rs == 21 ? "desc_hvol" :
-      rs == 34 ? "desc_vibe" : rs == 26 ? "desc_mclick" /*E1R*/ : rs == 18 ? "desc_cpuspd" :
+      rs == 35 ? "진동 세기: 기기 진동의 세기 (20~300%, 기본 100). ←→ 로 10씩. 설정 > 진단 > 진동 시험으로 확인" : rs == 34 ? "desc_vibe" : rs == 26 ? "desc_mclick" /*E1R*/ : rs == 18 ? "desc_cpuspd" :
         rs == 15 ? "desc_fps" : dd[rs]));   /* E3R */
     if (rs == 18) { static const char * const ce[4] = { "cpu_eq0", "cpu_eq1", "cpu_eq2", "cpu_eq3" }; const int cq = s.cpuspd < 0 ? 0 : s.cpuspd > 3 ? 3 : s.cpuspd; dt += std::string("  ·  ") + phr_(ce[cq]); }   /* #S2: 지금 단계의 실재 기종 기준 환산(DOSBox-X 위키 cycles 표 + PC-98 기종 클럭). 한 줄이 길면 desc_mq 가 흐른다 */
     if (ind) dt = std::string(phr_("indiv_has")) + "  ·  " + dt;
     desc_mq(c, 328, 44, dt, phr_("↑↓:선택, ←→:값, ○:결정, ×:뒤로, △:출하 시 설정"));
+    if (save_note_pend) { save_note = std::string(phr_("저장함: ")) + row_name_now + (g_row_val.empty() ? std::string() : " = " + g_row_val) + (scope == 1 ? phr_(" (이 작품)") : phr_(" (전역)")); save_note_pend = 0; }
+    if (!save_note.empty() && ts_ms < save_note_until) { c.rect(336, 300, 280, 18, K); text(c, 344, 302, fit(save_note, 270), YL, K); }   /* t822: 잔상 지움 */
+    else if (scope == 0 && rs > 0 && rs < 36 && rb[rs]) { int n_ = 0; for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[rs]) n_++;   /* t822: 예외 N작품 설명줄 */
+        if (n_ > 0) { char eb_[96]; snprintf(eb_, sizeof eb_, "%s %d%s", phr_("예외"), n_, phr_("작품: 이 줄 값을 따로 씀")); text(c, 344, 302, fit(eb_, 270), OR, K); } }   /* 정리안: 저장함 한 줄 */
     if (scope == 0 && (rs == 11 || rs == 12)) { const std::string & fl = font_now(); if (!fl.empty()) text(c, 344, 288, fit(fl, 270), CY, K); }   /* build 5b-3: font now applied to the current work */
     const bool ibk = own && (ovm[cur] & indiv_bit(S_CONF, rs));
     helpline(c, ibk ? phr_("indiv_help") : phr_("↑↓:선택, ←→:값, ○:결정, ×:뒤로, △:출하 시 설정"));

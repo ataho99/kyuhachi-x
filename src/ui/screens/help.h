@@ -41,7 +41,7 @@ inline void Ui::d_help(Canvas & c) {   /* t52i (B2·B3): 조작 안내 = 한 장
 }
 inline void Ui::k_help(UKey k, Act & a) {
     do {
-        if (k == UK_OK || k == UK_CANCEL) go(S_EXTRA, extra_row(3));
+        if (k == UK_OK || k == UK_CANCEL) go(S_SET, 6);
         break;
     } while (0);
 }

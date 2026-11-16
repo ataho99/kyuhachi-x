@@ -1,10 +1,12 @@
 #pragma once
 /* screen_table.h -- S8a: Ui::draw and Ui::key dispatch. The switch bodies are the original ones; home-flow screens call screens/*.h. */
+#include "ui/screens/tags.h"   /* t822: 출하값·예외 N작품 도우미 */
 #include "ui/screens/infopane.h"
 #include "ui/screens/main.h"
 #include "ui/screens/pick.h"
 #include "ui/screens/start.h"
 #include "ui/screens/extra.h"
+#include "ui/screens/diag.h"   /* 정리안: 설정 > 진단 */
 #include "ui/screens/about.h"
 #include "ui/screens/quit.h"
 #include "ui/screens/lang.h"
@@ -72,6 +74,7 @@ inline void Ui::draw_body(Canvas & c) {
     case S_SWAP: d_swap(c); break;
     case S_SWAPI: d_swapi(c); break;
     case S_ABOUT: d_about(c); break;
+    case S_DIAG: d_diag(c); break;
     case S_PICK: d_pick(c); break;
     case S_SCREEN: d_screen(c); break;
     case S_CONF: d_conf(c); break;
@@ -130,6 +133,7 @@ inline Act Ui::key(UKey k) {
     case S_SWAP: k_swap(k, a); break;
     case S_SWAPI: k_swapi(k, a); break;
     case S_ABOUT: k_about(k, a); break;
+    case S_DIAG: k_diag(k, a); break;
     case S_EXTRA: k_extra(k, a); break;
     case S_HELP: k_help(k, a); break;
     case S_GAME: k_game(k, a); break;

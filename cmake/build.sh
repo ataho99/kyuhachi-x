@@ -20,4 +20,6 @@ echo "== configure rc=${PIPESTATUS[0]}"
 echo "== build rc=${PIPESTATUS[0]}"
 ls -l "$P/build/$OUTN/KyuhachiX.exe" 2>&1
 mkdir -p "$P/build/$OUTN" && cp "$SRCL/res/strings/"strings_*.txt "$P/build/$OUTN/" 2>/dev/null; echo "== strings copied from res/strings: $(ls "$P/build/$OUTN"/strings_*.txt 2>/dev/null | wc -l) files"
+# 회귀 방지: hanacd 기능 소스가 있으면 exe 에 장착 문구가 있어야 한다(별도 워크트리 수정이 병합 때 되돌려진 사건, 2026-11-16)
+if grep -q cdguest "$SRCL/src/app/main_setup.h" 2>/dev/null; then LC_ALL=C grep -a -q 'cd 를 게스트 IDE CD 장치로 장착' "$P/build/$OUTN/KyuhachiX.exe" || { echo "거부: hanacd 장착 문자열이 exe 에 없음(회귀)"; exit 4; }; fi
 [ -s "$P/build/$OUTN/KyuhachiX.exe" ]   # exit status = exe exists (the strings copy above must not hide a failed build)

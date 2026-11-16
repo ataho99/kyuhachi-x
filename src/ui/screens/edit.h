@@ -1,5 +1,11 @@
 #pragma once
 /* screens/edit.h -- S8c: S_EDIT screen. Code moved unchanged from kh_ui.h (members of struct Ui, defined out of line). */
+/* hanacd: 편집 중인 작품의 이미지 폴더(또는 srcdir)에 .cmd 가 있나 */
+inline bool ed_cmd_present(const Ui & u) {
+    if (!::g_has_cmd_fn) return false;
+    if (::g_has_cmd_fn(u.imgdir_of(u.eg))) return true;
+    return ::g_has_cmd_fn(u.kv_get("srcdir"));
+}
 inline void Ui::d_edit(Canvas & c) {
     titlebar(c, ""); const UiGame & g = games[eg];
     rbox(c, 16, 24, 608, 296, WH, ttl_suf(g, phr_("편집"), 560).c_str());
@@ -14,7 +20,7 @@ inline void Ui::d_edit(Canvas & c) {
     { std::string x = kv_get("dosexe"); if (x.empty()) v[12] = phr_("자동"); else if (x == "*") v[12] = phr_("DOS 프롬프트"); else { x[0] = (char)toupper((unsigned char)x[0]); v[12] = x; } }   /* 2b */
     { std::string s = kv_get("dosargs"); v[13] = s.empty() ? std::string(phr_("없음")) : s; }
     for (int i = 0; i < 14; i++) {
-        int yy = 42 + i * 19; bool sl = i == sel; if (sl) c.rect(30, yy - 3, 580, 19, WH);
+        int yy = 42 + i * 18; bool sl = i == sel; if (sl) c.rect(30, yy - 3, 580, 19, WH);
         text(c, 40, yy, lab[i], sl ? K : CY, sl ? WH : K); c.clip(160, yy - 3, 440, 22);
         bool valarr = (i == 6 || i == 10 || i == 11); text(c, 160, yy, std::string(valarr && sl ? "← " : "") + fit_tail(v[i], 380) + (valarr && sl ? " →" : ""), sl ? K : WH, sl ? WH : K); c.unclip();
     }

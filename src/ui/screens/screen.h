@@ -21,8 +21,15 @@ inline void Ui::d_screen(Canvas & c) {   /* t48c (#624·#625): 필터 1줄 + 효
     rbox(c, 320, 24, 304, 220, WH, phr_("선택지"));
     auto row = [&](int i) { return rs == i; };
     auto Y = [&](int id) { int k = 0; for (size_t i = 0; i < ri.size(); i++) if (ri[i] == id) k = (int)i; if (k < top || k >= top + CAP) return -20000; return 44 + (k - top) * PY; };
-    const char * sc[] = { phr_("전역"), phr_("scope_this") }; choices(c, 344, Y(0), sc, 2, scope, WH, row(0));
-    { const int pp = pre_pos(); const int nb = PRE_NB + (int)presets.size(); const std::string pn = pp >= 0 ? pre_name(pp) : std::string(phr_("preset_custom")); (void)nb; text(c, 344, Y(12), std::string("< ") + pn + " >", row(12) ? CY : WH, K); }   /* 빌드 6: 프리셋 줄 */
+    const char * sc[] = { phr_("전역"), phr_("scope_this") }; if (scope_lock) text(c, 344, Y(0), scope == 1 ? phr_("이 작품 고정") : phr_("전역 기본값 고정"), scope == 1 ? YL : WH, K); else choices(c, 344, Y(0), sc, 2, scope, WH, row(0));
+    { for (int q_ = top; q_ < std::min(NR, top + CAP); q_++) { const int id_ = ri[q_]; if (id_ == 0 || id_ == 12) continue;   /* 정리안 A안: 값 출처 꼬리표 */
+        const bool ov_ = own && (ovm[cur] & rb[id_]) != 0u; const bool sl_ = q_ == sel;
+        int ex_ = 0; if (scope == 0 && rb[id_]) for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[id_]) ex_++;   /* t822: 예외 N작품 */
+        const bool fa_ = !ov_ && ex_ == 0 && kh_factory_row(true, id_, s);   /* t822: 출하값 */
+        char tg_[24]; snprintf(tg_, sizeof tg_, "%s%d", phr_("예외"), ex_ > 9 ? 9 : ex_);
+        text(c, 258, 44 + (q_ - top) * PY, ov_ ? phr_("이 작품") : ex_ > 0 ? tg_ : fa_ ? phr_("출하값") : phr_("전역"), ov_ ? YL : ex_ > 0 ? OR : fa_ ? CY : GY, sl_ ? WH : K); } }
+    row_name_now.clear(); if (sel >= 0 && sel < (int)n.size()) { row_name_now = n[sel]; if (row_name_now.compare(0, 4, "● ") == 0) row_name_now.erase(0, 4); }
+    { const int pp = pre_pos(); const int nb = PRE_NB + (int)presets.size(); const std::string pn = pp >= 0 ? pre_name(pp) : std::string(phr_("preset_custom")); if (row(12)) g_row_val = pn; (void)nb; text(c, 344, Y(12), std::string("< ") + pn + " >", row(12) ? CY : WH, K); }   /* 빌드 6: 프리셋 줄 */
     const char * rt[] = { "4:3", "16:10", phr_("정수배") }; choices(c, 344, Y(1), rt, 3, s.ratio, WH, row(1));
     const char * sh[] = { "sharp", "nearest" }; choices(c, 344, Y(2), sh, 2, s.shader == 2 ? 1 : 0, WH, row(2));
     char b[16]; const int fxv[4] = { s.scan, s.mask, s.bleed, s.glow };
@@ -40,12 +47,16 @@ inline void Ui::d_screen(Canvas & c) {   /* t48c (#624·#625): 필터 1줄 + 효
     thumb(c, game(), 40, 266, 96, 60);
     const UiGame * gm = game();
     { std::string sf = gm && gm->lastslot >= 0 ? phr_("  마지막 저장 (") + gm->slot[gm->lastslot].stamp + ")" : std::string(); text(c, 156, 266, gm && gm->lastslot >= 0 ? fit_title(gm->title, 440 - tw(sf)) + sf : std::string(phr_("표본 화면")), CY, K); }
-    text(c, 156, 286, rs == 0 && scope == 0 ? dkey(phr_("scr_allglobal_off")) : (ind ? std::string(phr_("indiv_has")) : std::string(phr_("값을 바꾸면 이 화면에도 바로 적용됩니다."))), WH, K);
+    int exn_ = 0; if (scope == 0 && rs > 0 && rs < 14 && rb[rs]) for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[rs]) exn_++;   /* t822: 예외 N작품 */
+    char exb_[96]; snprintf(exb_, sizeof exb_, "%s %d%s", phr_("예외"), exn_, phr_("작품: 이 줄 값을 따로 씀"));
+    text(c, 156, 286, exn_ > 0 ? std::string(exb_) : rs == 0 && scope == 0 ? dkey(phr_("scr_allglobal_off")) : (ind ? std::string(phr_("indiv_has")) : std::string(phr_("값을 바꾸면 이 화면에도 바로 적용됩니다."))), WH, K);
     text(c, 156, 306, dkey(phr_("{○}:확정   {×}:바꾸기 전 값으로 되돌림")), WH, K);
     char wb[192]; if (wmult) snprintf(wb, sizeof wb, phr_("창 x%d (%dx%d) · 회색 = 모니터에 안 들어감 · Alt+[ ]"), wmult, 640 * wmult, 480 * wmult); else snprintf(wb, sizeof wb, phr_("창 사용자 지정 %dx%d · 테두리로 끈 크기 · Alt+[ ]"), winw, winh);
     static std::string wd; wd = wb;
     static const char * dd[] = { "desc_scope", "desc_ratio", "desc_filter", "desc_scan", "desc_mask", "desc_bleed", "desc_glow", "desc_curve" };
     desc_mq(c, 324, 44, rs < 8 ? dkey(phr_(dd[rs])) : rs == 14 ? dkey(phr_("desc_bg")) : rs == 13 ? dkey(phr_("desc_phos")) : rs == 12 ? dkey(phr_("desc_preset")) : rs == 11 ? dkey(phr_("desc_indiv_reset")) : rs == 9 ? dkey(phr_("desc_fullscr")) : wd);
+    if (save_note_pend) { save_note = std::string(phr_("저장함: ")) + row_name_now + (g_row_val.empty() ? std::string() : " = " + g_row_val) + (scope == 1 ? phr_(" (이 작품)") : phr_(" (전역)")); save_note_pend = 0; }
+    if (!save_note.empty() && ts_ms < save_note_until) { c.rect(152, 304, 440, 18, K); text(c, 156, 306, fit(save_note, 436), YL, K); }   /* t822: 아래 안내줄 잔상 지움 */   /* 정리안: 저장함 한 줄 (아래 줄 안내를 잠깐 덮음) */
     const bool ibk = own && (ovm[cur] & indiv_bit(S_SCREEN, rs));
     helpline(c, ibk ? phr_("indiv_help") : phr_("↑↓:선택, ←→:값, ○:결정, ×:취소(되돌림), △:출하 시 설정"));
 }
@@ -90,16 +101,16 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 break; }
             if (p < 0) p = (k == UK_RIGHT) ? tot - 1 : 0;
             p = (p + (k == UK_RIGHT ? 1 : tot - 1)) % tot; pre_i = p;
-            if (p < PRE_NB + np) { pre_copy(eff(), pre_get(p)); a.t = A_APPLY; dirty = true; }
+            if (p < PRE_NB + np) { pre_copy(eff(), pre_get(p)); a.t = A_APPLY; dirty = true; save_note_pend = 1; save_note_until = ts_ms + 2500; }
             return a; }
         if (scr_s && sel == 13) { if (k == UK_OK || k == UK_RIGHT) { phos_pg = true; sel = 0; } return a; }
         if (scr_s && sel == 14) { if (k == UK_OK || k == UK_RIGHT) { bgfx_pg = true; sel = 0; } return a; }   /* kx-bg */   /* t662 (#635): open the phosphor page */
         if (scr == S_CONF && sel == 15 && (k == UK_LEFT || k == UK_RIGHT || k == UK_OK)) { g.fpsd = g.fpsd ? 0 : 1; a.t = A_APPLY; dirty = true; return a; }   /* #639: FPS display is global only */
-        if (sel == 0 && k == UK_OK && scope == 0) { sel = sidx; yn_open(scr0, YN_INDIVALL, phr_("indiv_allq1"), phr_("indiv_q2")); break; }   /* t147d: 전역 범위에서 ○ = 전역 일괄 적용 켬/끔 */
+        if (sel == 0 && k == UK_OK && scope == 0 && !scope_lock) { sel = sidx; yn_open(scr0, YN_INDIVALL, phr_("indiv_allq1"), phr_("indiv_q2")); break; }   /* t147d: 전역 범위에서 ○ = 전역 일괄 적용 켬/끔 */
         Settings & s = (sel == 0) ? eff() : edit();
         UKey kk = k;   /* kx-touch: 선택지 없는 값 줄을 탭(○)하면 오른쪽 절반 = 오른쪽 키, 왼쪽 절반 = 왼쪽 키 */
         if (k == UK_OK && ov::g_tap_half != 0) { const int th = ov::g_tap_half; const bool fresh = ov::tap_now_ms() - ov::g_tap_ms < 400; ov::g_tap_half = 0;
-            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = sel >= 1 && sel <= 8; else sl = (sel >= 1 && sel <= 2) || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || sel == 34 || (sel >= 29 && sel <= 32); }
+            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = sel >= 1 && sel <= 8; else sl = (sel >= 1 && sel <= 2) || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || sel == 34 || sel == 35 || (sel >= 29 && sel <= 32); }
             if (sl) kk = th > 0 ? UK_RIGHT : UK_LEFT; }
         if (kk == UK_LEFT || kk == UK_RIGHT) {
             int d = (kk == UK_RIGHT) ? 1 : -1;
@@ -107,7 +118,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 int m = wm_next(d); if (m > 0) { wmult = m; a.t = A_WINMULT; a.arg = m; dirty = true; }
                 return a;
             }
-            if (sel == 0) { scope_step(d); }
+            if (sel == 0) { if (!scope_lock) scope_step(d); }
             else if (scr_s) {
                 if (sel == 1) s.ratio = clampi(s.ratio + d, 0, 2);
                 if (sel == 2) s.shader = d > 0 ? 2 : 0;   /* t48c: 필터 = sharp / nearest */
@@ -127,6 +138,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 21) s.hvol = clampi(s.hvol + d, 0, 8);
                 if (sel == 26) s.mclick = clampi(s.mclick + d, 0, 1); /*E1R*/
                 if (sel == 34) s.vibe = clampi(s.vibe + d, 0, 1);   /* t794 */
+                if (sel == 35) s.vibe_pct = clampi(s.vibe_pct + d * 10, 20, 300);   /* t822: 진동 세기 */
                 if (sel == 29) s.touchfx = clampi(s.touchfx + d, 0, 3);   /* kx-touch */
                 if (sel == 30) s.tfxsz = clampi(s.tfxsz + d, 0, 1);
                 if (sel == 31) s.tfxmouse = clampi(s.tfxmouse + d, 0, 1);
@@ -141,13 +153,14 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 a.t = A_APPLY;
             }
             dirty = true; (void)nrow;
+            if (sel != 0) { save_note_pend = 1; save_note_until = ts_ms + 2500; }   /* 정리안 A안: 문구는 다음 그림에서(새 값이 그려진 뒤) 만든다 */
         } else if (k == UK_TRI) { Settings def; Settings & e = eff(); if (scr_s) {   /* E2R */
             e.ratio = def.ratio; e.shader = def.shader; e.curve = def.curve; e.bleed = def.bleed;
             e.glow = def.glow; e.scan = def.scan; e.mask = def.mask; e.phos = def.phos; }
         else { e.bgm = def.bgm; e.se = def.se; e.bmult = def.bmult; e.cpuspd = def.cpuspd;
             e.bmode = def.bmode; e.boot = def.boot; e.bosd = def.bosd; e.bsound = def.bsound;
             if (conf_grp == 1) { e.dsnd = def.dsnd; e.dvol = def.dvol; e.pwrseq = def.pwrseq;
-                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; e.vibe = def.vibe; /*E1R*/
+                e.hddhum = def.hddhum; e.hvol = def.hvol; e.mclick = def.mclick; e.vibe = def.vibe; e.vibe_pct = def.vibe_pct; /*E1R*/
                 e.touchfx = def.touchfx; e.tfxsz = def.tfxsz; e.tfxmouse = def.tfxmouse; e.tmouse = def.tmouse; e.backpos = def.backpos;   /* kx-touch */ }
             e.ovbtn = def.ovbtn; e.ovpos_mode = def.ovpos_mode; e.ovpos_edge = def.ovpos_edge;
             e.ovpos_align = def.ovpos_align; e.ovpos_free = def.ovpos_free;

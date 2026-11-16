@@ -217,6 +217,45 @@ static std::string gh_aux_extract(const std::vector<std::string> & dirs, const s
     }
     return found;
 }
+/* hanacd: 폴더(UTF-8 경로)에 .cmd 가 하나라도 있나 — 편집 화면의 「슬롯 규칙」 항목을 켤지 정할 때 쓴다 */
+static bool gh_dir_has_cmd(const std::string & d8) {
+    if (d8.empty()) return false;
+    std::vector<std::string> fl; gh_list_dir(aw::u8_to_acp(d8), fl, NULL);
+    for (auto & f : fl) if (prof::ext_of(f) == ".cmd") return true;
+    return false;
+}
+static const bool g_has_cmd_set = (g_has_cmd_fn = &gh_dir_has_cmd, true);
+/* hanacd: 작품 폴더에 .cmd(np2kai "a.hdm" "b.hdi" "c.ccd") 가 있으면 슬롯을 그대로 따른다(game.ini·자동 판정보다 우선).
+   .cmd 가 여럿이면 파일명 정렬 첫 것, 안에 쓸 만한 파일이 하나도 없으면 다음 .cmd. 찾는 폴더 = 이미지 폴더 → 게임 폴더 → srcdir. */
+static bool gh_apply_cmd(prof::Profile & q, const std::vector<std::string> & dirs, const std::string & imgdir) {
+    for (auto & d : dirs) {
+        if (d.empty()) continue;
+        std::vector<std::string> fl, cm; gh_list_dir(d, fl, NULL);
+        for (auto & f : fl) if (prof::ext_of(f) == ".cmd") cm.push_back(f);
+        std::sort(cm.begin(), cm.end(), [](const std::string & a, const std::string & b) { return prof::lower_s(a) < prof::lower_s(b); });
+        for (auto & c : cm) {
+            std::string txt; FILE * f = fopen((d + "\\" + c).c_str(), "rb"); if (!f) continue;
+            char b[4096]; size_t n; while ((n = fread(b, 1, sizeof b, f)) > 0 && txt.size() < 65536) txt.append(b, n);
+            fclose(f);
+            prof::CmdSlots cs = prof::cmd_parse(txt, fl);
+            if (cs.fd.empty() && cs.hd.empty() && cs.cd.empty()) { gh_log(".cmd 무시(쓸 파일 없음): %s\\%s", d.c_str(), c.c_str()); continue; }
+            q.kv["cmdfile"] = c;   /* 메뉴가 「.cmd 있음」을 알 수 있게 — 쓰든 안 쓰든 기록 */
+            if (q.kv.count("slot_rule") && q.kv["slot_rule"] == "ini") {   /* 사용자가 game.ini 규칙을 골랐다 */
+                q.kv["slot_rule_eff"] = "ini"; gh_log("슬롯 규칙: ini (.cmd %s 가 있으나 사용자가 ini 규칙을 골라 건너뜀)", c.c_str()); return false; }
+            q.kv["slot_rule_eff"] = "cmd";
+            for (auto & x : q.disk) x.clear(); q.swap.clear(); q.kv.erase("cd"); q.kv.erase("keys");
+            for (size_t i = 0; i < cs.fd.size(); i++) { if (i < 2) q.disk[i] = cs.fd[i]; else q.swap.push_back(cs.fd[i]); }
+            for (size_t i = 0; i < cs.hd.size() && i < 2; i++) q.disk[2 + i] = cs.hd[i];
+            if (!cs.cd.empty()) q.kv["cd"] = cs.cd[0];
+            q.bootletter = !cs.fd.empty() ? 'A' : (!cs.hd.empty() ? 'C' : q.bootletter);
+            if (d != imgdir) q.kv["srcdir"] = d;
+            q.reason += " + .cmd " + c;
+            gh_log("슬롯 규칙: cmd — .cmd 적용: %s\\%s -> FD %d · HDD %d · CD %d", d.c_str(), c.c_str(), (int)cs.fd.size(), (int)cs.hd.size(), (int)cs.cd.size());
+            return true;
+        }
+    }
+    return false;
+}
 static bool gh_profile(const std::string & id, GProfile & p, bool quick = false) {
     p = GProfile();
     gh_db_load_once();
@@ -237,6 +276,9 @@ static bool gh_profile(const std::string & id, GProfile & p, bool quick = false)
         prof::probe_boot(i); imgs.push_back(i);
     }
     prof::Profile q = prof::resolve(dir, imgs, gApp.db, id);
+    { std::vector<std::string> cd_; cd_.push_back(imgdir); if (dir != imgdir) cd_.push_back(dir);
+      if (q.kv.count("srcdir") && !q.kv["srcdir"].empty()) cd_.push_back(aw::sys_from_ini(q.kv["srcdir"]));
+      gh_apply_cmd(q, cd_, imgdir); }   /* hanacd: .cmd 가 있으면 최우선 */
     for (auto & dk : q.disk) dk = aw::sys_from_ini(dk);          /* game.ini 는 UTF-8 — 시스템 문자열로 */
     for (auto & sw : q.swap) sw = aw::sys_from_ini(sw);
     if (q.kv.count("srcdir")) q.kv["srcdir"] = aw::sys_from_ini(q.kv["srcdir"]);
@@ -251,7 +293,8 @@ static bool gh_profile(const std::string & id, GProfile & p, bool quick = false)
     if (q.kv.count("never_map")) p.never_map = q.kv["never_map"];
     if (q.kv.count("keys")) gh_parse_keys(q.kv["keys"], p.keys);
     if (q.kv.count("bootkeys")) gh_parse_bootkeys(q.kv["bootkeys"], p.bootkeys);
-    if (q.kv.count("cd")) { p.cd = aw::sys_from_ini(q.kv["cd"]); if (!p.cd.empty() && !(p.cd.size() > 1 && p.cd[1] == ':') && p.cd[0] != '\\') p.cd = imgdir + "\\" + p.cd; }
+    if (q.kv.count("cd")) { p.cd = aw::sys_from_ini(q.kv["cd"]); if (!p.cd.empty() && !(p.cd.size() > 1 && p.cd[1] == ':') && p.cd[0] != '\\') p.cd = imgdir + "\\" + p.cd;
+      if (q.kv.count("srcdir") && !plat::exists(p.cd)) { std::string alt = q.kv["srcdir"] + "\\" + p.cd.substr(p.cd.find_last_of('\\') + 1); if (plat::exists(alt)) p.cd = alt; } }   /* hanacd: .cmd 가 다른 폴더에 있을 때 */
     if (q.kv.count("autoexec")) p.autoexec = aw::sys_from_ini(q.kv["autoexec"]);
     if (!quick) gh_log("profile '%s' [%s] 제목='%s' 부팅=%c A=%s B=%s C=%s D=%s swap=%d keys=%d cycles=%s font=%s cd=%s bootkeys=%d | %s", id.c_str(), p.src.c_str(), p.title.c_str(), p.bootletter, p.disk[0] ? p.disk[0] : "-", p.disk[1] ? p.disk[1] : "-", p.disk[2] ? p.disk[2] : "-", p.disk[3] ? p.disk[3] : "-", (int)p.swap.size(), (int)p.keys.size(), p.cycles.c_str(), p.font.c_str(), p.cd.empty() ? "-" : p.cd.c_str(), (int)p.bootkeys.size(), p.reason.c_str());
     return true;

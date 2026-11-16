@@ -19,6 +19,8 @@
 #include "bios_disk.h"
 #include "dos_inc.h"
 #include "ide.h"
+#include "dos/cdrom.h"   /* hanacd: CDROM_Interface_Image */
+static bool (*g_has_cmd_fn)(const std::string &) = 0;   /* hanacd: 편집 화면이 「이 폴더에 .cmd 있음」을 묻는 고리 — res_prof.h 가 채움 */
 #include "inout.h"
 #include "dma.h"
 #include "keyboard.h"
@@ -48,6 +50,7 @@
 #include "input/kh_inputtypes.h"   /* S6 */
 #include "ui/kh_ui.h"
 #include "settings/kh_prof.h"
+#include "settings/kh_cmd.h"   /* hanacd: 폴더 안 .cmd 해석 */
 #include "pc98_savestate.h"
 #include "pc98_gdc.h"
 #include "imagedisk_d88.h"
@@ -169,6 +172,7 @@ void MAPPER_AddHandler(MAPPER_Handler *, MapKeys, Bitu, char const * const event
 #include "app/kbd_event.h"   /* S9b */
 #include "app/ui_env.h"   /* S9b */
 #include "app/menu_boot.h"   /* S9b */
+#include "app/diag_host.h"   /* 정리안: 설정 > 진단 (진동 시험·진단 로그) */
 #include "app/uitest.h"   /* S9b */
 #include "app/gfx_events.h"   /* S9b */
 #if defined(__ANDROID__)

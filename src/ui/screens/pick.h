@@ -72,7 +72,7 @@ inline void Ui::k_pick(UKey k, Act & a) {
             else if (k == UK_OK) { sync_cur(); if (!game() || game()->id.empty()) { mainsel = 0; go(S_MAIN, 0); } else { start_ret = S_PICK; if (has_save(game()) || !blk_cur().empty()) { startsel = has_save(game()) ? 0 : 1; go(S_START, startsel); } else { startsel = 1; start_ok(a); } } }   /* t52i (B1): 홈 = 작품 목록, ○ = 시작 */
             else if (k == UK_CANCEL) go(S_MAIN, 0);
             else if (k == UK_SELECT) { sync_cur(); go(S_EXTRA, 0); back = S_PICK; }
-            else if (k == UK_SQ) { entg = gi; msg.clear(); std::vector<int> v = vents(gi); int ei = row_ent(gi), idx = 0; for (size_t q = 0; q < v.size(); q++) if (v[q] == ei) idx = (int)q; scr = S_ENT; sel = idx; }
+            else if (k == UK_SQ) { entg = gi; ent_from_extra = false; msg.clear(); std::vector<int> v = vents(gi); int ei = row_ent(gi), idx = 0; for (size_t q = 0; q < v.size(); q++) if (v[q] == ei) idx = (int)q; scr = S_ENT; sel = idx; }
             else if (k == UK_TRI) { sel = sortm; scr = S_SORT; }
             break; }
     } while (0);

@@ -10,7 +10,7 @@ inline void Ui::d_about(Canvas & c) {
 }
 inline void Ui::k_about(UKey k, Act & a) {
     do {
-            if (k == UK_OK || k == UK_CANCEL) go(S_EXTRA, extra_row(4));
+            if (k == UK_OK || k == UK_CANCEL) go(S_SET, 7);
             break;
     } while (0);
 }

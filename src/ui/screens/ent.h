@@ -48,7 +48,7 @@ inline void Ui::k_ent(UKey k, Act & a) {
                 else { if (!v.empty()) { if ((int)rent.size() <= entg) rent.resize(games.size(), -1); rent[entg] = v[sel]; } sync_cur(); scr = S_PICK; }
             }
             else if (k == UK_TRI) { if (sel < rows - 3 && !v.empty()) { menu_ent = sel; menusel = 0; scr = S_ENTMENU; } }
-            else if (k == UK_CANCEL) { msg.clear(); scr = S_PICK; }
+            else if (k == UK_CANCEL) { msg.clear(); if (ent_from_extra) { ent_from_extra = false; go(S_EXTRA, 0); } else scr = S_PICK; }
             break; }
     } while (0);
 }

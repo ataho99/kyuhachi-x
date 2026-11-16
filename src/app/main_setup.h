@@ -83,6 +83,7 @@ static void gh_main_input_init(std::string & id) {
     kh_db_dir = gApp.exedir;   /* t48e (#651 2): <exe>\res\gamecontrollerdb.txt */
     kh_input_init();
     kh_hotplug_hook = gh_hotplug_hook;
+    gh_diag_env_install();   /* 정리안: 설정 > 진단 호스트 연결 */
     gh_help_init(); if (gApp.helplog) ov::g_help_logfn = gh_help_logfn; ov::g_helpdev = SDL_NumJoysticks() > 0 ? 0 : 1;   /* t49a (#812): 시작값 = 패드가 연결돼 있으면 패드, 없으면 키보드 */
     gensei_lock = true;
     gh_ui_init_games();
@@ -251,7 +252,8 @@ static void gh_main_prep(std::string & id, const std::string & exedir) {
             else if (!nod_ && !gApp.dosfd && bi_ >= 0 && bi_ < 2 && gApp.prof_.disk[bi_] != NULL) { prof::ImgInfo ii_ = prof::probe(gApp.prof_.disk[bi_]); prof::probe_boot(ii_); if (prof::fmt_supported(ii_.fmt) && !ii_.boot_ok) why_ = phr_("dos_why_data"); }
             gApp.dosmode = gApp.dosfd || (nod_ && !gApp.prof_.cd.empty()) || why_ != NULL;
             if (why_) { gApp.osd = why_; gApp.osd_until = SDL_GetTicks() + 12000u; gh_log("DOS prompt open: %s", why_); } }
-        if (!gApp.prof_.cd.empty() && !gApp.dosmode) gh_log("WARN: cd 슬롯과 디스크가 함께 있음 — 이 빌드는 게스트 IDE 연결을 하지 않아 cd 를 무시: %s", gApp.prof_.cd.c_str());
+        gApp.cdguest = !gApp.prof_.cd.empty() && !gApp.dosmode;   /* hanacd: 디스크+CD 공존 → 게스트 CD 장치로 장착(main_core.h) */
+        if (gApp.cdguest) gh_log("hanacd: 디스크와 cd 가 함께 있음 — cd 를 게스트 IDE CD 장치로 장착: %s", gApp.prof_.cd.c_str());
         if (!gApp.dosmode && !gApp.prof_.disk[0] && !gApp.prof_.disk[1] && !gApp.prof_.disk[2] && !gApp.prof_.disk[3]) { gh_log("ERROR: 부팅 가능한 디스크 없음 (%s)", gApp.prof_.reason.c_str()); gh_msgbox(phr_("이 작품은 바로 부팅할 수 있는 디스크가 없습니다.\n(하드 설치 전용이거나 지원하지 않는 형식입니다)")); gh_finish(1); }
     }
     if (!gApp.headless) {

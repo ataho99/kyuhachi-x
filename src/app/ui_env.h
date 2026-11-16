@@ -185,7 +185,7 @@ static void gh_ui_env_setup(void) {
         static const char * K[4] = { "disk_a", "disk_b", "disk_c", "disk_d" };
         for (int i = 0; i < 4; i++) if (p.disk[i]) out[K[i]] = aw::acp_to_u8(p.disk[i]);
         out["boot"] = std::string(1, p.bootletter); { auto it = p.kv.find("cd"); if (it != p.kv.end() && !it->second.empty()) out["cd"] = it->second; }
-        for (const char * k : { "mouse", "font", "font_kind", "bootkeys", "autoexec", "dosexe", "dosargs" }) { auto it = p.kv.find(k); if (it != p.kv.end() && !it->second.empty()) out[k] = it->second; }
+        for (const char * k : { "mouse", "font", "font_kind", "bootkeys", "autoexec", "dosexe", "dosargs", "slot_rule", "cmdfile", "srcdir" }) { auto it = p.kv.find(k); if (it != p.kv.end() && !it->second.empty()) out[k] = it->second; }
         return true; };
     E.exelist = [](int g, const std::string & dk, const std::string & dir, std::vector<ui::FileItem> & out) {   /* 2b: 이미지 안 파일 목록 */
         out.clear(); if (g < 0 || g >= (int)gApp.ui_.games.size() || dk.empty()) return false;

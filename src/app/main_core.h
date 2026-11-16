@@ -10,6 +10,7 @@ static void gh_main_conf() {
                 size_t dp = cc.find("core=dynamic"); if (dp != std::string::npos) { cc.replace(dp, 12, "core=normal"); gh_log("KHA cpu core: HDD 작품 → normal(호환) 강제"); }
             }
             control->ParseConfigString("gensei:common", cc.c_str());
+            if (gApp.cdguest) { control->ParseConfigString("gensei:ide", "[ide, primary]\nenable=true\n[ide, secondary]\nenable=true\n"); gh_log("hanacd: IDE 컨트롤러 1·2 사용 설정"); }
         }
         {   /* 작품별 cycles / 글꼴 / extra (프로필 > 공통) */
             std::string c;
@@ -65,6 +66,7 @@ static void gh_main_conf() {
 
 }
 
+static CDROM_Interface_Image * g_hanacd_cdi = nullptr;   /* hanacd: IDE 컨트롤러는 리셋 때 만들어지므로 장착은 전원 켠 뒤 */
 static void gh_main_devinit() {
         DOSBOX_InitTickLoop();
         DOSBOX_RealInit();
@@ -187,6 +189,14 @@ static void gh_main_devinit() {
             { std::string ln; for (char ch : gApp.prof_.autoexec + "|") { if (ch == '|') { if (!ln.empty()) ae += ln + "\n"; ln.clear(); } else ln += ch; } }
             gh_log("autoexec(내장 DOS):\n%s", ae.c_str());
             control->ParseConfigString("gensei:dos", ae.c_str());
+        } else if (gApp.cdguest) {   /* hanacd: 디스크 부팅 + CD — 내장 DOS·MSCDEX 없이 CD 이미지를 IDE ATAPI 장치에 바로 연결(ide.cpp 의 CD 인터페이스 목록 형) */
+            bool IDE_CDROM_Attach(signed char index, bool slave, const std::vector<CDROM_Interface *> & cds, bool opt_replace);
+            std::string ci = gApp.prof_.kv.count("cd_ide") ? gApp.prof_.kv["cd_ide"] : std::string("2m");   /* 시험용 키: 1m 1s 2m 2s. 기본 2m: PC-98 CD 는 IDE 2차 마스터(1차 마스터는 HDD) — 1m 이면 게스트 NECCDD 가 못 찾는다(2026-11-16 실측) */
+            int ix = (ci.size() >= 1 && ci[0] >= '1' && ci[0] <= '4') ? ci[0] - '1' : 0; bool sl = ci.size() >= 2 && ci[1] == 's';
+            CDROM_Interface_Image * cdi = new CDROM_Interface_Image(3);
+            bool ok = cdi->SetDevice(gApp.prof_.cd.c_str(), 0);
+            gh_log("hanacd: CD 이미지 열기 %s: %s (IDE %d%c)", ok ? "성공" : "실패", gApp.prof_.cd.c_str(), ix + 1, sl ? 's' : 'm');
+            if (ok) g_hanacd_cdi = cdi; else delete cdi;
         }
         gh_log("devices initialised");
 
@@ -199,6 +209,13 @@ static void gh_main_run() {
 
         if (!VM_PowerOn_gensei()) { gh_log("ERROR: power on failed"); gh_finish(3); }
         gh_log("powered on, running machine");
+        if (g_hanacd_cdi) {   /* hanacd: 리셋(IDE_OnReset)으로 컨트롤러가 만들어진 뒤에 IDE ATAPI CD 장착 */
+            bool IDE_CDROM_Attach(signed char index, bool slave, const std::vector<CDROM_Interface *> & cds, bool opt_replace);
+            std::string ci = gApp.prof_.kv.count("cd_ide") ? gApp.prof_.kv["cd_ide"] : std::string("2m");
+            int ix = (ci.size() >= 1 && ci[0] >= '1' && ci[0] <= '4') ? ci[0] - '1' : 0; bool sl = ci.size() >= 2 && ci[1] == 's';
+            std::vector<CDROM_Interface *> cv(1, g_hanacd_cdi); bool r = IDE_CDROM_Attach((signed char)ix, sl, cv, false);
+            gh_log("hanacd: IDE 장착(전원 뒤) %s (IDE %d%c)", r ? "성공" : "실패", ix + 1, sl ? 's' : 'm');
+        }
         gApp.pon_tick = SDL_GetTicks() | 1u; gApp.pon_pic = PIC_Ticks; gApp.loading = true;
         pwr::on_game_start();   /* B: power seq (self-skip) */
         if (!gApp.ft_dir.empty() && !ov::g_font_ok) ov::font_load(gApp.exedir);

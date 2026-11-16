@@ -81,6 +81,7 @@ struct AppState {
     std::string bk_osd;   /* 비면 줄 없음. 주 스레드가 쓰고 오버레이 합성(같은 스레드)이 읽는다 */
     bool dosfd = false;   /* t43: FD 가 스스로 부팅 못 함(DOS 시스템 없음) → 내장 DOS 에 A:/B: 장착 */
     bool dosmode = false;   /* t36cd: CD 슬롯 → 내장 DOS 로 부팅(디스크가 없고 cd= 가 있을 때) */
+    bool cdguest = false;   /* hanacd: 디스크 부팅 + cd= 가 함께 있으면 CD 를 게스트 IDE CD 장치로 장착 */
     std::string entry_cli;   /* t36cd: --entry <이름> */
     bool dumpcode = false;
     bool boot400 = false;

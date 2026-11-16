@@ -41,6 +41,10 @@ struct Ui {
     static const int MAXG = 256;
     Settings g, t[MAXG]; bool has_t[MAXG] = { false };   bool nofollow[MAXG] = { false }; bool all_global = false; Settings fscratch; unsigned ovm[MAXG] = { 0 }; unsigned bk_ovm = 0, cb_ovm = 0; int bk_cur = -1;   /* #587: 작품별 개별 값 표시(줄 비트) */   /* t147d: 작품별 「전역 따르기」 끔 표시 · 전역 일괄 · 따르는 중 편집을 버리는 임시 칸 */
     int scope = 0;             /* 0 전역 1 이 작품 */
+    int scope_lock = 0;        /* 1 = 메인 설정/이 작품에서 들어옴: 범위가 고정(적용 범위 줄은 읽기 전용) */
+    bool ent_from_extra = false, ex_rule_cmd = false; std::string ex_rule_str; int ex_rule_epoch = 0;   /* 실행 방법 목록을 「이 작품」에서 열었나 · 이 작품 폴더에 .cmd 있나 */
+    std::string row_name_now; int save_note_pend = 0;   /* 설정 화면에서 지금 고른 줄의 이름 · 값이 바뀐 직후 다음 그림에서 「저장함」 문구를 만든다 */
+    std::string save_note; int save_note_until = 0; std::string diag_out; int diag_wait = 0; std::string diag_ans;   /* 저장함 한 줄 · 진단 화면 */
     Settings cb_g, cb_t; bool cb_has = false, cb_has_t = false; int cb_scope = 0, cb_cur = -1; std::string cb_fkr, cb_fjp;   /* t52e (#131 ③): 동작 환경 설정 진입 때 값 백업 */
     bool fs_now = false; Scr start_ret = S_MAIN;   /* t52i: fs_now = 호스트가 알려 주는 전체화면 여부 · start_ret = 시작 팝업을 연 화면(S_MAIN/S_PICK) */
     Settings backup; bool backup_has = false;   /* 화면 설정에서 × 로 되돌리기 */
@@ -87,7 +91,7 @@ struct Ui {
             r.push_back(13); if (scope == 0) r.push_back(14); if (scope == 1) r.push_back(11); }   /* t662: 13 = phosphor page */
         else { for (int i = 0; i <= 13; i++) { const bool skip = (scope == 1 && (i == 3   /* E2R */
             || i >= 11)) || (conf_grp && i != 0 && conf_grp_of(i) != conf_grp); if (!skip) r.push_back(i);
-            if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) { r.push_back(26); r.push_back(34); /*t794 진동*/ } }
+            if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) { r.push_back(26); r.push_back(34); /*t794 진동*/ r.push_back(35); /* t822: 진동 세기 */ } }
             if (i == 10 && scope == 0 && (!conf_grp || conf_grp == 2)) {   /* E2R */
                 if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
                 else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
@@ -250,11 +254,11 @@ struct Ui {
     /* build 5b-3: main list = start/pick/settings/save/extra/quit (screen settings only via settings hub) - tests find rows by id */
     int extra_sub = 0; int fnow_cur = -2; std::string fnow_line, fnow_kr, fnow_jp;   /* work menu: 0 main list, 1 "this game's settings" list */
     static int mi(Scr s) { return s == S_START ? 0 : s == S_PICK ? 1 : s == S_SET ? 2 : s == S_SAVE ? 3 : s == S_EXTRA ? 4 : s == S_QUIT ? 5 : -1; }
-    static const int * extra_main() { static const int o[6] = { 2, 3, 4, 7, 100, 6 }; return o; }   /* ids: 2 boot seq, 3 help, 4 about, 7 values, 100 this-game submenu, 6 reset (5 fav, 8 language live in the submenu). #B4: 옛 id 0 「디스크 정보」 줄은 어느 플랫폼에서도 핸들러가 없어 삭제(오른쪽 인포메이션이 같은 내용) */
-    static int extra_row(int id) { const int * o = extra_main(); for (int i = 0; i < 6; i++) if (o[i] == id) return i; return 0; }
-    std::vector<int> extra_ids() const { std::vector<int> v; if (extra_sub) { v.push_back(8); v.push_back(5); } else v.assign(extra_main(), extra_main() + 6); return v; }
+    static const int * extra_main() { static const int o[7] = { 10, 11, 8, 5, 2, 12, 6 }; return o; }   /* ids: 2 boot seq, 3 help, 4 about, 7 values, 100 this-game submenu, 6 reset (5 fav, 8 language live in the submenu). #B4: 옛 id 0 「디스크 정보」 줄은 어느 플랫폼에서도 핸들러가 없어 삭제(오른쪽 인포메이션이 같은 내용) */
+    static int extra_row(int id) { const int * o = extra_main(); for (int i = 0; i < 7; i++) if (o[i] == id) return i; return 0; }
+    std::vector<int> extra_ids() const { std::vector<int> v; if (extra_sub) { v.push_back(8); v.push_back(5); } else v.assign(extra_main(), extra_main() + 7); return v; }
     const std::string & font_now();
-    void d_set(Canvas & c); void k_set(UKey k, Act & a); void d_gkb(Canvas & c); void k_gkb(UKey k, Act & a);
+    void d_set(Canvas & c); void k_set(UKey k, Act & a); void d_diag(Canvas & c); void k_diag(UKey k, Act & a); void d_gkb(Canvas & c); void k_gkb(UKey k, Act & a);
     std::string sh_code, sh_ename, sh_msg; share::Decoded sh_dec; std::vector<std::string> sh_missing, sh_files; int sh_found = 0, sh_total = 0;
     void shr_open_make(int g, int menu_i); void shr_open_import(); void shr_preview(const std::string & code);
     void d_share(Canvas & c); void k_share(UKey k, Act & a); void d_shimp(Canvas & c); void k_shimp(UKey k, Act & a);
@@ -385,7 +389,7 @@ struct Ui {
         if (g && !g->thmb.empty()) blit_fit(c, g->thmb.data(), g->tw_, g->th_, x, y, w, h);   /* #M3: 비율 유지 */
         else { const char * m = phr_("저장 없음"); text(c, x + (w - tw(m)) / 2, y + h / 2 - 8, m, GY, K); }   /* r018: 표본 그림 대신 빈 칸 (나중에 타이틀 화면 캡처로 채움) */
     }
-    static void menu_names(std::vector<std::string> & v) { v = { phr_("게임 시작"), phr_("작품 선택"), phr_("mm_settings"), phr_("세이브 관리"), phr_("부가"), phr_("끝내기") }; }
+    static void menu_names(std::vector<std::string> & v) { v = { phr_("게임 시작"), phr_("작품 선택"), phr_("mm_settings"), phr_("세이브 관리"), phr_("이 작품"), phr_("끝내기") }; }
     static std::string play_str(int s) { char b[48]; if (s >= 3600) snprintf(b, sizeof b, phr_("%d시간 %02d분"), s / 3600, (s / 60) % 60); else snprintf(b, sizeof b, phr_("%d분"), s / 60); return b; }
     int cbx = 0, cby = 0, cbw = 0, cbh = 0;   /* kx-touch: 마지막으로 그린 팝업 상자(바깥 탭 = 취소) */
     /* 확인 창: 화면 가운데, 뒤 화면 어둡게. 반환 = 창 왼쪽 위 x,y */
@@ -893,7 +897,7 @@ struct Ui {
     std::string pre_name(int i) const { if (i < PRE_NB) { static const char * const KN[4] = { "preset_b0", "preset_b1", "preset_b2", "preset_b3" }; return std::string(phr_(KN[i])); } if (i < PRE_NB + (int)presets.size()) return presets[(size_t)(i - PRE_NB)].name; return std::string(phr_("preset_new")); }
     void pre_add(const Settings & s) { if ((int)presets.size() >= PRE_MAX) return; std::string nm; for (int n = 1; n < 100; n++) { nm = std::string(phr_("preset_user")) + " " + std::to_string(n); bool dup = false; for (size_t q = 0; q < presets.size(); q++) if (presets[q].name == nm) dup = true; if (!dup) break; } Preset p; p.name = nm; pre_copy(p.st, s); presets.push_back(p); pre_i = PRE_NB + (int)presets.size() - 1; dirty = true; }
     int nitems() const {
-        switch (scr) { case S_MAIN: return 6; case S_START: return 3; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 1; case S_ADD: return 8; case S_SCREEN: return bgfx_pg ? 15 : phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return 5; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 6; case S_GAME: return 9 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
+        switch (scr) { case S_MAIN: return 6; case S_START: return 3; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 1; case S_ADD: return 8; case S_SCREEN: return bgfx_pg ? 15 : phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return (scope_lock && scope == 1) ? 4 : 8; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 7; case S_DIAG: return 4; case S_GAME: return 10 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
     }
     int & curSel() { if (scr == S_MAIN) return mainsel; if (scr == S_PICK) return pick; if (scr == S_SAVE) return slotsel; if (scr == S_START) return startsel; if (scr == S_SWAP) return swapdrv; if (scr == S_SWAPI) return swapsel; return sel; }
     void go(Scr s, int selv = 0) { scr = s; sel = selv; phos_pg = false; bgfx_pg = false; fnow_cur = -2; if (s == S_EXTRA) extra_sub = 0; }   /* build 5b-3: font-now cache reset / work menu back to its main list */

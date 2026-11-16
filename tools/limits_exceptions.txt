@@ -94,3 +94,6 @@ tidy.h lines=123 bytes=9470 long=9 — kx-clean 신규 화면(S_TIDY): 줄 길�
 tidy_host.h lines=105 bytes=9692 long=13 — kx-clean 신규 host 쪽(목록 정리): 같은 사유.
 kh_touchfx.h  kx-touch: 효과 한 파일(도트 스프라이트·이벤트 감시)
 stb_image.h 외부 공개 도메인 단일 헤더(nothings/stb v2.32) — 사용자 터치 모양 PNG 읽기용, 수정 없이 그대로
+diag_host.h lines=128 bytes=8638 long=7 — v0.7.3 신규 설정>진단(진동 시험·컨트롤러 정보) host 쪽: 줄 길이는 기존 host 파일과 같은 한 줄 꼴. 분리는 v0.7.4 정리 때.
+diag.h lines=29 bytes=2470 long=3 — v0.7.3 신규 진단 화면: 같은 사유. 분리는 v0.7.4 정리 때.
+tags.h lines=22 bytes=1724 long=2 — v0.7.3 신규 작품 분류(태그) 화면: 같은 사유. 분리는 v0.7.4 정리 때.

@@ -171,7 +171,9 @@ static void rbox(Canvas & c, int x, int y, int w, int h, uint32_t col, const cha
 static void fillbox(Canvas & c, int x, int y, int w, int h, uint32_t bg, uint32_t col, const char * title) { c.rect(x, y, w, h, bg); rbox(c, x, y, w, h, col, title); }
 
 /* ---- 막대: 왼쪽 라벨 · 트랙(눈금) · 마커 · 오른쪽 라벨. v = 0..1 */
+static std::string g_row_val;   /* 정리안 A안: 지금 고른 줄의 값 글자(「저장함: 이름=값」 한 줄용) — choices/barv 가 고른 줄을 그릴 때 적어 둔다 */
 static void barv(Canvas & c, int x, int y, int w, double v, const char * l, const char * r, uint32_t fg, bool sel) {
+    if (sel) { char vb_[24]; snprintf(vb_, sizeof vb_, "%d%%", (int)(v * 100.0 + 0.5)); g_row_val = vb_; }
     int lw = tw(l) + 8, rw = tw(r) + 8, tx = x + lw, tl = w - lw - rw;
     text(c, x, y, l, fg, K);
     c.rect(tx, y + 7, tl, 1, fg);
@@ -187,6 +189,7 @@ static std::vector<ChHit> g_chit;
 static int g_tap_half = 0; static long long g_tap_ms = 0;   /* kx-touch: 값 줄 탭 — 오른쪽 절반 +1 / 왼쪽 절반 -1 (○ 로 들어온 탭 한 번만, 0.4초 안에서만 유효) */
 static long long tap_now_ms() { return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 static int choices(Canvas & c, int x, int y, const char * const * arr, int n, int cur, uint32_t fg, bool rowsel) {
+    if (rowsel && cur >= 0 && cur < n) g_row_val = arr[cur];
     int cx = x;
     for (int i = 0; i < n; i++) {
         int w = tw(arr[i]) + 8;
