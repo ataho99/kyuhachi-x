@@ -37,7 +37,7 @@ static bool gh_shot_save(void) {
         bool done = !gApp.shot_req; gApp.shot_crop = 0; gApp.shot_req = 0;
         plat::FileInfo fg; bool okg = done && plat::stat_file(path, fg) && fg.size_lo > 0;
         if (okg) { gh_log("SCREENSHOT OK %s (화면 설정 적용 %dx%d, shader=%d fit=%d curve=%.2f)", path.c_str(), gApp.shot_w, gApp.shot_h, (int)gApp.shader, (int)gApp.fit, (double)gApp.curve); gh_osd(phr_("스크린샷 저장됨"), 1500); return true; }
-        gh_log("SCREENSHOT GL 경로 실패(done=%d) — 원본 프레임으로 대체", (int)done);
+        gh_log("SCREENSHOT GL 경로 실패(done=%d) - 원본 프레임으로 대체", (int)done);
     }
     std::vector<uint32_t> out; const uint32_t * src = gApp.fb.data();
     if (gApp.fbw != 640 || gApp.fbh != 400) { out.assign(640 * 400, 0); ov::Canvas sc = { out.data(), 640, 400 }; ov::blit_scaled(sc, gApp.fb.data(), gApp.fbw, gApp.fbh, 0, 0, 640, 400); src = out.data(); }
@@ -53,12 +53,13 @@ static void gh_diag_focus(const char * why) {
         (wf & SDL_WINDOW_INPUT_FOCUS) ? 1 : 0, (wf & SDL_WINDOW_MOUSE_FOCUS) ? 1 : 0, (wf & SDL_WINDOW_SHOWN) ? 1 : 0, (wf & SDL_WINDOW_MINIMIZED) ? 1 : 0, (int)SDL_GetRelativeMouseMode());
 }
 static void gh_diag_enter(int tag) { gApp.dg_n[tag] = 0; gApp.dg_m[tag] = 0; gh_log("DIAG enter loop=%s", tag ? "game-menu" : "main-menu"); gh_diag_focus("enter"); }
-static bool gh_winshot(void) {
+static bool gh_winshot(bool wait = true) {   /* t852: wait=false - 메뉴 루프(렌더와 같은 스레드)에서 기다리면 요청이 처리되지 못해 FAIL 이었다 → 요청만 걸고 돌아간다(다음 프레임이 저장) */
     if (gApp.headless || !gApp.use_gl || !gApp.win) { gh_log("WINSHOT: no GL window"); return false; }
     std::string dir = gApp.exedir + "\\winshots"; plat::mkdir(dir.c_str());
     plat::LocalTime st = plat::local_now(); char ts[64]; snprintf(ts, sizeof ts, "%04d%02d%02d-%02d%02d%02d_%03d", st.year, st.month, st.day, st.hour, st.minute, st.second, st.ms);
     std::string path = dir + "\\win_" + ts + ".png";
     snprintf(gApp.shot_path, sizeof gApp.shot_path, "%s", path.c_str()); gApp.shot_w = gApp.shot_h = 0; gApp.shot_crop = 0; gApp.shot_req = 1;
+    if (!wait) { gh_log("WINSHOT req %s", path.c_str()); return true; }
     for (int t = 0; t < 600 && gApp.shot_req; t++) SDL_Delay(5);
     bool done = !gApp.shot_req; gApp.shot_req = 0;
     gh_log("WINSHOT %s %s %dx%d", done ? "OK" : "FAIL", path.c_str(), gApp.shot_w, gApp.shot_h); return done;

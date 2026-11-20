@@ -58,7 +58,7 @@ inline void Ui::k_edit(UKey k, Act & a) {
                 else if (sel == 11) { if (kv_get("install") == "hdd_new") { if (kv_get("disk_c").empty()) { hddsel = 0; install_start = false; scr = S_HDDASK; } } else { ed["install"] = "hdd_new"; if (!ed.count("hdd_mb")) ed["hdd_mb"] = "40"; } }
             }
             else if (k == UK_SQ) { if (save_ed()) leave_edit_to_ent(); }
-#if !defined(__ANDROID__)   /* #B4: 시험 실행은 윈도 경로·--windowed 명령을 만드는 윈도 전용 기능 — 안드로이드에서는 키·도움말 숨김 */
+#if !defined(__ANDROID__)   /* #B4: 시험 실행은 윈도 경로·--windowed 명령을 만드는 윈도 전용 기능 - 안드로이드에서는 키·도움말 숨김 */
             else if (k == UK_TRI) { std::vector<ent::Issue> is = ed_issues(); if (ent::has_error(is)) { msg = phr_("오류가 있어 시험할 수 없습니다: ") + is[0].msg; } else yn_open(S_EDIT, YN_TEST, phr_("저장하지 않은 값으로 ") + std::to_string(test_secs()) + phr_("초 실행해 봅니다."), phr_("세이브는 임시 폴더에 쓰고 끝나면 지웁니다."), phr_("실행할까요?")); }
 #endif
             else if (k == UK_SELECT) ed_setdef = !ed_setdef;

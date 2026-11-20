@@ -6,7 +6,7 @@ struct AppState {
     /* ---- 옛 위치: app/crash_inwin.h ---- */
     volatile bool eexit_seen = false;
     int traceexc = 0;
-    int traceexc_n = 0;   /* t37cd: --traceexc — 잡힌 C++ 예외(bad_alloc 등)의 던진 자리를 로그로 (EMS 가 왜 죽는지 찾는 용도) */
+    int traceexc_n = 0;   /* t37cd: --traceexc - 잡힌 C++ 예외(bad_alloc 등)의 던진 자리를 로그로 (EMS 가 왜 죽는지 찾는 용도) */
     /* ---- 옛 위치: app/frame.h ---- */
     std::vector<FtThumb> ft_thumbs;
     FILE *ft_csv = NULL;
@@ -50,8 +50,8 @@ struct AppState {
     std::string outdir = ".";
     bool imgdir_given = false;
     bool headless = false;
-    bool gltime = false;   /* t42(#313): --gltime — 렌더 스레드 그리기 시간(glFinish 기준) 3초 평균을 로그 한 줄로 */
-    bool hidewin = false;   /* t41b (#308): 시험 전용 — 보이지 않는 GL 창(SDL_WINDOW_HIDDEN)으로 실행, 슨상 화면에 창이 뜨지 않음 */
+    bool gltime = false;   /* t42(#313): --gltime - 렌더 스레드 그리기 시간(glFinish 기준) 3초 평균을 로그 한 줄로 */
+    bool hidewin = false;   /* t41b (#308): 시험 전용 - 보이지 않는 GL 창(SDL_WINDOW_HIDDEN)으로 실행, 슨상 화면에 창이 뜨지 않음 */
     unsigned int run_ms = 0;
     std::vector<unsigned int> shots_ms;
     bool vol_forced = false;
@@ -182,6 +182,7 @@ struct AppState {
     volatile float glowv = 0.0f;
     volatile float beamv = 0.0f, breathv = 0.0f, glowpv = 0.0f; volatile int persms = 0;
     GProg prog_ph; bool phos_gl = false;   /* t662 (#635): phosphor bundle (render thread reads) */
+    volatile float sharpv = 0.0f;   /* t852: 필터 「더 선명」 uniform */
     volatile float nearv = 0.0f;   /* t48c: 빛 번짐 · 밑 그림 nearest(1) *//* crt 셰이더 uniform(렌더 스레드가 읽음) */
     std::string exedir;
     std::string cfgpath;
@@ -209,6 +210,7 @@ struct AppState {
     std::string inw_sel_id;   /* 메뉴에서 고른 작품 id(폴백 재실행용) */
     bool menu_open = false;
     bool menu_req = false;
+    bool tset_req = false;   /* t862e: TK 길게 누름 → 일시정지 대신 터치 설정 창으로 메뉴 열기 */
     bool menu43 = false;   /* t52f (#132 2항): 큐하치 자체 화면(시작 메뉴)이 열려 있는 동안 화면비는 항상 4:3. 작품별 화면비는 게임이 시작될 때만 적용 */
     int resume_slot = 0;   /* 1..8 = 게임 시작 뒤 이 슬롯을 불러옴 */
     /* ---- 옛 위치: app/state_io.h ---- */
@@ -246,6 +248,7 @@ struct AppState {
     Bitu pic0 = 0;
     double fps = 0;
     volatile int fit = FIT_43;
+    volatile int vpos = 0;   /* t848: 16:10 일 때 게임 그림의 세로 위치 0 가운데 1 위 2 아래 (t850: 메뉴 중에도 같은 위치) */
     volatile int shader = SH_SHARP;
     volatile float curve = 0.0f;
 #if defined(__ANDROID__)
@@ -285,7 +288,7 @@ struct AppState {
     char shot_path[1024];
     volatile int shot_crop = 0;
     int shot_w = 0;
-    int shot_h = 0;   /* t41: 화면 설정(셰이더·곡면·비율) 적용된 스크린샷 — 화면 영역만 잘라 저장 */
+    int shot_h = 0;   /* t41: 화면 설정(셰이더·곡면·비율) 적용된 스크린샷 - 화면 영역만 잘라 저장 */
     int scr_pend = 0;
     bool vsync = false;
     unsigned int glmx_ms = 0;

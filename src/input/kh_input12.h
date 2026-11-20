@@ -44,6 +44,17 @@ static void kh_pb_defaults(void) {
     kh_pb[PB_L3].type = PBT_FN;     kh_pb[PB_L3].fn = FN_BOOST_TOG;
 }
 static bool kh_pb_init_done = (kh_pb_defaults(), true);
+/* t859-K: 터치 8칸 배정표(←→↑↓ Enter Esc Space Tab). 기본값 = t858 고정표(kbd_event.h gh_ctl_fire K[]).
+ * 전역 settings.ini [global] btn_touch_* + 작품 user.ini [touch] btn_touch_* 를 gh_apply_touch_input 이 얹는다.
+ * fn:/mouse_* 는 터치 목록에 없음. KBD_NONE = 배정 없음(none). */
+enum { TOUCH_N = 8 };
+static const char * const KH_TOUCHKEY[TOUCH_N] = { "btn_touch_left", "btn_touch_right", "btn_touch_up", "btn_touch_down", "btn_touch_enter", "btn_touch_esc", "btn_touch_space", "btn_touch_tab" };
+static KBD_KEYS kh_touch[TOUCH_N];
+static void kh_touch_defaults(void) {
+    static const KBD_KEYS D[TOUCH_N] = { KBD_left, KBD_right, KBD_up, KBD_down, KBD_enter, KBD_esc, KBD_space, KBD_tab };
+    for (int i = 0; i < TOUCH_N; i++) kh_touch[i] = D[i];
+}
+static bool kh_touch_init_done = (kh_touch_defaults(), true);
 static void (*kh_fn_hook)(int fn, bool down) = NULL;   /* 빌드 5a: 호스트(kbd_event.h gh_pad_fn)가 채운다 */
 static bool kh_trig_on[2];                              /* L2·R2 눌림(히스테리시스 켜짐 > 16000 · 꺼짐 < 8000) */
 static bool kh_sel_dn, kh_st_dn, kh_sw_sel, kh_sw_st;
@@ -61,7 +72,7 @@ static bool kh_hot_init_done = (kh_hot_defaults(), true);
 static bool kh_cap_on = false, kh_cap_sel = false, kh_cap_selheld = false; static int kh_cap_pb = -1; static Uint32 kh_cap_t0 = 0;   /* combo capture (menu open) */   /* SELECT+START 메뉴 조합(고정) */
 static bool kh_never[256];   /* #237 never_map: 패드·단축키에 절대 보내지 않는 키(KBD_KEYS 값) */   /* env GENSEI_PADMOUSE=1 : D-pad moves the cursor, A/B = L/R click */
 static std::map<SDL_JoystickID, SDL_GameController*> kh_pads;
-static std::map<SDL_JoystickID, SDL_Joystick*> kh_rawpads;   /* t48e: 표(매핑)에 없는 패드 — 원시 번호 폴백 */
+static std::map<SDL_JoystickID, SDL_Joystick*> kh_rawpads;   /* t48e: 표(매핑)에 없는 패드 - 원시 번호 폴백 */
 static std::map<SDL_JoystickID, int> kh_rawhat;               /* 폴백 패드의 십자 상태(SDL_HAT_* 비트) */
 static int gensei_padkind_v = 0;
 static bool gensei_pad_retro = false;   /* Retroid / Nintendo layout: east=A south=B west=Y north=X */       /* 0 그 밖 1 Xbox 2 PlayStation (첫 번째로 열린 패드의 이름으로 판정) */
@@ -92,7 +103,7 @@ static void kh_plogf(const char* fmt, ...) {
 /* t34 (#268): 코어 버스마우스 이동량 레지스터는 int8 — 한 틱에 127 넘게 몰아 주면 부호가 뒤집힌다(실측: y -150 한 번에 → 이동 안 됨). 대기열에 모아 20ms 마다 ±100 이하로 나눠 넣는다. */
 static float kh_vm_px = 0, kh_vm_py = 0; static Uint32 kh_vm_last = 0;
 static void kh_vmouse_move_rel(float dx, float dy) { kh_vm_px += dx; kh_vm_py += dy; }
-static void gh_log(const char * fmt, ...);   /* t744: 정의는 app/opts_log.h(뒤에 포함됨) — 같은 번역단위라 전방 선언으로 충분 */
+static void gh_log(const char * fmt, ...);   /* t744: 정의는 app/opts_log.h(뒤에 포함됨) - 같은 번역단위라 전방 선언으로 충분 */
 /* t744 (CP 309): PM2 는 래치 없이 카운터(int8)를 연속으로 읽어 차로 이동량을 얻는 것으로 보인다. 카운터를 비우거나(t743) 끝에 붙이면(t742 이하: 포화) 차가 틀어진다.
    * → 카운터를 비우지 않고 int8 로 감기게 둔다: 틱당 ±50 이하로 보내고, 카운터+이동량이 ±127 을 넘으면 Mouse_CursorMoved(포화) 대신 레지스터에 감긴 값을 직접 쓴다. 감김 발동 때 전/후 값 로그(최대 60회). */
 static void kh_vmouse_pump() {
@@ -137,7 +148,7 @@ static void gensei_open_pad(int idx) {
         char gs[64] = "?"; SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(idx), gs, sizeof gs);
         const char* jn = SDL_JoystickNameForIndex(idx);
         SDL_Joystick* js = SDL_JoystickOpen(idx);
-        if (!js) { GPLOG("PADMAP unknown joystick %d guid=%s name='%s' — open fail: %s", idx, gs, jn ? jn : "?", SDL_GetError()); return; }
+        if (!js) { GPLOG("PADMAP unknown joystick %d guid=%s name='%s' - open fail: %s", idx, gs, jn ? jn : "?", SDL_GetError()); return; }
         if (SDL_JoystickNumButtons(js) == 0 && SDL_JoystickNumHats(js) == 0) { GPLOG("PADMAP skip sensor idx=%d name='%s' buttons=0 hats=0", idx, jn ? jn : "?"); SDL_JoystickClose(js); return; }
         SDL_JoystickID id = SDL_JoystickInstanceID(js);
         kh_rawpads[id] = js; kh_rawhat[id] = 0;
@@ -145,7 +156,7 @@ static void gensei_open_pad(int idx) {
         if (!gensei_padkind_v) gensei_padkind_v = gensei_padkind_of(jn); if (kh_hotplug_hook) kh_hotplug_hook(true, jn ? jn : "?");
         return;
     }
-    { SDL_JoystickID id0 = SDL_JoystickGetDeviceInstanceID(idx); if (id0 >= 0 && kh_pads.count(id0)) { GPLOG("PAD id=%d 이미 열려 있음 — 열기 호출 없이 무시 (중복 이벤트)", (int)id0); return; } }   /* t49a (#823): 중복 확인을 열기 전에 (열기 호출이 참조 수만 올리던 문제) */
+    { SDL_JoystickID id0 = SDL_JoystickGetDeviceInstanceID(idx); if (id0 >= 0 && kh_pads.count(id0)) { GPLOG("PAD id=%d 이미 열려 있음 - 열기 호출 없이 무시 (중복 이벤트)", (int)id0); return; } }   /* t49a (#823): 중복 확인을 열기 전에 (열기 호출이 참조 수만 올리던 문제) */
     SDL_GameController* gc = SDL_GameControllerOpen(idx);
     if (!gc) { GPLOG("open fail %d: %s", idx, SDL_GetError()); return; }
     SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gc));
@@ -176,7 +187,7 @@ static void kh_load_db(void) {
         GPLOG("gamecontrollerdb: %s (%u bytes) -> %d 매핑 추가", P[i].c_str(), (unsigned)buf.size(), n);
         return;
     }
-    GPLOG("gamecontrollerdb: 파일 없음 (res/gamecontrollerdb.txt) — SDL 내장 표만 씀");
+    GPLOG("gamecontrollerdb: 파일 없음 (res/gamecontrollerdb.txt) - SDL 내장 표만 씀");
 }
 
 static void kh_input_init(void) {

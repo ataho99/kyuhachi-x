@@ -28,6 +28,7 @@ inline void Ui::d_pad(Canvas & c) {
         const bool mk = own_ && (ovm[cur] & (1u << SB[j]));
         r.push_back(std::string(mk ? "* " : "  ") + fit(std::string(phr_(SL[j])) + ": " + svt(j), 220));
     }
+    { bool tw = false; if (scope == 1 && env.touch_get && cur >= 0 && cur < (int)games.size()) { std::map<std::string, std::string> tm; env.touch_get(cur, tm); tw = !tm.empty(); } r.push_back(std::string(tw ? "* " : "  ") + fit(phr_("touch_row"), 220)); }   /* t859-K: S_TOUCH 진입(맨 끝) */
     std::vector<uint32_t> col(r.size(), 0u);
     rowlist(c, 40, 44, 256, 11, r, sel, 24, &col);
     rbox(c, 320, 24, 304, 296, WH, phr_("인포메이션"));
@@ -51,8 +52,9 @@ inline void Ui::d_pad(Canvas & c) {
     if (sel < 2) ln = sel == 0 ? phr_("전역=모든 작품, 이 작품=이 작품만. 작품 값이 우선.") : phr_("pad_decide_help");
     else if (sel < PAD_N + 2) { bool fw, df; std::string v = val(sel - 2, fw, df); ln = pad_row_name(sel - 2) + " → " + pad_show(v) + ((scope == 1 && !fw) ? (df ? phr_(" (기본)") : phr_(" (전역)")) : (scope == 0 && df ? phr_(" (기본)") : ""));
         if (sel >= 10 && sel <= 13) ln += std::string("  ") + phr_("pad_stick_note"); }
+    else if (sel == PAD_N + 7) ln = phr_("touch_help");   /* t859-K */
     const char * PH = phr_("↑↓:선택, ←→:값, ○:키 고르기, ×:뒤로, △:출하 시 설정");
-    if (sel >= PAD_N + 2) {
+    if (sel >= PAD_N + 2 && sel != PAD_N + 7) {
         const int j = sel - PAD_N - 2; const std::string l1 = std::string(phr_(SL[j])) + " -> " + svt(j), l2 = phr_(j == 4 ? "pad_msp_help" : (j & 1) ? "pad_dz_help" : "pad_stk_help");
         desc(c, 324, 58, { fit(dkey(l1), 560), fit(dkey(l2), 560) }, -1, PH);
     } else desc(c, 324, 44, { fit(dkey(ln), 560) });
@@ -71,24 +73,29 @@ inline void Ui::k_pad(UKey k, Act & a) {
     auto mv = [&](int & s, int cnt) { if (cnt < 1) cnt = 1; if (k == UK_UP) s = (s + cnt - 1) % cnt; else if (k == UK_DOWN) s = (s + 1) % cnt; };
     do { {
             if (k == UK_R) { pad_sel_keep = sel; scr = S_HOT; sel = 0; hot_cap = false; break; }
-            mv(sel, PAD_N + 7);
+            mv(sel, PAD_N + 8);   /* t859-K: 맨 끝 터치 진입 1줄 */
             if (k == UK_LEFT || k == UK_RIGHT) {
                 int d = (k == UK_RIGHT) ? 1 : -1;
                 if (sel == 0) { scope_step(d); }
                 else if (sel == 1) { Settings & s = edit(); int nv = clampi(s.pad + d, 0, 1); if (nv != s.pad) { s.pad = nv; dirty = true; a.t = A_APPLY; } }
                 else if (sel >= PAD_N + 2) stkstep(sel - PAD_N - 2, d);
             } else if (k == UK_OK) {
-                if (sel >= PAD_N + 2) stkstep(sel - PAD_N - 2, 0);
+                if (sel == PAD_N + 7) { go(S_TOUCH, 0); }   /* t859-K: 터치 키 배치(범위 계승) */
+                else if (sel >= PAD_N + 2) stkstep(sel - PAD_N - 2, 0);
                 else if (sel >= 2) open_padkey(sel - 2);
                 else if (sel == 1) { Settings & s = edit(); s.pad = s.pad == 1 ? 0 : 1; dirty = true; a.t = A_APPLY; }
             } else if (k == UK_TRI) {   /* 출하 시 설정: 이 범위의 버튼 줄을 모두 지움, 결정 방식은 일본식 */
-                if (scope == 0) {
+                if (sel == PAD_N + 7) {   /* t859-K: 터치 줄 위에서는 터치 8줄만 지움 */
+                    if (scope == 0) { for (int i = 0; i < TOUCH_N; i++) gpad.erase(touch_key(i)); }
+                    else if (cur >= 0 && cur < (int)games.size() && env.touch_set) { for (int i = 0; i < TOUCH_N; i++) env.touch_set(cur, touch_key(i), std::string()); }
+                }
+                else if (scope == 0) {
                     gpad.clear(); Settings d0; Settings & e0 = eff();
                     e0.pad = d0.pad; e0.stk_l = d0.stk_l; e0.stk_r = d0.stk_r; e0.dz_l = d0.dz_l; e0.dz_r = d0.dz_r; e0.stk_sp = d0.stk_sp;
                 }
                 else if (cur >= 0 && cur < (int)games.size()) { if (env.pad_get && env.pad_set) { std::map<std::string, std::string> m; env.pad_get(cur, m); for (auto & kv : m) env.pad_set(cur, kv.first, std::string()); } gp.have = false; ov_set(cur, ovm[cur] & ~((1u << 9) | (31u << 17))); sync_t(cur); }
                 dirty = true; a.t = A_APPLY;
-            } else if (k == UK_CANCEL) { go(S_CONF, rowidx(S_CONF, 4)); }
+            } else if (k == UK_CANCEL) { go(S_CONF, rowidx(S_CONF, conf_grp >= 4 ? 41 : 4)); }
             break; }
     } while (0);
 }

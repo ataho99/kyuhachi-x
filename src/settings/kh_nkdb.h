@@ -16,7 +16,7 @@ struct Game {
     bool has_flag(const char * f) const { return ("," + flags + ",").find(std::string(",") + f + ",") != std::string::npos; }
 };
 struct Sig { std::string label, exes; };
-struct Boot { std::string st, conf, drv, fmt; };   /* #L5: gamedb_nk_boot.tsv 한 줄 — 상태(OK/UNK/NA/FAIL/NOSYS/SYS/HDI) · 신뢰(자동/눈) · 부팅 드라이브 · 형식 */
+struct Boot { std::string st, conf, drv, fmt; };   /* #L5: gamedb_nk_boot.tsv 한 줄 - 상태(OK/UNK/NA/FAIL/NOSYS/SYS/HDI) · 신뢰(자동/눈) · 부팅 드라이브 · 형식 */
 struct Db {
     std::unordered_map<std::string, Boot> boot;                       // gid -> 기동 상태(#L5, 파일 없으면 비어 있음)
     std::string ver_nk, ver_tosec; std::vector<Game> g;
@@ -129,7 +129,7 @@ inline Result match(const Db & db, const std::vector<prof::ImgInfo> & imgs, cons
     int bestg = -1, bestv = 0; for (auto & kv : votes) if (kv.second > bestv) { bestv = kv.second; bestg = kv.first; }
     if (bestg >= 0 && bestv == R.total) {
         const Game & g = db.g[bestg]; R.grade = 'A'; R.game = bestg; R.exact = bestv;
-        R.text = khtr::fmt(khtr::tr("원판과 같은 파일 — %s [%s] (DB 일치)"), g.title.c_str(), g.media.c_str()); R.shortt = khtr::tr("확인됨 (DB 일치)"); return R;
+        R.text = khtr::fmt(khtr::tr("원판과 같은 파일 - %s [%s] (DB 일치)"), g.title.c_str(), g.media.c_str()); R.shortt = khtr::tr("확인됨 (DB 일치)"); return R;
     }
     // 2) 변형: 크기·구성·제목·서명
     std::set<int> cand; if (bestg >= 0) cand.insert(bestg);
@@ -174,8 +174,8 @@ inline Result match(const Db & db, const std::vector<prof::ImgInfo> & imgs, cons
         if (R.ts >= 0.5) { snprintf(b, sizeof b, khtr::tr("제목 유사 %d%%"), (int)(R.ts * 100)); ev += ", "; ev += b; }
         if (R.sigok) ev += std::string(", ") + khtr::tr("라벨/실행파일 일치");
         if (R.uniq) ev += std::string(", ") + khtr::tr("크기 유일");
-        if (R.grade == 'B') { R.text = khtr::fmt(khtr::tr("원판 %s [%s]의 변형(패치판 추정) — %s"), g.title.c_str(), g.media.c_str(), ev.c_str()); R.shortt = khtr::fmt(khtr::tr("추정 (원판 %s의 변형)"), g.title.c_str()); }
-        else { R.text = khtr::fmt(khtr::tr("원판 후보 %s [%s] (확실하지 않음) — %s"), g.title.c_str(), g.media.c_str(), ev.c_str()); R.shortt = khtr::fmt(khtr::tr("후보 (원판 %s 추정, 확실하지 않음)"), g.title.c_str()); }
+        if (R.grade == 'B') { R.text = khtr::fmt(khtr::tr("원판 %s [%s]의 변형(패치판 추정) - %s"), g.title.c_str(), g.media.c_str(), ev.c_str()); R.shortt = khtr::fmt(khtr::tr("추정 (원판 %s의 변형)"), g.title.c_str()); }
+        else { R.text = khtr::fmt(khtr::tr("원판 후보 %s [%s] (확실하지 않음) - %s"), g.title.c_str(), g.media.c_str(), ev.c_str()); R.shortt = khtr::fmt(khtr::tr("후보 (원판 %s 추정, 확실하지 않음)"), g.title.c_str()); }
         return R;
     }
     R.text = khtr::tr("- 판정 근거 없음 (DB 에 없는 작품이거나 크기·구성이 다름)"); R.shortt = "-"; return R;
@@ -185,7 +185,7 @@ inline Result match(const Db & db, const std::vector<prof::ImgInfo> & imgs, cons
 inline std::string nk_block(const Db & db, const Result & r, bool curated) {
     if (r.game < 0 || r.game >= (int)db.g.size() || r.grade == 'C' || r.grade == '-') return "";
     const Game & g = db.g[r.game];
-    if (g.media == "CD" || g.media == "CDFD") return khtr::tr("CD 작품입니다 — CD 드라이브 지원 전이라 아직 실행할 수 없습니다");
+    if (g.media == "CD" || g.media == "CDFD") return khtr::tr("CD 작품입니다 - CD 드라이브 지원 전이라 아직 실행할 수 없습니다");
     if (!curated && g.has_flag("inst")) return khtr::tr("하드디스크 설치가 필요한 작품입니다 (설치 단계 지원 전)");
     return "";
 }

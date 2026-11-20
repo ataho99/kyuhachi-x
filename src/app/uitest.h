@@ -1,3 +1,4 @@
+#include <algorithm>
 /* app/uitest.h -- S9b: menu shot, ui main loop, ui test. Moved unchanged from gensei_host.cpp lines 1514-1794 (as of t54t). Included in place; single translation unit. */
 /* ---- r012: 작품을 고르기 전 UI 루프. true = 게임 시작(out_id), false = 끝내기 */
 static bool gh_shot_to(const std::string & path) {
@@ -14,9 +15,27 @@ static bool gh_menushot_tick(ui::Ui & U) {   /* true = 시험 끝(메뉴를 닫�
     else if (st == 3 && t >= 6000) return true;
     return false;
 }
+/* t858-D: 슬롯 스캔 워커 — UI·GL·gh_log 금지. 결과는 w->outs[i]에만 쓴다(메인 스레드가 join 후 반영). */
+struct SlotWorker { std::string savedir; std::vector<std::string> ids; std::vector<SlotScanOut> outs; bool ok; };
+static int gh_slot_thread(void * p) {
+    SlotWorker * w = (SlotWorker *)p;
+    w->ok = false;
+    try {
+        for (size_t i = 0; i < w->ids.size(); i++) gh_scan_slots_snapshot(w->savedir, w->ids[i], w->outs[i]);
+        w->ok = true;
+    } catch (...) { w->ok = false; }
+    SDL_AtomicSet(&g_slots_done, 1);
+    return 0;
+}
 static bool gh_ui_main_(std::string & out_id) {
     ui::Ui & U = gApp.ui_;
-    for (size_t i = 0; i < U.games.size(); i++) gh_refresh_game_slots((int)i);
+    /* t858-D: 슬롯 스캔을 별도 스레드로 돌리고 부팅 연출을 바로 시작한다. 결과 반영은 join 뒤(메뉴 진입 전). */
+    SlotWorker sw; sw.savedir = gApp.savedir; sw.ok = false;
+    for (size_t i = 0; i < U.games.size(); i++) sw.ids.push_back(U.games[i].id);
+    sw.outs.resize(sw.ids.size());
+    SDL_AtomicSet(&g_slots_done, sw.ids.empty() ? 1 : 0);
+    SDL_Thread * slot_thr = (!sw.ids.empty() && !gApp.headless) ? SDL_CreateThread(gh_slot_thread, "kh_slots", &sw) : NULL;
+    if (!slot_thr) { for (size_t i = 0; i < U.games.size(); i++) gh_refresh_game_slots((int)i); SDL_AtomicSet(&g_slots_done, 1); }   /* t858-D: 스레드 실패 시 기존 동작 */
     U.in_game = false; U.scr = ui::S_MAIN; SDL_StartTextInput(); U.now_s = (long long)time(NULL);
     {   /* t39: 설치 실행 뒤 처음 열린 목록에서 「설치를 마쳤습니까?」 */
         std::string pf = gApp.exedir + "\\install_pending.tsv"; FILE * f = fopen(pf.c_str(), "rb");
@@ -27,7 +46,23 @@ static bool gh_ui_main_(std::string & out_id) {
     if (U.cur < 0 || U.cur >= (int)U.games.size()) U.cur = 0;
     U.pick = U.cur; gApp.cur_game = U.cur;
     gh_apply_settings(U.effective(U.cur), false);
-    if (!gApp.noboot && U.g.boot == 0) { if (gh_boot_seq(true) && gApp.quit) return false; }
+    if (!gApp.noboot && U.g.boot == 0) { if (gh_boot_seq(true) && gApp.quit) { if (slot_thr) SDL_WaitThread(slot_thr, NULL); return false; } }
+    if (slot_thr) {
+        SDL_WaitThread(slot_thr, NULL);   /* t858-D: 메뉴 진입 전 join - 결과는 여기서 반영한다(스레드 안에서는 GL·UI 호출 금지) */
+        bool ids_ok = (U.games.size() == sw.ids.size());
+        for (size_t i = 0; ids_ok && i < U.games.size(); i++) if (U.games[i].id != sw.ids[i]) ids_ok = false;
+        if (sw.ok && ids_ok) {
+            unsigned th = 0, tm = 0;
+            for (size_t i = 0; i < U.games.size() && i < sw.outs.size(); i++) {
+                ui::UiGame & G = U.games[i];
+                for (int s = 0; s < 5; s++) G.slot[s] = sw.outs[i].slot[s];
+                G.lastslot = sw.outs[i].lastslot;
+                if (G.lastslot >= 0) { G.thmb = G.slot[G.lastslot].th; G.tw_ = G.slot[G.lastslot].tw_; G.th_ = G.slot[G.lastslot].th_; } else G.thmb.clear();
+                th += sw.outs[i].nhit; tm += sw.outs[i].nmiss;
+            }
+            gh_log("SLOTS parallel join games=%d hit=%u miss=%u", (int)sw.ids.size(), th, tm);
+        } else { for (size_t i = 0; i < U.games.size(); i++) gh_refresh_game_slots((int)i); }   /* t858-D: 워커 실패·목록 변경 시 기존 동작 */
+    }
     static uint32_t buf[640 * 400]; ov::Canvas c = { buf, 640, 400 };
 #if defined(__ANDROID__)
     if (U.games.empty() && U.gamefolder.empty() && !gApp.headless) gh_add_action(2);   /* t55b: first run, no works registered -> pick the game folder */
@@ -35,6 +70,7 @@ static bool gh_ui_main_(std::string & out_id) {
     gh_diag_enter(0);
     for (;;) {
         gh_inj_poll_menu();   /* t49a: 하니스 inject 를 메뉴 루프에서도 */
+        { static unsigned wt0 = SDL_GetTicks(); static bool wshot = false; if (!wshot && gApp.kbt_click_ms && !gApp.kbt_seq.empty() && gApp.kbt_seq[0] == "WINSHOT" && SDL_GetTicks() - wt0 >= gApp.kbt_click_ms) { wshot = true; gh_winshot(false); } }   /* t852: 시험 - 메뉴 루프에서 --kbclick "초:WINSHOT" 을 직접 처리(키 시험 틱은 메뉴 루프에서 안 돈다) */
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (gh_evpre(e, 0)) continue;
@@ -59,7 +95,7 @@ static bool gh_ui_main_(std::string & out_id) {
             case ui::A_START: if (U.games[a.game].id.empty()) break; if (!gh_font_guard()) break; if (!gh_disk_guard(U.games[a.game].id)) break; gh_launch_note(U, a); U.cur = a.game; gApp.cur_game = a.game; gApp.resume_slot = a.resume && U.games[a.game].lastslot >= 0 ? U.games[a.game].lastslot + 1 : 0; gh_chain_start(U, a.game); out_id = U.games[a.game].id; ui::settings_save(U, gApp.cfgpath); return true;
             case ui::A_LOAD: if (U.games[a.game].id.empty() || !U.blk_id(U.games[a.game].id).empty()) break; if (!gh_font_guard()) break; if (!gh_disk_guard(U.games[a.game].id)) break; gh_launch_note(U, a); U.cur = gApp.cur_game = a.game; gApp.resume_slot = a.slot + 1; out_id = U.games[a.game].id; ui::settings_save(U, gApp.cfgpath); return true;
             case ui::A_DELSLOT: gh_delete_slot(a.game, a.slot); break;
-            case ui::A_APPLY: gh_apply_settings(U.scr == ui::S_SCREEN ? U.eff() : U.effective(U.cur), false); kh_western = (U.scr == ui::S_PAD || U.scr == ui::S_PADKEY ? U.eff() : U.effective(U.cur)).pad == 1; break;   /* t48e: 시작 메뉴의 결정/취소 버튼도 방식을 따른다 */
+            case ui::A_APPLY: if (U.save_now) { ui::settings_save(U, gApp.cfgpath); U.save_now = false; U.dirty = false; } gh_apply_settings(U.scr == ui::S_SCREEN ? U.eff() : U.effective(U.cur), false); kh_western = (U.scr == ui::S_PAD || U.scr == ui::S_PADKEY ? U.eff() : U.effective(U.cur)).pad == 1; break;   /* t48e: 시작 메뉴의 결정/취소 버튼도 방식을 따른다 */
             case ui::A_WINMULT: gh_win_apply(a.arg, false); break;
             case ui::A_FULLSCR: gh_fs_toggle(); break;
             case ui::A_ADD: gh_add_action(a.arg); break;
@@ -110,7 +146,7 @@ static void gh_uitest(void) {
     plat::mkdir(gApp.uitest_dir.c_str());
     for (size_t i = 0; i < U.games.size(); i++) gh_refresh_game_slots((int)i);
     U.cur = U.pick = 2; gApp.cur_game = 2;
-    auto shot = [&](const char * nm) { U.draw(c); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } char p[700]; if (!gApp.uikeys_file.empty()) snprintf(p, sizeof p, "%s\\ui_%02d_%s_s%02dt%dc%d.png", gApp.uitest_dir.c_str(), ++n, nm, (int)U.scr, (int)U.tab, U.sel); else snprintf(p, sizeof p, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm);   /* t39ui4: 스크립트 캡처 이름에 화면 번호·탭·선택 줄을 붙인다 */ gh_png(p, buf, 640, 400); };
+    auto shot = [&](const char * nm) { ov::g_ovf_n = 0; ov::g_ovf_first.clear(); U.draw(c); if (ov::g_ovf_on) gh_log("uikeys: OVFL %s scr=%d n=%d %s", ov::g_ovf_n ? "FAIL" : "ok", (int)U.scr, ov::g_ovf_n, ov::g_ovf_first.c_str()); { std::string bw = gh_builtin_warn(); if (!bw.empty()) ov::osd_draw(c, bw, false, 336); } char p[700]; if (!gApp.uikeys_file.empty()) snprintf(p, sizeof p, "%s\\ui_%02d_%s_s%02dt%dc%d.png", gApp.uitest_dir.c_str(), ++n, nm, (int)U.scr, (int)U.tab, U.sel); else snprintf(p, sizeof p, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm);   /* t39ui4: 스크립트 캡처 이름에 화면 번호·탭·선택 줄을 붙인다 */ gh_png(p, buf, 640, 400); };
     auto boot = [&](const char * nm, int stage, bool cells) {
         c.rect(0, 0, 640, 400, ov::K);
         if (stage >= 1) ov::text(c, 40, 112, std::string(KH_DISPNAME), ov::WH, ov::K); /*E1R*/
@@ -118,13 +154,53 @@ static void gh_uitest(void) {
         if (cells) ov::fncells_boot(c);   /* t52a (#49) */
         char p[700]; snprintf(p, sizeof p, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm); gh_png(p, buf, 640, 400);
     };
-    if (!gApp.uikeys_file.empty()) {   /* t39: 키 입력 스크립트 시험 — 공백 구분 토큰, # 줄은 주석. shot:이름 text:글자 go:작품id 키(U D L R O C T S E LB RB)*반복 */
+    if (!gApp.uikeys_file.empty()) {   /* t39: 키 입력 스크립트 시험 - 공백 구분 토큰, # 줄은 주석. shot:이름 text:글자 go:작품id 키(U D L R O C T S E LB RB)*반복 */
         std::string sc; { FILE * kf = fopen(gApp.uikeys_file.c_str(), "rb"); if (kf) { char ln[1024]; while (fgets(ln, sizeof ln, kf)) { if (ln[0] != '#') sc += ln; } fclose(kf); } else gh_log("uikeys: 파일을 열 수 없음 %s", gApp.uikeys_file.c_str()); }
         static const std::map<std::string, ui::UKey> KM = { { "U", ui::UK_UP }, { "D", ui::UK_DOWN }, { "L", ui::UK_LEFT }, { "R", ui::UK_RIGHT }, { "O", ui::UK_OK }, { "C", ui::UK_CANCEL }, { "T", ui::UK_TRI }, { "S", ui::UK_SQ }, { "E", ui::UK_SELECT }, { "LB", ui::UK_L }, { "RB", ui::UK_R }, { "P", ui::UK_PROF } };
-        U.in_game = false; U.scr = ui::S_MAIN; U.ts_ms = 0; U.now_s = (long long)time(NULL); if (U.cur < 0 || U.cur >= (int)U.games.size()) U.cur = 0; U.pick = U.cur; gApp.cur_game = U.cur;
+        U.yn_lock_frames = 0; U.in_game = false; U.scr = ui::S_MAIN; U.ts_ms = 0; U.now_s = (long long)time(NULL); if (U.cur < 0 || U.cur >= (int)U.games.size()) U.cur = 0; U.pick = U.cur; gApp.cur_game = U.cur;
         std::istringstream in(sc); std::string tk; int nact = 0;
         while (in >> tk) {
+            if (tk == "ovf") { ov::g_ovf_on = true; continue; }   /* t851: 넘침 검사 켜기 - 이후 shot: 마다 「OVFL ok|FAIL scr n 첫 글」 한 줄 (FAIL = 클립 없이 상자·화면 밖으로 나간 글자가 있음) */
+            if (tk == "asciichk") {   /* t855 (#1729·#1730) ASCII 전수 시험: 0x21~0x7E 글리프가 시트에 있고(먹 > 0) 칸 폭(advance)보다 넓어 잘리지 않는지. 「버림 0」 = 누락 0 + 잘림 0 */
+                int miss_ = 0, clip_ = 0; std::string lm_, lc_;
+                if (ov::g_menu_bmp && ov::g_menu_bmp->ok) for (int cp_ = 0x21; cp_ <= 0x7E; cp_++) {
+                    int mx_ = -1, ink_ = 0; for (int j_ = 0; j_ < 16; j_++) for (int i_ = 0; i_ < 16; i_++) if (ov::g_menu_bmp->ink(i_, cp_ * 16 + j_)) { ink_++; if (i_ > mx_) mx_ = i_; }
+                    const int adv_ = (ov::g_menu_advp) ? ov::g_menu_advp[cp_] : ov::g_menu_half;
+                    if (!ink_) { miss_++; lm_ += (char)cp_; } else if (mx_ + 1 > adv_) { clip_++; lc_ += (char)cp_; }
+                } else { miss_ = 95; lm_ = "(시트 없음)"; }
+                gh_log("uikeys: ASCII %s font=%s 누락=%d[%s] 잘림=%d[%s] 반각=%d", (miss_ || clip_) ? "FAIL" : "ok", U.font_ui.c_str(), miss_, lm_.c_str(), clip_, lc_.c_str(), ov::g_menu_half); continue;
+            }
+            if (tk == "framechk") {   /* t855 (#1728) 틀 고정 시험: 작품 전부 × (메인 · 작품 선택) 에서 상자·인포 라벨 좌표가 첫 작품과 같은지 + 고정 좌표표(라벨 x 268/448 · y 205+21r)와 같은지. 언어·글꼴은 호출하는 쪽이 바꿔 가며 부른다 */
+                const bool ovs_ = ov::g_ovf_on; ov::g_ovf_on = true; ov::g_pos_on = true;
+                int bad_ = 0, nsc_ = 0, miss_ = 0; std::string fb_; std::vector<std::string> ref_[2]; const int nv_ = (int)U.vis.size();
+                for (int sc_ = 0; sc_ < 2; sc_++) for (int vi_ = 0; vi_ < nv_; vi_++) {
+                    U.in_game = false; U.scr = sc_ ? ui::S_PICK : ui::S_MAIN; U.mainsel = 0; U.pick = vi_; U.cur = U.vis[vi_]; gApp.cur_game = U.cur;
+                    ov::g_pos.clear(); U.draw(c); std::vector<std::string> v_ = ov::g_pos; std::sort(v_.begin(), v_.end()); nsc_++;
+                    if (vi_ == 0) ref_[sc_] = v_; else if (v_ != ref_[sc_]) { bad_++; if (fb_.empty()) { fb_ = std::string(sc_ ? "pick" : "main") + " row" + std::to_string(vi_); for (size_t q_ = 0; q_ < v_.size() && q_ < ref_[sc_].size(); q_++) if (v_[q_] != ref_[sc_][q_]) { fb_ += " [" + v_[q_] + "] vs [" + ref_[sc_][q_] + "]"; break; } } }
+                }
+                for (int sc_ = 0; sc_ < 2; sc_++) for (int r_ = 0; r_ < 4; r_++) for (int xx_ = 0; xx_ < 2; xx_++) { char b_[64]; snprintf(b_, sizeof b_, "L %d %d", xx_ ? 448 : 268, 205 + r_ * 21); if (std::find(ref_[sc_].begin(), ref_[sc_].end(), std::string(b_)) == ref_[sc_].end()) miss_++; }
+                gh_log("uikeys: FRAME %s font=%s lang=%d 작품=%d 화면=%d 불일치=%d 표누락=%d %s", (bad_ || miss_) ? "FAIL" : "ok", U.font_ui.c_str(), U.lang, nv_, nsc_, bad_, miss_, fb_.c_str());
+                ov::g_pos_on = false; ov::g_ovf_on = ovs_; U.scr = ui::S_MAIN; U.pick = U.cur; continue;
+            }
+            if (tk.compare(0, 6, "ulang:") == 0) { U.lang = atoi(tk.c_str() + 6) % 3; phr_set_lang(U.lang); gh_log("uikeys: ULANG %d", U.lang); continue; }   /* t851 시험 전용: UI 언어 0 ko 1 en 2 ja */
+            if (tk.compare(0, 6, "goscr:") == 0) { U.entg = U.cur; U.go((ui::Scr)atoi(tk.c_str() + 6), 0); continue; }   /* t851 시험 전용: 화면 번호로 바로 */
             if (tk.compare(0, 5, "shot:") == 0) { shot(tk.substr(5).c_str()); continue; }
+            if (tk.compare(0, 5, "ov16:") == 0) {   /* t848 시험: 16:10 창(800x600)에서 그림 위치(0 가운데 1 위 2 아래)와 오버레이 4:3 틀을 GL 과 같은 식(gl_rect·gl_ovrect·kbov::draw)으로 합성해 PNG. ov16:<위치>:<이름> (GL 창 캡처는 오버레이를 건너뛰므로 시험 전용) */
+                const int vp = atoi(tk.c_str() + 5); std::string nm = "x"; { size_t c2 = tk.find(':', 5); if (c2 != std::string::npos) nm = tk.substr(c2 + 1); }
+                const int W = 800, Hh = 600; std::vector<uint32_t> win((size_t)W * Hh, 0xFF000000u), pic(640 * 400);
+                ov::sample_picture(c, 0, 0, 640, 400); memcpy(pic.data(), buf, sizeof(uint32_t) * 640 * 400);
+                gApp.vpos = vp; gApp.menu_open = false;
+                int px, py, pw, ph; gl_rect(W, Hh, 640, 400, FIT_1610, px, py, pw, ph);
+                for (int y = 0; y < ph; y++) for (int x = 0; x < pw; x++) win[(size_t)(py + y) * W + px + x] = pic[(size_t)(y * 400 / ph) * 640 + x * 640 / pw] | 0xFF000000u;
+                int ox, oy, ow, oh; gl_ovrect(W, Hh, FIT_1610, px, py, pw, ph, ox, oy, ow, oh);
+                const ui::Settings & gs = U.g; kbov::g_ov_on = true; kbov::g_force_strong = true; kbov::g_vis = false; kbov::apply_pos(gs.ovpos_mode, gs.ovpos_edge, gs.ovpos_align, gs.ovpos_free);
+                kbov::g_ov_size = gs.ovsize; kbov::g_ov_alpha = gs.ovalpha; kbov::g_ov_auto = false; kbov::g_dirty = true;
+                if (ow > 0 && oh > 0) { std::vector<uint32_t> sub((size_t)ow * oh); for (int y = 0; y < oh; y++) memcpy(&sub[(size_t)y * ow], &win[(size_t)(oy + y) * W + ox], sizeof(uint32_t) * ow);
+                    kbov::draw(sub.data(), ow, oh);
+                    for (int y = 0; y < oh; y++) memcpy(&win[(size_t)(oy + y) * W + ox], &sub[(size_t)y * ow], sizeof(uint32_t) * ow); }
+                kbov::g_force_strong = false;
+                char pp[700]; snprintf(pp, sizeof pp, "%s\\ui_%02d_%s.png", gApp.uitest_dir.c_str(), ++n, nm.c_str()); gh_png(pp, win.data(), W, Hh);
+                gh_log("uikeys: ov16 vpos=%d pic=%d,%d,%dx%d ov=%d,%d,%dx%d", vp, px, py, pw, ph, ox, oy, ow, oh); continue; }
             if (tk.compare(0, 6, "crton:") == 0 || tk.compare(0, 7, "crtoff:") == 0) {   /* v0.6.8 시험: CRT 켜짐/꺼짐 한 프레임 (p = 0..1) */
                 const bool on = tk.compare(0, 6, "crton:") == 0; std::string pv = tk.substr(tk.find(':') + 1); int clv = -1; { size_t c2 = pv.find(':'); if (c2 != std::string::npos) { clv = atoi(pv.c_str() + c2 + 1); pv.resize(c2); } } static uint32_t snap_[640 * 400]; if (!on) { U.draw(c); memcpy(snap_, buf, sizeof snap_); }
                 gh_crt_frame(buf, on, (float)atof(pv.c_str()), snap_, clv); char pp[700]; snprintf(pp, sizeof pp, "%s\\ui_%02d_%s_%s.png", gApp.uitest_dir.c_str(), ++n, on ? "crton" : "crtoff", pv.c_str()); gh_png(pp, buf, 640, 400); continue; }
@@ -149,7 +225,7 @@ static void gh_uitest(void) {
             if (tk == "reload") { gh_reload_games(); gh_log("uikeys: 목록 다시 만듦 (entry_req='%s')", prof::g_entry_req.c_str()); continue; }
             if (tk == "blkdump") { if (U.pick >= 0 && U.pick < (int)U.vis.size()) { int gi = U.vis[U.pick]; gh_log("uikeys: BLKDUMP row=%s row_old_games_gi_block='%s' row_by_id_block='%s' cur=%s cur_by_id_block='%s' cur_games_cur_block='%s' sel_entry='%s' scr=%d", U.games[gi].id.c_str(), U.games[gi].block.c_str(), U.blk_row(gi).c_str(), U.game() ? U.game()->id.c_str() : "", U.blk_cur().c_str(), U.game() ? U.game()->block.c_str() : "", U.sel_entry.c_str(), (int)U.scr); } continue; }
 if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block='%s'", gg.id.c_str(), gg.block.c_str()); continue; }
-            if (tk.compare(0, 5, "main:") == 0) { const std::string mn = tk.substr(5); U.in_game = false; U.scr = ui::S_MAIN; U.mainsel = mn == "start" ? 0 : mn == "pick" ? 1 : mn == "set" ? 2 : mn == "save" ? 3 : mn == "extra" ? 4 : mn == "quit" ? 5 : 0; continue; }   /* 5b-3: main row by name */
+            if (tk.compare(0, 5, "main:") == 0) { const std::string mn = tk.substr(5); U.in_game = false; U.scr = ui::S_MAIN; U.mainsel = mn == "start" ? 0 : mn == "pick" ? 1 : mn == "set" ? 2 : mn == "quit" ? 3 : 0; continue; }   /* 5b-3: main row by name */
             if (tk == "extraopen") { U.go(ui::S_EXTRA, 0); continue; }
             if (tk == "extrastate") { std::string rs2; for (int id2 : U.extra_ids()) rs2 += std::to_string(id2) + " "; const int fb = U.base_of(U.cur); const int fav2 = (fb >= 0 && fb < (int)U.games.size()) ? (U.games[fb].fav ? 1 : 0) : -1;
                 gh_log("uikeys: EXTRASTATE scr=%d sub=%d sel=%d n=%d fav=%d ids[%s]", (int)U.scr, U.extra_sub, U.sel, U.nitems(), fav2, rs2.c_str()); continue; }
@@ -178,7 +254,7 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
             if (tk == "ingame") { U.in_game = true; U.scr = ui::S_GAME; U.sel = 0; continue; }   /* t39ui4: 게임 중 메뉴로 진입 */
             if (tk.compare(0, 4, "tab:") == 0) { std::string t = tk.substr(4); int want = t == "ko" ? 0 : t == "jp" ? 1 : t == "un" ? 2 : 3; for (int gg = 0; gg < 5 && (int)U.tab != want; gg++) U.key(ui::UK_R); continue; }   /* t39ui4: 탭 맞추기 */
             if (tk.compare(0, 3, "go:") == 0) { for (size_t i = 0; i < U.games.size(); i++) if (U.games[i].id == tk.substr(3)) { int b = U.base_of((int)i); if (!U.row_in_tab(b)) U.tab = ui::Ui::TAB_ALL; U.rebuild_vis((int)i); } continue; }
-            if (tk.compare(0, 4, "sel:") == 0) { U.sel = atoi(tk.c_str() + 4); continue; }   /* t44c: 시험 전용 — 선택 행 직접 지정 */
+            if (tk.compare(0, 4, "sel:") == 0) { U.sel = atoi(tk.c_str() + 4); continue; }   /* t44c: 시험 전용 - 선택 행 직접 지정 */
             if (tk == "entlang") { U.sel = (int)std::max<size_t>(U.vents(U.entg).size(), 1) + 1; continue; }   /* t44c: S_ENT 의 「언어」 행 */
             if (tk.compare(0, 7, "addnew:") == 0) { U.add_new.push_back(tk.substr(7)); U.add_new_why.push_back("시험: 자동 판정 근거 줄"); continue; }   /* t44c: 방금 추가한 작품 목록 */
             if (tk == "addscr") { U.scr = ui::S_ADD; U.sel = 0; continue; }
@@ -190,6 +266,18 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
             if (tk.compare(0, 9, "phosdump:") == 0) { const int ci = U.cur; const bool ok = ci >= 0 && ci < (int)ui::Ui::MAXG;
                 gh_log("uikeys: PHOSDUMP %s scr=%d pg=%d sel=%d scope=%d g=%d eff=%d t=%d ovm=%x", tk.c_str() + 9, (int)U.scr, U.phos_pg ? 1 : 0, U.sel, U.scope, U.g.phos, U.eff().phos, ok ? U.t[ci].phos : -1, ok ? U.ovm[ci] : 0u); continue; }
             if (tk == "padscr") { U.scr = ui::S_PAD; U.sel = 0; continue; }
+            if (tk.compare(0, 6, "lines:") == 0) { U.ln_name.clear(); U.ln_pct.clear(); std::string ls = tk.substr(6); size_t p = 0; while (p <= ls.size()) { size_t q = ls.find(',', p); if (q == std::string::npos) q = ls.size(); if (q > p) { U.ln_name.push_back(ls.substr(p, q - p)); U.ln_pct.push_back(100); } p = q + 1; } continue; }   /* t844 시험 전용: 줄 이름 채우기 */
+            if (tk == "linesscr") { U.scr = ui::S_LINES; U.sel = 0; continue; }   /* t844 시험 전용 */
+            if (tk == "confsnd") { U.in_game = true; U.conf_grp = 1; U.go(ui::S_CONF, 0); continue; }   /* t844 시험 전용 */
+            if (tk.compare(0, 7, "confpg:") == 0) { U.conf_grp = atoi(tk.c_str() + 7); U.enter_conf_cfg(); U.go(ui::S_CONF, 0); continue; }   /* #1478 시험 전용: 설정 페이지(conf_grp 1..10) 바로 열기 */
+            if (tk == "hubopen") { U.in_game = false; U.conf_grp = 0; U.scope = 0; U.scope_lock = 1; U.enter_conf_cfg(); U.go(ui::S_SET, 0); continue; }
+            if (tk == "hubwk") { U.in_game = false; U.conf_grp = 0; U.scope = 1; U.scope_lock = 1; U.enter_conf_cfg(); U.go(ui::S_SET, 0); continue; }
+            if (tk == "pickend") { U.in_game = false; U.scr = ui::S_PICK; U.pick = (int)U.vis.size() + 1; continue; }
+            if (tk == "startmenu") { U.in_game = false; U.start_ret = ui::S_MAIN; U.startsel = 3; U.scr = ui::S_START; U.sel = 3; continue; }
+            if (tk == "pgrows") { const int ssv = U.scope, sg = U.conf_grp; for (int sc2 = 0; sc2 < 2; sc2++) { U.scope = sc2; for (int gp = 1; gp <= 10; gp++) { U.conf_grp = gp; std::string rr; for (int id : U.rowids(ui::S_CONF)) rr += std::to_string(id) + " "; gh_log("uikeys: PGROWS scope=%d grp=%d rows[%s]", sc2, gp, rr.c_str()); } } U.scope = ssv; U.conf_grp = sg; continue; }
+            if (tk == "lkinit") { khlk_init(std::string(), std::string(), gApp.exedir + "\\games\\" + U.games[U.cur].id + "\\linekey.tsv"); kh_lk_fill(U.ln_name, U.ln_pct); gh_log("uikeys: LKINIT on=%d lines=%d", kh_linekey_on, (int)U.ln_name.size()); continue; }
+            if (tk.compare(0, 6, "lgset:") == 0) { std::string a6 = tk.substr(6); size_t c6 = a6.rfind(':'); if (c6 != std::string::npos) kh_lk_set(a6.substr(0, c6), atoi(a6.c_str() + c6 + 1), U.cur); continue; }   /* t844 시험 전용 */
+            if (tk == "lineskeys") { std::string ls2; for (size_t i = 0; i < U.ln_name.size(); i++) ls2 += U.ln_name[i] + "=" + std::to_string(U.ln_pct[i]) + " "; gh_log("uikeys: LINES %s act=%d", ls2.c_str(), nact); continue; }
             if (tk == "hotscr") { U.scr = ui::S_HOT; U.sel = 0; continue; }   /* build 5a-2 test only: hotkey tab */
             if (tk.compare(0, 5, "kind:") == 0) { gensei_padkind_v = atoi(tk.c_str() + 5); continue; }   /* test only: pad kind (3 = Retroid) */
             if (tk.compare(0, 7, "hotcap:") == 0) { if (kh_cap_on) { kh_cap_pb = atoi(tk.c_str() + 7) & 31; kh_cap_sel = tk.back() == 's'; } else gh_log("uikeys: HOTCAP not waiting"); continue; }
@@ -225,6 +313,8 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
                 gh_log("uikeys: SHSTATE scr=%d code=%d found=%d total=%d miss=%d nents=%d nreal=%d", (int)U.scr, (int)U.sh_code.size(), U.sh_found, U.sh_total,
                        (int)U.sh_missing.size(), U.entg >= 0 ? (int)U.games[U.entg].ents.size() : -1,
                        [&]{ int n = 0; if (U.entg >= 0) for (auto & e9 : U.games[U.entg].ents) if (!e9.pseudo) n++; return n; }()); continue; }
+            if (tk.compare(0, 7, "ynlock:") == 0) { U.yn_lock_frames = atoi(tk.c_str() + 7); continue; }   /* t854 시험 전용 */
+            if (tk == "ynstate") { gh_log("uikeys: YNSTATE scr=%d ynsel=%d lock=%d fr=%d", (int)U.scr, U.ynsel, U.yn_lock_frames, U.yn_frames); continue; }
             if (tk == "scrstate") { std::string rr; if (U.scr == ui::S_CONF) for (int id : U.rowids(ui::S_CONF)) rr += std::to_string(id) + " ";
                 gh_log("uikeys: SCRSTATE scr=%d sel=%d grp=%d sm=%d ig=%d n=%d rows[%s]", (int)U.scr, U.sel, U.conf_grp, U.save_mode ? 1 : 0, U.in_game ? 1 : 0, U.nitems(), rr.c_str()); continue; }
             if (tk == "extscr") { U.scr = ui::S_EXT; U.sel = 0; U.ext_wait = false; continue; }   /* test only: extra-buttons tab */
@@ -235,7 +325,7 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
                 for (int q = 1; q < FN_N; q++) tb += std::to_string(q) + ":" + std::to_string(kh_hot[q].btn) + (kh_hot[q].sel ? "s" : "") + " ";
                 for (int k2 = 0; k2 < ui::Ui::HOT_N; k2++) { const int q = ui::Ui::hot_fn(k2); rw += std::string(ui::Ui::pad_fn_name(q)) + "=" + U.hot_text(U.hot_val(q)) + (U.hot_overlap(q) ? "(OVERLAP)" : "") + " "; }
                 gh_log("uikeys: HOTSTATE scr=%d sel=%d cap=%d gpad[%s] table[%s] rows[%s]", (int)U.scr, U.sel, U.hot_cap ? 1 : 0, gp.c_str(), tb.c_str(), rw.c_str()); continue; }   /* t48e 시험 전용: 조작 설정 화면으로 */
-            if (tk.compare(0, 4, "scr:") == 0) { U.scr = (ui::Scr)atoi(tk.c_str() + 4); U.sel = 0; continue; }   /* t50a 시험 전용 (#877): 화면 번호로 직접 이동 — 안 닿던 화면의 도움말 폭 실측용 */
+            if (tk.compare(0, 4, "scr:") == 0) { U.scr = (ui::Scr)atoi(tk.c_str() + 4); U.sel = 0; continue; }   /* t50a 시험 전용 (#877): 화면 번호로 직접 이동 - 안 닿던 화면의 도움말 폭 실측용 */
             if (tk == "lang") { std::vector<std::string> ids, why; for (auto & gg : U.games) ids.push_back(gg.id); U.open_lang(ids, why, ui::S_MAIN); continue; }   /* t50a 시험 전용: 언어 화면 */
             if (tk.compare(0, 7, "padkey:") == 0) { U.open_padkey(atoi(tk.c_str() + 7)); continue; }   /* t50a 시험 전용: 패드 키 고르기 화면 */
             if (tk.compare(0, 4, "osk:") == 0) { U.osk_open(atoi(tk.c_str() + 4), "", ui::S_MAIN, false); continue; }   /* t50a 시험 전용: 화면 키보드 (0=이름 · 그 밖=DOS 명령) */
@@ -273,8 +363,8 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
     U.mainsel = 1; U.key(ui::UK_OK); shot("pick"); U.key(ui::UK_DOWN); U.key(ui::UK_OK); shot("main_after_pick"); U.cur = U.pick = 2; gApp.cur_game = 2;
     U.scr_from = ui::S_MAIN; U.enter_screen_cfg(); U.go(ui::S_SCREEN, 0); shot("screen_sharp"); U.key(ui::UK_DOWN); U.key(ui::UK_DOWN); U.key(ui::UK_RIGHT); shot("screen_crt"); U.key(ui::UK_DOWN); U.key(ui::UK_RIGHT); shot("screen_crt_curve"); U.key(ui::UK_CANCEL);
     U.mainsel = ui::Ui::mi(ui::S_SET); U.key(ui::UK_OK); U.conf_grp = 0; U.go(ui::S_CONF, 0); U.key(ui::UK_DOWN); U.key(ui::UK_LEFT); shot("conf"); for (int i = 0; i < 7; i++) U.key(ui::UK_DOWN); shot("conf_bosd"); U.key(ui::UK_OK);
-    U.mainsel = ui::Ui::mi(ui::S_SAVE); U.key(ui::UK_OK); shot("save"); U.key(ui::UK_CANCEL);
-    U.mainsel = ui::Ui::mi(ui::S_EXTRA); U.key(ui::UK_OK); shot("extra"); U.sel = ui::Ui::extra_row(4); U.key(ui::UK_OK); shot("about"); U.key(ui::UK_CANCEL); U.sel = ui::Ui::extra_row(3); U.key(ui::UK_OK); shot("help"); U.key(ui::UK_CANCEL); U.key(ui::UK_CANCEL);
+    U.mainsel = 0; U.key(ui::UK_OK); U.startsel = 3; U.key(ui::UK_OK); shot("save"); U.key(ui::UK_CANCEL); U.key(ui::UK_CANCEL);   /* #1478: 세이브 관리 = 시작 팝업 4번째 줄 */
+    U.back = ui::S_MAIN; U.go(ui::S_EXTRA, 0); shot("extra");   /* #1478: 이 작품 = 작품 선택 맨 아래 줄 */ U.sel = ui::Ui::extra_row(4); U.key(ui::UK_OK); shot("about"); U.key(ui::UK_CANCEL); U.sel = ui::Ui::extra_row(3); U.key(ui::UK_OK); shot("help"); U.key(ui::UK_CANCEL); U.key(ui::UK_CANCEL);
     U.mainsel = ui::Ui::mi(ui::S_QUIT); U.key(ui::UK_OK); shot("quit"); U.key(ui::UK_CANCEL);
     U.in_game = true; U.scr = ui::S_GAME; U.sel = 1; shotg("ingame"); U.scr = ui::S_KEYS; U.sel = 0; shotg("keys");
     U.scr = ui::S_SWAP; U.swapdrv = 0; shotg("swap"); U.scr = ui::S_SWAPI; U.swapsel = 2; shotg("swap_pick"); U.scr = ui::S_QUIT; U.quitsel = 0; shotg("ingame_quit");
@@ -307,12 +397,12 @@ if (tk == "blocks") { for (auto & gg : U.games) gh_log("uikeys: BLOCKS %s block=
     U.in_game = false; U.scr = ui::S_MAIN;
     { /* r017 화면: 회색 목록 · 판정 · 작품 추가 · 창 배율 · 배속 중 소리 */
         if (U.games.size() >= 4) {
-            ui::UiGame & a = U.games[1]; a.grade = 'A'; a.jshort = "확인됨 (DB 일치)"; a.judge = "원판과 같은 파일 — " + a.title + " (DB 일치)"; a.metasrc = "DB"; a.company = "컴파일"; a.year = "1995";
-            ui::UiGame & b = U.games[3]; b.grade = 'C'; b.block = "마우스 필수 (아직 미지원)"; b.jshort = "후보 · 동급생2"; b.orig = "동급생2"; b.judge = "원판 후보 동급생2 [HD] (확실하지 않음) — 크기 1/1 · 제목 유사 60%"; b.metasrc = "롬셋 폴더"; b.autoreg = true; b.company = "엘프";
+            ui::UiGame & a = U.games[1]; a.grade = 'A'; a.jshort = "확인됨 (DB 일치)"; a.judge = "원판과 같은 파일 - " + a.title + " (DB 일치)"; a.metasrc = "DB"; a.company = "컴파일"; a.year = "1995";
+            ui::UiGame & b = U.games[3]; b.grade = 'C'; b.block = "마우스 필수 (아직 미지원)"; b.jshort = "후보 · 동급생2"; b.orig = "동급생2"; b.judge = "원판 후보 동급생2 [HD] (확실하지 않음) - 크기 1/1 · 제목 유사 60%"; b.metasrc = "롬셋 폴더"; b.autoreg = true; b.company = "엘프";
             ui::UiGame L = U.games[1]; L.id = "daimado95"; L.title = "대마도전략물어'95 (디스크 스테이션 Vol.8)"; L.grade = 'B'; L.jshort = "추정 (원판 대마도전략물어'95의 변형)"; L.orig = "대마도전략물어'95"; L.autoreg = true;
-            L.judge = "원판 대마도전략물어'95 [FD]의 변형(패치판 추정) — 디스크 구성 일치, 크기 다름"; L.metasrc = "TOSEC+롬셋 폴더"; L.company = "디스크 스테이션 편집부 (긴 제작사 이름 시험)"; L.year = "1995"; L.block.clear(); L.thmb.clear();
-            ui::UiGame N = U.games[1]; N.id = "nadia"; N.title = "후지의 바다의 나디아"; N.grade = 'A'; N.jshort = "확인됨 (DB 일치)"; N.judge = "원판과 같은 파일 — 후지의 바다의 나디아 [FD] (DB 일치)"; N.metasrc = "롬셋 폴더"; N.company = "Gainax"; N.year = "1991"; N.block = "CD 작품 (CD 미지원)"; N.autoreg = true; N.thmb.clear();
-            ui::UiGame D2 = U.games[1]; D2.id = "direct"; D2.title = "환세풍광전"; D2.grade = 'A'; D2.jshort = "직접 지정 · DB 일치"; D2.judge = "game.ini 로 직접 지정 — 파일은 DB의 '환세풍광전' 과 일치"; D2.metasrc.clear(); D2.company.clear(); D2.year.clear(); D2.autoreg = false; D2.block.clear(); D2.thmb.clear();
+            L.judge = "원판 대마도전략물어'95 [FD]의 변형(패치판 추정) - 디스크 구성 일치, 크기 다름"; L.metasrc = "TOSEC+롬셋 폴더"; L.company = "디스크 스테이션 편집부 (긴 제작사 이름 시험)"; L.year = "1995"; L.block.clear(); L.thmb.clear();
+            ui::UiGame N = U.games[1]; N.id = "nadia"; N.title = "후지의 바다의 나디아"; N.grade = 'A'; N.jshort = "확인됨 (DB 일치)"; N.judge = "원판과 같은 파일 - 후지의 바다의 나디아 [FD] (DB 일치)"; N.metasrc = "롬셋 폴더"; N.company = "Gainax"; N.year = "1991"; N.block = "CD 작품 (CD 미지원)"; N.autoreg = true; N.thmb.clear();
+            ui::UiGame D2 = U.games[1]; D2.id = "direct"; D2.title = "환세풍광전"; D2.grade = 'A'; D2.jshort = "직접 지정 · DB 일치"; D2.judge = "game.ini 로 직접 지정 - 파일은 DB의 '환세풍광전' 과 일치"; D2.metasrc.clear(); D2.company.clear(); D2.year.clear(); D2.autoreg = false; D2.block.clear(); D2.thmb.clear();
             U.games.push_back(L); U.games.push_back(N); U.games.push_back(D2);
         }
         U.wmax = 3; U.wmult = 2; U.in_game = false; U.scr = ui::S_PICK; U.pick = 1; shot("r18_pick_judged");

@@ -6,17 +6,17 @@ static void gh_main_conf() {
         {   /* r020 (#248): 기본 한글 패치 글꼴 = res\fonts\kyuhachi_font.bmp (t52g: 옛 이름 pc98player_font.bmp · 옛 위치도 허용) */
             std::string cc = g_conf_common; size_t at = cc.find("@FONT@");
             if (at != std::string::npos) cc.replace(at, 6, gh_default_font_path()); cc = kha_mixer_patch(cc);
-            if (gApp.prof_.disk[2] || gApp.prof_.disk[3] || gApp.prof_.bootletter >= 'C') {   /* t735: HDD 작품은 normal 코어 강제 — dynamic(JIT) 코어에서는 INT 1Bh 부팅 뒤 On_Software_CPU_Reset 의 throw int 가 JIT 프레임을 못 지나 catch 에 닿지 못하고 SIGABRT (안드로이드 t733 이후, logcat 2026-11-12 00:24~00:38 9회) */
+            if (gApp.prof_.disk[2] || gApp.prof_.disk[3] || gApp.prof_.bootletter >= 'C') {   /* t735: HDD 작품은 normal 코어 강제 - dynamic(JIT) 코어에서는 INT 1Bh 부팅 뒤 On_Software_CPU_Reset 의 throw int 가 JIT 프레임을 못 지나 catch 에 닿지 못하고 SIGABRT (안드로이드 t733 이후, logcat 2026-11-12 00:24~00:38 9회) */
                 size_t dp = cc.find("core=dynamic"); if (dp != std::string::npos) { cc.replace(dp, 12, "core=normal"); gh_log("KHA cpu core: HDD 작품 → normal(호환) 강제"); }
             }
             control->ParseConfigString("gensei:common", cc.c_str());
-            if (gApp.cdguest) { control->ParseConfigString("gensei:ide", "[ide, primary]\nenable=true\n[ide, secondary]\nenable=true\n"); gh_log("hanacd: IDE 컨트롤러 1·2 사용 설정"); }
+            if (gApp.cdguest) { control->ParseConfigString("gensei:ide", "[ide, primary]\nenable=true\n[ide, secondary]\nenable=true\n"); gh_log(T("hanacd: IDE 컨트롤러 1·2 사용 설정")); }
         }
         {   /* 작품별 cycles / 글꼴 / extra (프로필 > 공통) */
             std::string c;
             gh_log("CPUSPD eff=%d prof_cycles=[%s]", gApp.ui_.effective(gApp.cur_game).cpuspd, gApp.prof_.cycles.c_str());   /* t681 measure */
-            pdg::evdiv_init(gApp.prof_.kv.count("evdiv") ? atoi(gApp.prof_.kv["evdiv"].c_str()) : 1);   /* #P4: 디버그 전용 — 입력 훅 3개를 N 틱에 한 번만 */
-            pdg::slow_init(gApp.prof_.kv.count("slowcpu") && gApp.prof_.kv["slowcpu"] == "1");   /* #P2: 디버그 전용 — 에뮬 스레드를 가장 느린 코어에 묶기 */
+            pdg::evdiv_init(gApp.prof_.kv.count("evdiv") ? atoi(gApp.prof_.kv["evdiv"].c_str()) : 1);   /* #P4: 디버그 전용 - 입력 훅 3개를 N 틱에 한 번만 */
+            pdg::slow_init(gApp.prof_.kv.count("slowcpu") && gApp.prof_.kv["slowcpu"] == "1");   /* #P2: 디버그 전용 - 에뮬 스레드를 가장 느린 코어에 묶기 */
             if (!gApp.prof_.cycles.empty()) { bool num = true; for (char ch : gApp.prof_.cycles) if (ch < '0' || ch > '9') num = false; c += std::string("[cpu]\ncycles=") + (num ? "fixed " : "") + gApp.prof_.cycles + "\n"; }
             else { int ci = gApp.ui_.effective(gApp.cur_game).cpuspd;
                 if (ci < 0 || ci > 3) ci = 0;
@@ -26,8 +26,8 @@ static void gh_main_conf() {
             {   /* r020 (#247정정): 글꼴은 이름(kr_shinsun · kr_gulim · kr_dotum · jp_default → res\fonts\<이름>.bmp)으로 지정한다. 옛 파일 경로 지정도 읽는다. 보조 zip 은 더 뒤지지 않는다 */
                 auto ex = [](const std::string & p) { return plat::exists(p.c_str()); };
                 std::string f0 = gApp.prof_.font; bool soft = false;
-                { auto fk = gApp.prof_.kv.find("font_kind");   /* t39 (#290/#291): 항목의 font= > 목록 기본 — 원판(jp)은 jp 글꼴, 한글판은 번들 한글(또는 설정에서 고른 같은 묶음 글꼴) */
-                  if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "jp") { f0 = gApp.ui_.font_jp.empty() ? std::string("kyuhachi_font") : gApp.ui_.font_jp; soft = true; }
+                { auto fk = gApp.prof_.kv.find("font_kind");   /* t39 (#290/#291): 항목의 font= > 목록 기본 - 원판(jp)은 jp 글꼴, 한글판은 번들 한글(또는 설정에서 고른 같은 묶음 글꼴) */
+                  if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "jp") { f0 = gApp.ui_.font_jp.empty() ? (true ? std::string("kyuhachi_font") : std::string("kyuhachi_font")) : gApp.ui_.font_jp; soft = true; }
                   else if (f0.empty() && fk != gApp.prof_.kv.end() && fk->second == "kr" && !gApp.ui_.font_kr.empty()) { f0 = gApp.ui_.font_kr; soft = true; } }
                 if (!f0.empty()) {
                     bool isname = f0.find_first_of("\\/:.") == std::string::npos; std::string fp;
@@ -59,8 +59,8 @@ static void gh_main_conf() {
             if (snd.find("rhythm") != std::string::npos || snd.find("2608") != std::string::npos || snd.find("86") != std::string::npos) {
                 std::string rd = gApp.exedir + "\\res\\rhythm"; int n = 0; static const char * const rn[6] = { "bd", "sd", "top", "hh", "tom", "rim" };
                 for (int i = 0; i < 6; i++) if (plat::exists((rd + "\\2608_" + rn[i] + ".wav").c_str())) n++;
-                if (n > 0) { plat::set_cwd(rd); gh_log("리듬 WAV %d/6 개: %s (현재 폴더로 지정)%s", n, rd.c_str(), n < 6 ? " — 일부 없음" : ""); }
-                else { gh_log("리듬음 파일 없음 — 넣는 곳: %s (sound=%s)", rd.c_str(), snd.c_str()); if (gApp.osd.empty()) { gApp.osd = phr_("리듬음 파일 없음 — 넣는 곳: run\\res\\rhythm\\"); gApp.osd_until = SDL_GetTicks() + 10000; } }
+                if (n > 0) { plat::set_cwd(rd); gh_log("리듬 WAV %d/6 개: %s (현재 폴더로 지정)%s", n, rd.c_str(), n < 6 ? " - 일부 없음" : ""); }
+                else { gh_log("리듬음 파일 없음 - 넣는 곳: %s (sound=%s)", rd.c_str(), snd.c_str()); if (gApp.osd.empty()) { gApp.osd = phr_("리듬음 파일 없음 - 넣는 곳: run\\res\\rhythm\\"); gApp.osd_until = SDL_GetTicks() + 10000; } }
             }
         }
 
@@ -73,7 +73,7 @@ static void gh_main_devinit() {
         gh_log("RealInit done, machine=%d", (int)machine);
 
 #define GH_INIT(f) do { gh_log("init " #f); f; } while (0)
-        { /* sdlmain.cpp 가 만들던 메뉴항목(get_item 으로 찾기만 하는 것)을 미리 할당 — 목록은 빌드 때 소스에서 뽑는다 */
+        { /* sdlmain.cpp 가 만들던 메뉴항목(get_item 으로 찾기만 하는 것)을 미리 할당 - 목록은 빌드 때 소스에서 뽑는다 */
             static const char * const pre_names[] = {
 #include "gensei_menu_names.inc"
                 0 };
@@ -145,18 +145,31 @@ static void gh_main_devinit() {
         GH_INIT(Init_MemHandles());
         GH_INIT(AllocCallback2());
         GH_INIT(MSG_Init());
-        if (gApp.dosmode) {   /* t36cd: 내장 DOS — sdlmain 의 초기화 목록 중 DOS·CD 몫 (마우스는 호스트 몫이라 제외) */
+        if (gApp.dosmode) {   /* t36cd: 내장 DOS - sdlmain 의 초기화 목록 중 DOS·CD 몫 (마우스는 호스트 몫이라 제외) */
             void DOS_Init(); void XMS_Init(); void EMS_Init(); void DOS_KeyboardLayout_Init(); void CDROM_Image_Init(); void MSCDEX_Init(); void DRIVES_Init(); void AUTOEXEC_Init();
-            control->ParseConfigString("gensei:dos0", gApp.ems_req ? "[dos]\nems=true\n" : "[dos]\nems=false\n");   /* PC-98 에서는 EMS 불필요 — bad_alloc 회피 */
+            control->ParseConfigString("gensei:dos0", gApp.ems_req ? "[dos]\nems=true\n" : "[dos]\nems=false\n");   /* PC-98 에서는 EMS 불필요 - bad_alloc 회피 */
             GH_INIT(DOS_Init()); GH_INIT(XMS_Init()); GH_INIT(EMS_Init()); GH_INIT(DOS_KeyboardLayout_Init()); GH_INIT(CDROM_Image_Init()); GH_INIT(MSCDEX_Init()); GH_INIT(DRIVES_Init()); GH_INIT(AUTOEXEC_Init());
             std::string ae = "[autoexec]\n";
-            if (!gApp.prof_.cd.empty()) ae += "imgmount d \"" + gApp.prof_.cd + "\" -t iso\n";
+            if (!gApp.prof_.cd.empty()) {   /* t835 (#1120): game.ini cdletter=q -> CD on that drive letter (d..z). No key = d: as before */
+                std::string cl_ = gApp.prof_.kv.count("cdletter") ? gApp.prof_.kv["cdletter"] : std::string("d");
+                if (cl_.size() == 1) cl_[0] = (char)tolower((unsigned char)cl_[0]);
+                if (cl_.size() != 1 || cl_[0] < 'd' || cl_[0] > 'z') cl_ = "d";
+                ae += "imgmount " + cl_ + " \"" + gApp.prof_.cd + "\" -t iso\n";
+                if (cl_ != "d") gh_log("cdletter: CD on %s:", cl_.c_str()); }
             if (gApp.dosfd) {   /* t43: A: = 첫 디스크(+교체 목록), B: = 둘째 디스크. 실행 파일이 하나면 자동 실행, 여럿/없음이면 목록만 */
                 auto qp = [&](const std::string & n) { return std::string("\"") + gh_workpath(n) + "\""; };   /* t43h: 내장 DOS 의 FD 장착도 작업 사본 */
                 std::string d0 = gApp.prof_.disk[0] ? gApp.prof_.disk[0] : gApp.prof_.disk[1], d1 = (gApp.prof_.disk[0] && gApp.prof_.disk[1]) ? gApp.prof_.disk[1] : std::string();
                 bool hddf = gApp.prof_.kv.count("doshdd") && gApp.prof_.kv["doshdd"] == "1"; const char L1 = hddf ? 'b' : 'a', L2 = hddf ? 'c' : 'b';   /* t43d: 설치 흐름 = HDD 가 A:, FD 는 B:·C: */
                 std::string a = std::string("imgmount ") + L1 + " " + qp(d0); for (auto & sw : gApp.prof_.swap) if (sw != d0 && sw != d1) a += " " + qp(sw); ae += a + " -t floppy\n";
                 if (!d1.empty()) ae += std::string("imgmount ") + L2 + " " + qp(d1) + " -t floppy\n";
+                /* t833 (#1084): game.ini dosdev=a:\X.SYS /arg|... -> "config -device" lines before the exe runs. No key = no change */
+                { std::string dd_ = gApp.prof_.kv.count("dosdev") ? gApp.prof_.kv["dosdev"] : std::string(), cu_;
+                  for (char ch_ : dd_ + "|") { if (ch_ != '|') { cu_ += ch_; continue; }
+                    size_t sp_ = cu_.find(' '); std::string pa_ = cu_.substr(0, sp_), ar_;
+                    if (sp_ != std::string::npos) ar_ = cu_.substr(sp_ + 1);
+                    while (!ar_.empty() && ar_[0] == ' ') ar_.erase(0, 1);
+                    if (!pa_.empty()) { ae += "config -device " + pa_ + (ar_.empty() ? "" : " -devparm \"" + ar_ + "\"") + "\n";
+                      gh_log("dosdev: config -device %s args=[%s]", pa_.c_str(), ar_.c_str()); } cu_.clear(); } }
                 std::string dv = gApp.prof_.kv.count("dosdrv") ? gApp.prof_.kv["dosdrv"] : std::string("a"); if (dv != "a" && dv != "b") dv = "a";
                 if (hddf) {   /* t43c: C: = 작품별 호스트 폴더 (savedir\<id>\hdd). 비어 있으면 설치기 실행, 채워졌으면 실행 파일 탐지 */
                     std::string sd1 = gApp.savedir, sd2 = gApp.savedir + "\\" + std::string(gApp.prof_.id ? gApp.prof_.id : "x"), hd = sd2 + "\\hdd";
@@ -165,37 +178,46 @@ static void gh_main_devinit() {
                     std::string run, dirp; int nrun = gh_scan_hdd(hd, run, dirp);
                     std::string idv = gApp.prof_.kv.count("dosinstdrv") ? gApp.prof_.kv["dosinstdrv"] : dv, inst = gApp.prof_.kv.count("dosinst") ? gApp.prof_.kv["dosinst"] : std::string(); if (!inst.empty() && gApp.prof_.kv.count("dosinstargs") && !gApp.prof_.kv["dosinstargs"].empty()) inst += " " + gApp.prof_.kv["dosinstargs"];
                     if (nrun == 0 && !inst.empty()) { std::string fl = idv == "b" ? "c" : "b"; size_t pp; while ((pp = inst.find("@F")) != std::string::npos) inst.replace(pp, 2, fl); while ((pp = inst.find("@H")) != std::string::npos) inst.replace(pp, 2, "a"); ae += fl + ":\n" + inst + "\na:\ndir /w\n"; gh_log("HDD 설치 흐름: A: = %s (비어 있음, HDD) → %s: %s 실행", hd.c_str(), fl.c_str(), inst.c_str()); }
-                    else if (nrun == 0 && gApp.prof_.kv.count("dossfx") && !gApp.prof_.kv["dossfx"].empty()) {   /* t43p (#344-3): LHA 자기풀림 — A: = 빈 호스트 폴더에서 FD 의 SFX 를 실행해 푼다. 다음 실행부터는 푼 폴더에서 실행 파일 탐지 */
+                    else if (nrun == 0 && gApp.prof_.kv.count("dossfx") && !gApp.prof_.kv["dossfx"].empty()) {   /* t43p (#344-3): LHA 자기풀림 - A: = 빈 호스트 폴더에서 FD 의 SFX 를 실행해 푼다. 다음 실행부터는 푼 폴더에서 실행 파일 탐지 */
                         ae += "a:\n"; { bool ub_done = false; std::string cur, rs = gApp.prof_.kv["dossfx"]; for (char ch : rs + ",") { if (ch == ',') { if (!cur.empty()) { if (cur[0] == '#') { size_t bar = cur.find('|'); int ix = atoi(cur.c_str() + 1); std::string nm = bar == std::string::npos ? std::string() : cur.substr(bar + 1); if (!nm.empty() && ix >= 2 && (size_t)(ix - 2) < gApp.prof_.swap.size()) { if (!ub_done) { ae += "imgmount -u b\n"; ub_done = true; } ae += "imgmount -u c\n"; ae += std::string("imgmount c ") + qp(gApp.prof_.swap[ix - 2]) + " -t floppy\n"; ae += "c:\\" + nm + "\n"; ae += "a:\n"; } } else ae += cur + "\n"; } cur.clear(); } else cur += ch; } } ae += "dir /w\n";
                         gh_log("HDD 풀기 흐름(LHA 자기풀림): A: = %s (비어 있음, HDD) → %s", hd.c_str(), gApp.prof_.kv["dossfx"].c_str()); }
                     else { gApp.prof_.bootkeys.clear(); ae += "a:\n"; if (!dirp.empty()) ae += "cd \\" + dirp + "\n"; ae += (nrun == 1 ? run : std::string("dir /w")) + "\n"; gh_log("HDD 설치 끝난 폴더: 실행 파일 %d개 → %s", nrun, nrun == 1 ? run.c_str() : "목록"); }
                 } else {
                 std::string uexe = gApp.prof_.kv.count("dosexe") ? gApp.prof_.kv["dosexe"] : std::string(), uargs = gApp.prof_.kv.count("dosargs") ? gApp.prof_.kv["dosargs"] : std::string(); const std::string ea = uargs.empty() ? std::string() : " " + uargs;   /* 2b */
-                if (!uexe.empty()) {   /* 2b: 사용자가 고른 실행 파일 (실행 방법의 「실행 파일」) — "*" = DOS 프롬프트 */
+                if (!uexe.empty()) {   /* 2b: 사용자가 고른 실행 파일 (실행 방법의 「실행 파일」) - "*" = DOS 프롬프트 */
                     if (uexe == "*") { ae += dv + ":\n"; gh_log("exe: DOS prompt (user choice)"); }
                     else if (uexe.size() >= 3 && uexe[1] == (char)58) {
                         char L = (char)tolower((unsigned char)uexe[0]); std::string rel = uexe.substr(2), dn = (L == L1) ? d0 : d1, dp2 = dn.empty() ? std::string() : gh_workpath(dn); size_t sl = rel.find_last_of((char)92); std::string fdir = sl == std::string::npos ? std::string() : rel.substr(0, sl), fnm = sl == std::string::npos ? rel : rel.substr(sl + 1);
                         if (!dp2.empty() && prof::dos_exists(dp2, rel)) { ae += std::string(1, L) + ":\n"; if (!fdir.empty()) ae += "cd \\" + fdir + "\n"; ae += fnm + ea + "\n"; gh_log("exe: user choice %s", uexe.c_str()); }
-                        else { ae += std::string(1, L) + ":\n"; ae += "echo Executable not found - pick one in the run method\n"; gApp.osd = phr_("실행 파일을 못 찾음 — 실행 방법에서 고르세요"); gApp.osd_until = SDL_GetTicks() + 8000u; gh_log("exe: user choice not found: %s", uexe.c_str()); }
+                        else { ae += std::string(1, L) + ":\n"; ae += "echo Executable not found - pick one in the run method\n"; gApp.osd = phr_("실행 파일을 못 찾음 - 실행 방법에서 고르세요"); gApp.osd_until = SDL_GetTicks() + 8000u; gh_log("exe: user choice not found: %s", uexe.c_str()); }
                     }
                 } else {
                 ae += dv + ":\n"; if (gApp.prof_.kv.count("dossub") && !gApp.prof_.kv["dossub"].empty()) ae += "cd \\" + gApp.prof_.kv["dossub"] + "\n";   /* t43s R2 */
                 std::vector<std::string> rl; { std::string cur, rs = gApp.prof_.kv.count("dosrun") ? gApp.prof_.kv["dosrun"] : std::string(); for (char ch : rs + ",") { if (ch == ',') { if (!cur.empty()) rl.push_back(cur); cur.clear(); } else cur += ch; } }
                 { std::string pk = gApp.prof_.kv.count("dospick") ? gApp.prof_.kv["dospick"] : std::string(); gh_log("DOS 루트 실행 후보(%d): %s | 선택: %s", (int)rl.size(), gApp.prof_.kv.count("dosrunsz") ? gApp.prof_.kv["dosrunsz"].c_str() : "-", pk.empty() ? (rl.size() == 1 ? rl[0].c_str() : "(목록)") : pk.c_str());   /* t43n (#343) */
-                  if (rl.size() == 1) ae += rl[0] + ea + "\n"; else if (!pk.empty()) ae += pk + ea + "\n"; else { ae += "dir /w\n"; if (gApp.prof_.kv.count("dosdata")) ae += "echo No executable on this disk (data disk? the main disk is needed)\n"; if (rl.empty()) { gApp.osd = phr_("실행 파일을 못 찾음 — 실행 방법에서 고르세요"); gApp.osd_until = SDL_GetTicks() + 8000u; } } }   /* t43s R5 */
+                  if (rl.size() == 1) ae += rl[0] + ea + "\n"; else if (!pk.empty()) ae += pk + ea + "\n"; else { ae += "dir /w\n"; if (gApp.prof_.kv.count("dosdata")) ae += "echo No executable on this disk (data disk? the main disk is needed)\n"; if (rl.empty()) { gApp.osd = phr_("실행 파일을 못 찾음 - 실행 방법에서 고르세요"); gApp.osd_until = SDL_GetTicks() + 8000u; } } }   /* t43s R5 */
                 }
                 }
             }
             { std::string ln; for (char ch : gApp.prof_.autoexec + "|") { if (ch == '|') { if (!ln.empty()) ae += ln + "\n"; ln.clear(); } else ln += ch; } }
             gh_log("autoexec(내장 DOS):\n%s", ae.c_str());
             control->ParseConfigString("gensei:dos", ae.c_str());
-        } else if (gApp.cdguest) {   /* hanacd: 디스크 부팅 + CD — 내장 DOS·MSCDEX 없이 CD 이미지를 IDE ATAPI 장치에 바로 연결(ide.cpp 의 CD 인터페이스 목록 형) */
+        } else if (gApp.cdguest) {   /* hanacd: 디스크 부팅 + CD - 내장 DOS·MSCDEX 없이 CD 이미지를 IDE ATAPI 장치에 바로 연결(ide.cpp 의 CD 인터페이스 목록 형) */
             bool IDE_CDROM_Attach(signed char index, bool slave, const std::vector<CDROM_Interface *> & cds, bool opt_replace);
-            std::string ci = gApp.prof_.kv.count("cd_ide") ? gApp.prof_.kv["cd_ide"] : std::string("2m");   /* 시험용 키: 1m 1s 2m 2s. 기본 2m: PC-98 CD 는 IDE 2차 마스터(1차 마스터는 HDD) — 1m 이면 게스트 NECCDD 가 못 찾는다(2026-11-16 실측) */
+            std::string ci = gApp.prof_.kv.count("cd_ide") ? gApp.prof_.kv["cd_ide"] : std::string("2m");   /* 시험용 키: 1m 1s 2m 2s. 기본 2m: PC-98 CD 는 IDE 2차 마스터(1차 마스터는 HDD) - 1m 이면 게스트 NECCDD 가 못 찾는다(2026-11-16 실측) */
             int ix = (ci.size() >= 1 && ci[0] >= '1' && ci[0] <= '4') ? ci[0] - '1' : 0; bool sl = ci.size() >= 2 && ci[1] == 's';
-            CDROM_Interface_Image * cdi = new CDROM_Interface_Image(3);
+            CDROM_Interface_Image * cdi = new KhCdi(3);
+            extern bool qmount; bool qm0 = qmount; qmount = true;   /* t831: 열기 실패 시 DOSBox 가 게스트 콘솔(DOS_WriteFile)에 쓰다 E_Exit 로 죽던 것을 막는다 */
             bool ok = cdi->SetDevice(gApp.prof_.cd.c_str(), 0);
-            gh_log("hanacd: CD 이미지 열기 %s: %s (IDE %d%c)", ok ? "성공" : "실패", gApp.prof_.cd.c_str(), ix + 1, sl ? 's' : 'm');
+            if (!ok) {
+                std::string lc = prof::lower_s(gApp.prof_.cd); bool iscue = lc.size() > 4 && lc.compare(lc.size() - 4, 4, ".cue") == 0;
+                { std::vector<uint8_t> hb; if (gh_read_all(gApp.prof_.cd, hb) && !hb.empty()) { std::string h((const char *)&hb[0], hb.size() < 240 ? hb.size() : 240); for (auto & ch : h) if (ch == '\r' || ch == '\n') ch = '|'; gh_log(T("hanacd: CD 이미지 열기 실패 - 파일 앞부분(%u바이트): %s"), (unsigned)hb.size(), h.c_str()); } else gh_log(T("hanacd: CD 이미지 열기 실패 - 파일을 읽을 수 없음: %s"), gApp.prof_.cd.c_str()); }
+                if (iscue) { std::string fx, note; if (gh_cue_fix(gApp.prof_.cd, std::string(gApp.prof_.id ? gApp.prof_.id : "x"), fx, note)) {
+                    delete cdi; cdi = new KhCdi(3); ok = cdi->SetDevice(fx.c_str(), 0);
+                    gh_log(T("hanacd: 원본 .cue → 고친 사본 %s (%s): %s"), fx.c_str(), note.c_str(), ok ? T("성공") : T("실패")); } else gh_log(T("hanacd: .cue 보정 못 함 (%s)"), note.c_str()); }
+            }
+            qmount = qm0;
+            gh_log(T("hanacd: CD 이미지 열기 %s: %s (IDE %d%c)"), ok ? T("성공") : T("실패"), gApp.prof_.cd.c_str(), ix + 1, sl ? 's' : 'm');
             if (ok) g_hanacd_cdi = cdi; else delete cdi;
         }
         gh_log("devices initialised");
@@ -214,7 +236,7 @@ static void gh_main_run() {
             std::string ci = gApp.prof_.kv.count("cd_ide") ? gApp.prof_.kv["cd_ide"] : std::string("2m");
             int ix = (ci.size() >= 1 && ci[0] >= '1' && ci[0] <= '4') ? ci[0] - '1' : 0; bool sl = ci.size() >= 2 && ci[1] == 's';
             std::vector<CDROM_Interface *> cv(1, g_hanacd_cdi); bool r = IDE_CDROM_Attach((signed char)ix, sl, cv, false);
-            gh_log("hanacd: IDE 장착(전원 뒤) %s (IDE %d%c)", r ? "성공" : "실패", ix + 1, sl ? 's' : 'm');
+            gh_log(T("hanacd: IDE 장착(전원 뒤) %s (IDE %d%c)"), r ? T("성공") : T("실패"), ix + 1, sl ? 's' : 'm');
         }
         gApp.pon_tick = SDL_GetTicks() | 1u; gApp.pon_pic = PIC_Ticks; gApp.loading = true;
         pwr::on_game_start();   /* B: power seq (self-skip) */

@@ -1,7 +1,7 @@
 /* settings/kh_cmd.h -- hanacd: 폴더 안 .cmd(RetroArch np2kai 방식) 해석. 순수 문자열 처리(파일 접근 없음).
-   .cmd 한 줄 = np2kai "a.hdm" "b.hdi" "c.ccd" — 파일 이름만 확장자별로 FD/HDD/CD 로 가른다. 이 헤더는 한 번만 포함된다. */
+   * .cmd 한 줄 = np2kai "a.hdm" "b.hdi" "c.ccd" — 파일 이름만 확장자별로 FD/HDD/CD 로 가른다. 이 헤더는 한 번만 포함된다. */
 namespace prof {
-struct CmdSlots { std::vector<std::string> fd, hd, cd; };
+struct CmdSlots { std::vector<std::string> fd, hd, cd; std::vector<std::string> dropped; /* t831: 버린 토큰(이유 포함) - 로그용 */ };
 
 inline std::vector<std::string> cmd_tokens(const std::string & s) {
     std::vector<std::string> out; size_t i = 0, n = s.size();
@@ -35,10 +35,11 @@ inline CmdSlots cmd_parse(const std::string & txt, const std::vector<std::string
         size_t d = t.find_last_of("\\/"); std::string b = d == std::string::npos ? t : t.substr(d + 1);
         std::string e = ext_of(b); if (e.empty()) continue;          /* 맨 앞 np2kai 같은 코어 이름 */
         const std::string * hit = NULL; for (auto & f : files) if (lower_s(f) == lower_s(b)) { hit = &f; break; }
-        if (!hit) continue;
+        if (!hit) { r.dropped.push_back(t + std::string(T(" (폴더에 없음)"))); continue; }
         int k = cmd_kind(e);
+        if (k == 0) { r.dropped.push_back(t + std::string(T(" (지원 안 하는 확장자)"))); continue; }
         if (k == 1) r.fd.push_back(*hit); else if (k == 2) r.hd.push_back(*hit);
-        else if (k == 3) r.cd.push_back(*hit); else if (k == 4 && data.empty()) data = *hit;
+        else if (k == 3) { if (r.cd.empty()) r.cd.push_back(*hit); else r.dropped.push_back(t + std::string(T(" (CD 는 첫 번째만)"))); } else if (k == 4 && data.empty()) data = *hit;
     }
     if (r.cd.empty() && !data.empty()) r.cd.push_back(data);
     return r;

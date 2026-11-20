@@ -10,6 +10,8 @@ Kyuhachi X is distributed under GPL-2.0 (see `LICENSE`). It bundles or links the
 | libpng | libpng | linked |
 | Neodgm (NeoDunggeunmo), © 2017-2021 Eunbin Jeong (Dalgona.) | SIL OFL 1.1 | source: `legacy/work_t52i/OFL_neodgm.txt` |
 | built-in bitmap font (derived from Neodgm by the Kyuhachi team, embedded in the program as `src/gensei_embed.h`) | SIL OFL 1.1 | built in |
+| Galmuri (menu font sheets `res/fonts/menu/galmuri14.bmp`, `galmuri14b.bmp`, rasterized by the Kyuhachi team; https://github.com/quiple/galmuri) | SIL OFL 1.1 | `res/fonts/menu/LICENSE_Galmuri_OFL.md` |
+| M-Galmuri (menu font sheets `res/fonts/menu/mg*.bmp` and game font `res/fonts/kr_mg15.bmp`, rasterized by the Kyuhachi team; https://github.com/MonadABXY/mgalmuri-font) | SIL OFL 1.1 | `res/fonts/menu/OFL_MGalmuri.txt`, `README_MGalmuri.md` |
 | Shinonome 16 dot Gothic (`shnmk16.bdf`, JIS X 0208), converted to `res/fonts/shinonome16_jp.fnt` | Public Domain | notice: `legacy/work_t52i/shinonome16_LICENSE.txt` |
 | SDL_GameControllerDB (`gamecontrollerdb.txt`) | zlib | notice: `legacy/work_t48e4/LICENSE_gamecontrollerdb.txt` |
 | Sharp-Shimmerless shader | CC0 | converted, built in |

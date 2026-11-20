@@ -41,6 +41,7 @@
 #define MASK_SIZE   1.0    // 4K 화면이면 2.0
 #define MASK_DARK   0.50
 #define MASK_LIGHT  1.50
+/* PC98_PHOS_T662 (#635 t662): phosphor bundle, active only when the host defines PC98_PHOS (beam width / breathing / glow add). Persistence is a host pass. All at 0 -> same pixels as t48d2c. */
 
 #ifdef GL_ES
   #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -73,7 +74,13 @@ uniform float uScan;    // 주사선: 0 = 끔, 아니면 옛 SCANLINE 값(3..12,
 uniform float uMask;    // 마스크 세기: 0 = 끔, 옛 CGWG 값(0.05..0.50, 옛 기본 0.15)
 uniform float uBleed;   // RGB 번짐 0..1: 컨버전스 어긋남(가장자리일수록 큼) + 가로 번짐
 uniform float uGlow;    // 빛 번짐 0..1: 밝은 곳 주변으로 퍼지는 형광체 빛
-uniform float uNear;    // 밑 그림: 0 = sharp, 1 = nearest
+uniform float uNear;
+#ifdef PC98_PHOS
+uniform float uBeam;     // 0..1 beam width follows dot brightness
+uniform float uBreath;   // 0..0.04 per-dot brightness wobble amplitude
+uniform float uTime;     // seconds (wrapped)
+uniform float uGlowP;    // glow gain
+#endif    // 밑 그림: 0 = sharp, 1 = nearest
 
 VARY vec2 vUV;
 VARY vec2 vFrag;   // 출력 화면 화소 좌표(마스크용)
@@ -91,6 +98,9 @@ void main()
 
 #ifdef FRAGMENT
 uniform sampler2D uTex;
+#ifdef PC98_PHOS
+uniform sampler2D uGTex;   // low-res glow (sqrt-encoded)
+#endif
 
 const vec3 LUMW = vec3(0.30, 0.59, 0.11);
 
@@ -127,12 +137,13 @@ vec3 bloom(vec2 uvc)
     return s / ws;
 }
 
-float beam(float y, float l)
+vec3 rowc(float r, float cx, float lx, float rx)   // t856: 원본 줄 r 의 가로 보간 색(선형)
 {
-    float scan = mix(uScan - 2.0, uScan, y);
-    float w = mix(BEAM_MIN, BEAM_MAX, l);
-    float ex = y * w;
-    return exp2(-scan * ex * ex);
+    float y = (clamp(r, 0.0, uSrcSize.y - 1.0) + 0.5) / uSrcSize.y;
+    vec3 l = smp(vec2(cx, y));
+    vec3 rr = smp(vec2(cx + 1.0 / uSrcSize.x, y));
+    vec3 m = (l * lx + rr * rx) / (lx + rx);
+    return m * m;
 }
 
 vec3 mask(vec2 pos, vec3 c)
@@ -173,38 +184,36 @@ void main()
 
     gSh = uBleed * 0.30 * (uv.x * 2.0 - 1.0);
     float sy = uOutSize.y / uSrcSize.y;                  // t48d2c: 출력 화소 / 원본 줄. 2 이상이면 빔 모양이 보임
-    float lowres = clamp(2.0 - sy, 0.0, 1.0);            // 1 = 1배 이하(줄 번갈아 어둡게), 0 = 2배 이상(옛 빔 그대로)
     vec2 ps = 1.0 / uSrcSize;
     vec3 col;
 
-    if (uScan > 0.0) {
-        // 주사선 켬: 옛 crt 경로 그대로(uNear=0 이면 화소 동일). nearest 밑 그림이면 가로 보간만 계단으로.
-        vec2 tp = uv * uSrcSize - vec2(0.5, 0.0);      // 가로는 화소 중심 기준, 세로는 주사선 위쪽 기준
-        vec2 fp = fract(tp);
-        vec2 c0 = (floor(tp) + vec2(0.5)) * ps;
-
-        vec3 l0 = smp(c0);
-        vec3 r0 = smp(c0 + vec2(ps.x, 0.0));
-        vec3 l1 = smp(c0 + vec2(0.0, ps.y));
-        vec3 r1 = smp(c0 + ps);
-
+    float scanOn = (uScan > 0.0 && sy >= 1.0) ? 1.0 : 0.0;   // t856: 배율 1 미만이면 주사선 자동 끔 (슨상 결정 08:16 「주사선은 네가 준 제안대로 진행시켜 ㄱ」)
+    if (scanOn > 0.5) {
+        // t856 주사선 = 원본 줄마다 틈 두께 t(화면 px) 고정 · 틈은 줄 아래 끝 · 밝기 = 1 - a * 커버리지 (설계주사선1). 모든 배율 같은 식(2배 미만 분기 없음).
+        float fx = fract(uv.x * uSrcSize.x - 0.5);       // 가로는 화소 중심 기준
+        float cxi = (floor(uv.x * uSrcSize.x - 0.5) + 0.5) * ps.x;
         float lx, rx;
-        if (uNear > 0.5) { lx = (fp.x < 0.5) ? 1.0 : 0.0; rx = 1.0 - lx; }
-        else             { lx = pow(1.0 - fp.x, H_SHARP); rx = pow(fp.x, H_SHARP); }
-        vec3 a = (l0 * lx + r0 * rx) / (lx + rx);
-        vec3 b = (l1 * lx + r1 * rx) / (lx + rx);
-        a *= a; b *= b;                                 // 선형화(감마 2.0 근사)
-
-        float f = fp.y - 0.5;                           // 주사선 중심 = 화소 세로 중심
-        float la = dot(a, LUMW);
-        float lb = dot(b, LUMW);
-        if (f >= 0.0) col = a * beam(f, la) + b * beam(1.0 - f, lb) * (1.0 - lowres);
-        else {
-            vec3 u = smp(c0 - vec2(0.0, ps.y));
-            vec3 ur = smp(c0 + vec2(ps.x, -ps.y));
-            vec3 up = (u * lx + ur * rx) / (lx + rx); up *= up;
-            col = a * beam(-f, la) + up * beam(1.0 + f, dot(up, LUMW)) * (1.0 - lowres);
+        if (uNear > 0.5) { lx = (fx < 0.5) ? 1.0 : 0.0; rx = 1.0 - lx; }
+        else             { lx = pow(1.0 - fx, H_SHARP); rx = pow(fx, H_SHARP); }
+        float py = uv.y * uOutSize.y;                    // 사각형 위쪽 = 0 (화면 px)
+        float p0 = py - 0.5, p1 = py + 0.5;              // 이 화소가 덮는 구간
+        float i0 = floor(p0 / sy);                       // 구간 시작이 속한 원본 줄
+        float wA = clamp((i0 + 1.0) * sy - p0, 0.0, 1.0);   // 그 줄이 차지하는 비율(나머지는 다음 줄)
+        vec3 ca = rowc(i0, cxi, lx, rx);
+        vec3 cb = (wA < 0.999) ? rowc(i0 + 1.0, cxi, lx, rx) : ca;
+        col = ca * wA + cb * (1.0 - wA);
+        float nn = clamp(uScan - 2.0, 1.0, 10.0);         // 세기 n = 1..10 (설정값 scan 3..12 의 이어받기)
+        float tg = min(0.1 * nn, sy);                     // 틈 두께(화면 px)
+        float ag = 0.5 + 0.05 * nn;                       // 틈 진하기
+#ifdef PC98_PHOS
+        if (uBeam > 0.0) ag = min(1.0, ag * mix(1.0, mix(1.35, 0.35, pow(clamp(dot(col, LUMW), 0.0, 1.0), 0.55)), uBeam));   // 빔 폭: 밝은 점은 틈이 옅고 어두운 점은 진함
+#endif
+        float cov = 0.0;
+        for (int k = 0; k < 2; k++) {
+            float hi = (i0 + float(k) + 1.0) * sy;       // 그 줄의 아래 끝
+            cov += max(0.0, min(p1, hi) - max(p0, hi - tg));
         }
+        col *= 1.0 - ag * min(cov, 1.0);
     } else {
         // 주사선 끔: 밑 그림 그대로(sharp = pc98_sharp.glsl 과 같은 면적 평균, nearest = 화소 중심) 위에 나머지 효과만.
         vec2 t;
@@ -225,25 +234,27 @@ void main()
         col = s * s;
     }
 
-    // t48d2c: 주사선 저해상도 보강 — 단계 = uScan-2 (1..10), 출력 공간 5%/단계, 한 줄 건너 어둡게.
-    if (uScan > 0.0 && lowres > 0.0) {
-        float sst = clamp(uScan - 2.0, 1.0, 10.0);
-        float rr = 0.05 * sst * lowres;
-        float odd = step(0.5, fract(floor(vFrag.y) * 0.5));
-        col *= mix(1.0, (1.0 - rr) * (1.0 - rr), odd);
-    }
     // t48d2c: 빛번짐 단계 st=1..10 → lg = 0.12..1.0, 선형 이득 = 최대 0.35 * lg^2 (출력 공간에서 단계에 비례, 최대에서 흰 막대 안 글자가 읽히게 t48d 1.5 에서 낮춤)
     if (uGlow > 0.0) {
         float gst = clamp(uGlow / 0.1, 1.0, 10.0);
         float lg = 0.12 + 0.88 * (gst - 1.0) / 9.0;
         col += 0.35 * lg * lg * bloom(uv);
     }
+#ifdef PC98_PHOS
+    if (uGlowP > 0.0) { vec3 gl = TEX(uGTex, uv).rgb; col += uGlowP * (gl * gl); }
+    if (uBreath > 0.0) {
+        vec2 sp = floor(uv * uSrcSize);
+        float h1 = fract(sin(dot(sp, vec2(12.9898, 78.233))) * 43758.5453);
+        float h2 = fract(sin(dot(sp, vec2(39.3468, 11.135))) * 24634.6345);
+        col *= 1.0 + uBreath * sin(6.2831853 * (uTime / (2.4 + 2.2 * h2) + h1));   // period 2.4..4.6 s, phase from a coordinate hash
+    }
+#endif
     if (uMask > 0.0) col *= mask(vFrag, col);
     col = pow(max(col, 0.0), vec3(GAMMA_OUT));
     float lum = dot(col, LUMW);
-    float bf = (uScan > 0.0) ? (1.0 - lowres) : 0.0;   // t48d2c: 주사선 있고 2배 이상일 때만 보정(옛과 같음). 마스크 단독·저해상도는 보정 없음
-    float bb = mix(1.0, BRIGHTBOOST, bf);
-    col *= mix(1.0, bb, lum);
+    float gb = 1.0;   // t856: 보정 = 세기에 비례(틈 총량 D/배율 만큼 어두워진 것의 70%), 상한 1.30. 주사선 꺼짐·배율 1 미만·마스크 단독은 1.0
+    if (scanOn > 0.5) { float nn2 = clamp(uScan - 2.0, 1.0, 10.0); float m2 = min(0.1 * nn2 * (0.5 + 0.05 * nn2) / sy, 0.9); gb = min(1.0 + 0.7 * (1.0 / (1.0 - m2) - 1.0), 1.30); }
+    col *= mix(1.0, gb, lum);
     col = mix(vec3(lum), col, SAT);
     FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }

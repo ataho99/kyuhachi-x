@@ -1,0 +1,14 @@
+--- a/hardware/mixer.cpp	2026-11-17 07:45:35.142591270 +0900
++++ b/hardware/mixer.cpp	2026-11-17 07:45:35.160924600 +0900
+@@ -315,6 +315,11 @@
+ void CAPTURE_MultiTrackAddWave(uint32_t freq, uint32_t len, int16_t * data,const char *name);
+ 
+ void MixerChannel::EndFrame(Bitu samples) {
++    extern int kh_wavdump_on; extern void kh_wavdump_feed(const char * name, unsigned freq, unsigned len, const int16_t * lr);   /* t832 (#1010): 장치별 파형 덤프 훅 — 볼륨 곱 전 값은 msbuffer>>MIXER_VOLSHIFT */
++    if (kh_wavdump_on) { int16_t cv_[1024][2]; Bitu cn_ = msbuffer_o, pd_ = 0; if (cn_ > samples) cn_ = samples; else pd_ = samples - cn_; if (cn_ > 1024) cn_ = 1024;
++        for (Bitu i_ = 0; i_ < cn_; i_++) { cv_[i_][0] = MIXER_CLIP(msbuffer[i_][0] >> MIXER_VOLSHIFT); cv_[i_][1] = MIXER_CLIP(msbuffer[i_][1] >> MIXER_VOLSHIFT); }
++        if (cn_) kh_wavdump_feed(name, (unsigned)mixer.freq, (unsigned)cn_, &cv_[0][0]);
++        if (pd_) { if (pd_ > 1024) pd_ = 1024; memset(&cv_[0][0], 0, pd_ * sizeof(int16_t) * 2); kh_wavdump_feed(name, (unsigned)mixer.freq, (unsigned)pd_, &cv_[0][0]); } }
+     if (CaptureState & CAPTURE_MULTITRACK_WAVE) {// TODO: should be a separate call!
+         int16_t convert[1024][2];
+         Bitu cnv = msbuffer_o;

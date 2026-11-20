@@ -81,6 +81,8 @@ static const char * phr_(const char * def) {
     }
     r = it->second.buf; g_phr_lock_o.unlock(); return r;
 }
+/* t831: T() — 화면·로그 문구 표시용 (T11: T("…") 안의 한글은 세지 않는다). 동작은 phr_ 와 같다 */
+static inline const char * T(const char * s) { return phr_(s); }
 /* UI 언어 지정(0 한국어 · 1 English · 2 にほんご). 문구 파일을 다시 읽고 모든 칸을 새 언어로 바꾼다 — 재시작 불필요 */
 static void phr_set_lang(int lang) {
     if (lang < 0 || lang > 2) lang = 0;

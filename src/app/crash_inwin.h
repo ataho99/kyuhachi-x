@@ -109,7 +109,7 @@ static void gh_finish(int rc) {
 /* ---- t51a (#878 묶음 2): 창 안 전환. 일시정지 메뉴의 「다음 단계」·「메인 메뉴로」 를 창·프로세스 그대로 처리한다.
    흐름: RunMachine 을 빠져나온 직후(에뮬이 안 도는 때) 정리 → 「불러오는 중」 → (메인 메뉴면 같은 창에서 gh_ui_main) → 새 프로필 읽기·범위 판정 → 디스크 다시 연결 →
    원본 reboot 순서(CPU_Snap_Back_To_Real_Mode · CPU_Snap_Back_Forget · VM_EVENT_RESET · MAPPER_ReleaseAllKeys/LosingFocus · VM_EVENT_RESET_END) → main 이 RunMachine 을 다시 부른다.
-   실패(디스크 연결 · 프로필 · 범위 밖 · 예외 · 8초 부팅 신호 없음)는 현행 재실행 경로(gh_spawn_stage / gh_spawn_menu / gh_spawn_game + gh_finish 의 _exit)로 폴백 — 새 창을 만들기 전에 이 프로세스가 끝나므로 창은 늘 하나. */
+   실패(디스크 연결 · 프로필 · 범위 밖 · 예외 · 8초 부팅 신호 없음)는 현행 재실행 경로(gh_spawn_stage / gh_spawn_menu / gh_spawn_game + gh_finish 의 _exit)로 폴백 - 새 창을 만들기 전에 이 프로세스가 끝나므로 창은 늘 하나. */
 static void gh_spawn_game(const std::string & id, const std::string & entry, int resume) {   /* 메뉴에서 고른 작품을 새 프로세스로(폴백 전용) */
     std::string exe = plat::exe_path();
     std::string cmd = "\"" + exe + "\" \"" + id + "\" --noboot"; if (!entry.empty()) cmd += " --entry \"" + aw::u8_to_acp(entry) + "\""; if (resume > 0) cmd += " --resume " + std::to_string(resume);
@@ -189,6 +189,7 @@ static bool gh_inwin_cycle(void) {
         if (gApp.cur_game >= 0 && gApp.cur_game < (int)gApp.ui_.games.size()) gh_rebuild_fds(gApp.prof_, gApp.ui_.games[gApp.cur_game]);
         { auto mk = gApp.prof_.kv.find("mouse"); gApp.mouse_game = (mk != gApp.prof_.kv.end() && !mk->second.empty() && mk->second != "none") || !gApp.amouse.empty(); gh_log("mouse: 이 작품의 마우스 = %s (창 안 전환)", mk == gApp.prof_.kv.end() ? "(미지정)" : mk->second.c_str()); }
         gh_apply_profile_input(gApp.prof_);
+        gh_apply_touch_input(false);   /* t859-K: 부팅 때 저장된 터치 배치 로드(기본값이면 t858과 동일) */
         gApp.ui_.cur = gApp.cur_game;
         if (gApp.cur_game >= 0 && gApp.cur_game < (int)gApp.ui_.games.size()) {
             gh_refresh_game_slots(gApp.cur_game); gh_apply_settings(gApp.ui_.effective(gApp.cur_game), false);

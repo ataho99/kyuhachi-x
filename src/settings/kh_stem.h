@@ -149,7 +149,7 @@ inline bool load(const std::string & path, Table & t) {
 }
 
 struct Cand { int g = -1; double score = 0; int nhit = 0; };
-struct Verdict { std::vector<Cand> top; bool autolink = false; double ratio = 0; };   /* top = 점수 > 0 인 상위 3 · ratio = 1위/2위(2위가 없으면 0 — autolink 는 true) */
+struct Verdict { std::vector<Cand> top; bool autolink = false; double ratio = 0; };   /* top = 점수 > 0 인 상위 3 · ratio = 1위/2위(2위가 없으면 0 - autolink 는 true) */
 
 /* 점수: 줄기마다 1/(나온 게임 수) 를 게임별로 더함. 순위 = 점수 내림차순, 같으면 게임 이름순(score7.py 와 같다). 표에 없는 줄기는 점수 0. */
 inline Verdict judge(const Table & t, const std::set<std::string> & stems) {

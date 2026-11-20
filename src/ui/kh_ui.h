@@ -1,7 +1,7 @@
 /* kh_ui.h -- r012 UI 화면 상태기계. kh_draw.h 위에서 그린다. 입력은 추상 키(UK_*)로 받는다.
  * 호스트가 UiGame 표(제목·디스크명·THMB·슬롯 정보)를 채워 넣고, ui_key() 의 반환 Act 를 처리한다. */
 #pragma once
-#ifndef KH_PRODUCT   /* t49a (#810/#811): 제품명·부제 상수 — 화면/창/문서 표기는 여기서만 */
+#ifndef KH_PRODUCT   /* t49a (#810/#811): 제품명·부제 상수 - 화면/창/문서 표기는 여기서만 */
 #define KH_PRODUCT "Kyuhachi X"
 #define KH_SUBTITLE "PC-98 BOOTLOADER"
 #include "kh_version.h"   /* t52a (#53): 버전 단일 소스 */
@@ -19,6 +19,7 @@
 #include "settings/kh_ent.h"
 #include "settings/kh_settings.h"   /* S5: Settings struct moved out */
 #include "input/kh_ukey.h"   /* S6 */
+#include "input/kh_ctlzone.h"   /* t859-K: 터치 행 이름 = 조종 바 라벨(LABELS) 재사용 */
 #include "text/kh_fontreg.h"
 #include "text/kh_hangul_t48.h"   /* t48b: 한글 조합기 */
 
@@ -49,7 +50,7 @@ struct Ui {
     bool fs_now = false; Scr start_ret = S_MAIN;   /* t52i: fs_now = 호스트가 알려 주는 전체화면 여부 · start_ret = 시작 팝업을 연 화면(S_MAIN/S_PICK) */
     Settings backup; bool backup_has = false;   /* 화면 설정에서 × 로 되돌리기 */
     std::vector<UiGame> games; bool in_game = false; std::string build = "r012"; int kb_vis = 0, kb_btn = 1, kb_sh = 0;   /* t46x: 호스트가 메뉴를 열 때 채우는 화면 키보드 상태(메뉴 글자용) */
-    bool dirty = false;
+    bool dirty = false, save_now = false;   /* t859b: 키·글꼴 확정 즉시 settings.ini 저장 요청 */
     int ts_ms = 0;             /* 애니메이션용 */
     /* r017: 창 배율(전역) · 작품 추가 */
     int wmult = 0, wmax = 3, winw = 0, winh = 0; int bk_wmult = 0, bk_winw = 0, bk_winh = 0;   /* wmult 0 = 사용자 지정(winw x winh) · wmax = 모니터에 들어가는 최대 배율 */
@@ -65,9 +66,9 @@ struct Ui {
 
     int scope3() const { return scope; }
     void scope_step(int d) { int i = scope + d; if (i < 0) i = 0; if (i > 1) i = 1; scope = i; }   /* #587: 범위는 「전역」 / 「이 작품」 둘뿐 */
-    static unsigned fbit_of(const std::string & k) { static const char * const KN[29] = { "ratio", "shader", "curve", "bleed", "glow", "scan", "mask", "bgm", "se", "pad", "bmult", "bmode", "boot", "bosd", "bsound", "ovbtn", "fpsdisp", "sk_l", "sk_r", "dz_l", "dz_r", "sk_sp", "phos", "dsnd", "dvol", "cpuspd", "pwrseq", "hddhum", "hvol" }; for (unsigned i = 0; i < 29; i++) if (k == KN[i]) return 1u << i; return 0u; }   /* #587: 개별 값을 줄 단위로 */
+    static unsigned fbit_of(const std::string & k) { static const char * const KN[30] = { "ratio", "shader", "curve", "bleed", "glow", "scan", "mask", "bgm", "se", "pad", "bmult", "bmode", "boot", "bosd", "bsound", "ovbtn", "fpsdisp", "sk_l", "sk_r", "dz_l", "dz_r", "sk_sp", "phos", "dsnd", "dvol", "cpuspd", "pwrseq", "hddhum", "hvol", "vo" }; for (unsigned i = 0; i < 30; i++) if (k == KN[i]) return 1u << i; return 0u; }   /* #587: 개별 값을 줄 단위로 */
     static unsigned fbits_all() { return (1u << 17) - 1u; }
-#define KH_FIELDS(X) X(ratio, 0) X(shader, 1) X(curve, 2) X(bleed, 3) X(glow, 4) X(scan, 5) X(mask, 6) X(bgm, 7) X(se, 8) X(pad, 9) X(bmult, 10) X(bmode, 11) X(boot, 12) X(bosd, 13) X(bsound, 14) X(ovbtn, 15) X(fpsd, 16) X(stk_l, 17) X(stk_r, 18) X(dz_l, 19) X(dz_r, 20) X(stk_sp, 21) X(phos, 22) X(dsnd, 23) X(dvol, 24) X(cpuspd, 25) X(pwrseq, 26) X(hddhum, 27) X(hvol, 28)
+#define KH_FIELDS(X) X(ratio, 0) X(shader, 1) X(curve, 2) X(bleed, 3) X(glow, 4) X(scan, 5) X(mask, 6) X(bgm, 7) X(se, 8) X(pad, 9) X(bmult, 10) X(bmode, 11) X(boot, 12) X(bosd, 13) X(bsound, 14) X(ovbtn, 15) X(fpsd, 16) X(stk_l, 17) X(stk_r, 18) X(dz_l, 19) X(dz_r, 20) X(stk_sp, 21) X(phos, 22) X(dsnd, 23) X(dvol, 24) X(cpuspd, 25) X(pwrseq, 26) X(hddhum, 27) X(hvol, 28) X(vo, 29)
     Settings overlay(Settings s, int gi) const { if (gi >= 0 && gi < MAXG && ovm[gi]) { const Settings & o = t[gi];
 #define KH_X(f, b) if (ovm[gi] & (1u << b)) s.f = o.f;
         KH_FIELDS(KH_X)
@@ -84,17 +85,21 @@ struct Ui {
     Settings & eff() { if (scope == 1 && cur >= 0 && cur < MAXG) { sync_t(cur); return t[cur]; } return g; }
     std::vector<int> rowids(Scr sc) const {   /* #587: 화면에 보이는 줄의 실제 번호. 이 작품 범위에서는 전역 전용 줄을 숨기고 맨 아래에 「개별 설정 초기화」 */
         std::vector<int> r;
-        if (sc == S_SCREEN) { r.push_back(0); r.push_back(12); for (int i = 1; i <= 7; i++) r.push_back(i);   /* 빌드 6: 줄 12 = 프리셋 (적용 범위 바로 아래) */
+        if (tmini && sc == S_CONF) { r.push_back(53); r.push_back(54); r.push_back(56); r.push_back(57); r.push_back(58); r.push_back(59); r.push_back(60); r.push_back(55); r.push_back(52); return r; }   /* t862e: 터치 설정 작은 창 = 터치 모드·방향 입력·배치 편집·터치 키 표시 */
+        if (sc != S_SCREEN && conf_grp >= 2) return pg_rowids();   /* #1478: 조작·실행환경 페이지 트리 (conf_grp 2..10) */
+        if (sc == S_SCREEN) { r.push_back(0); r.push_back(12); for (int i = 1; i <= 7; i++) { r.push_back(i); if (i == 1 && scope == 0) r.push_back(16); }   /* t848: 16 = 16:10 일 때 게임 화면 위치(전역만) */   /* 빌드 6: 줄 12 = 프리셋 (적용 범위 바로 아래) */
 #if !defined(__ANDROID__)
             if (scope == 0) { r.push_back(8); r.push_back(9); }
 #endif
-            r.push_back(13); if (scope == 0) r.push_back(14); if (scope == 1) r.push_back(11); }   /* t662: 13 = phosphor page */
+            r.push_back(13); if (scope == 0) { r.push_back(14); r.push_back(15); } if (scope == 1) r.push_back(11); }   /* t662: 13 = phosphor page · #1478: 15 = 메뉴 꾸밈(전역만) */
         else { for (int i = 0; i <= 13; i++) { const bool skip = (scope == 1 && (i == 3   /* E2R */
             || i >= 11)) || (conf_grp && i != 0 && conf_grp_of(i) != conf_grp); if (!skip) r.push_back(i);
+            if (i == 2 && (!conf_grp || conf_grp == 1)) { r.push_back(36); if (in_game && !ln_name.empty()) r.push_back(37); }   /* t831: 음성·PCM 음량 - 효과음 바로 아래 */
             if (i == 3 && conf_grp == 1) { r.push_back(16); r.push_back(17); r.push_back(19); r.push_back(20); r.push_back(21); if (scope == 0) { r.push_back(26); r.push_back(34); /*t794 진동*/ r.push_back(35); /* t822: 진동 세기 */ } }
             if (i == 10 && scope == 0 && (!conf_grp || conf_grp == 2)) {   /* E2R */
                 if (g.ovpos_mode == 0) { r.push_back(22); r.push_back(23); r.push_back(24); }
-                else { r.push_back(22); r.push_back(23); r.push_back(25); } } }
+                else { r.push_back(22); r.push_back(23); r.push_back(25); }
+                r.push_back(48); r.push_back(49); r.push_back(50); } }   /* t848: 오버레이 크기·평소 진하기·패드 연결 시 숨김 */
             if (scope == 0 && (!conf_grp || conf_grp == 2)) r.push_back(15); if (scope == 1) r.push_back(14);
             if (scope == 0 && (!conf_grp || conf_grp == 2)) { r.push_back(29); r.push_back(30); r.push_back(31); r.push_back(32); r.push_back(33); }   /* kx-touch */
             if (!conf_grp || conf_grp == 3) r.push_back(18);
@@ -104,12 +109,43 @@ struct Ui {
 #endif
             }   /* #639: 15 = FPS display (global only, after the overlay rows) */
         return r; }
+    /* #1478 메뉴 개편: 설정 페이지 트리. conf_grp 1 사운드(옛 방식) · 2 조작 · 3 실행환경 · 4 컨트롤러 · 5 터치 조작 · 6 오버레이 · 7 성능 설정 · 8 글꼴 설정 · 9 배속 설정 · 10 표시.
+       폴더 줄 id 38 컨트롤러 39 터치 조작 40 오버레이 42 표시 43 성능 설정 44 글꼴 설정 45 배속 설정 · 41 맵핑(S_PAD) 46 진단(S_DIAG) 47 부팅 시퀀스 다시 보기. 줄 id·개별값 비트는 그대로 (저장 키 무변경) */
+    static int conf_child(int f) { return f == 38 ? 4 : f == 39 ? 5 : f == 40 ? 6 : f == 42 ? 10 : f == 43 ? 7 : f == 44 ? 8 : f == 45 ? 9 : 0; }
+    static int conf_par(int pg) { return (pg == 4 || pg == 5 || pg == 6) ? 2 : (pg == 7 || pg == 8 || pg == 9) ? 3 : pg == 10 ? 5 : 0; }
+    static int conf_folder_of(int pg) { return pg == 4 ? 38 : pg == 5 ? 39 : pg == 6 ? 40 : pg == 10 ? 42 : pg == 7 ? 43 : pg == 8 ? 44 : pg == 9 ? 45 : 0; }
+    std::vector<int> pg_leaf(int pg) const {   /* 페이지 안 줄 id (0 적용 범위·14 개별 설정 초기화 제외). 비는 폴더는 숨김 */
+        std::vector<int> r; const bool w = scope == 1;
+        switch (pg) {
+        case 2: { static const int f[3] = { 38, 39, 40 }; for (int q = 0; q < 3; q++) if (!pg_leaf(conf_child(f[q])).empty()) r.push_back(f[q]); if (!w) { r.push_back(52); r.push_back(53); r.push_back(54); if (in_game) r.push_back(55); } break; }   /* t860: 터치 키 표시 */
+        case 3: { r.push_back(8); if (!in_game && cur >= 0 && cur < (int)games.size()) r.push_back(47); if (!w) r.push_back(13);
+            static const int f[3] = { 43, 44, 45 }; for (int q = 0; q < 3; q++) if (!pg_leaf(conf_child(f[q])).empty()) r.push_back(f[q]); if (!w) r.push_back(46); break; }
+        case 4: r.push_back(4); r.push_back(41); break;
+        case 5: if (!pg_leaf(10).empty()) r.push_back(42); if (!w) r.push_back(32); break;
+        case 6: r.push_back(10); if (!w) { r.push_back(22); r.push_back(23); r.push_back(g.ovpos_mode == 0 ? 24 : 25); r.push_back(48); r.push_back(49); r.push_back(50); } r.push_back(9); if (!w) { r.push_back(15); r.push_back(33); } break;
+        case 7: r.push_back(18);
+#if defined(__ANDROID__)
+            if (!w) r.push_back(28);
+#endif
+            break;
+        case 8:
+#if defined(__ANDROID__)
+            if (!w) r.push_back(27);
+#endif
+            if (!w) { r.push_back(51); r.push_back(11); r.push_back(12); } break;
+        case 9: r.push_back(5); r.push_back(6); r.push_back(7); break;
+        case 10: if (!w) { r.push_back(29); r.push_back(30); r.push_back(31); } break;
+        default: break; }
+        return r; }
+    std::vector<int> pg_rowids() const { std::vector<int> r; r.push_back(0); const std::vector<int> l = pg_leaf(conf_grp); r.insert(r.end(), l.begin(), l.end()); if (scope == 1 && (conf_grp == 2 || conf_grp == 3)) r.push_back(14); return r; }
+    bool save_from_start = false;
+    bool nav_skip = false;   /* 페이지 이동 직후 줄 위치 되돌리기(Gd) 건너뜀 */
     static unsigned indiv_bit(Scr s, int id);   /* build 9: own-value bit of a settings line (0 = none) */
     int rowidx(Scr sc, int id) const { std::vector<int> r = rowids(sc); for (size_t i = 0; i < r.size(); i++) if (r[i] == id) return (int)i; return 0; }
     Settings follow_base(int gi) const {   /* 전역 + 프로파일 값(화면 효과 키 제외). 개별 값은 overlay 가 얹는다 */
         Settings s = g; if (gi >= 0 && gi < (int)games.size()) { std::map<std::string, std::string> m = games[gi].ov; static const char * const fxk[] = { "ratio", "shader", "curve", "bleed", "glow", "scan", "mask", "fx", "phos" }; for (const char * k : fxk) m.erase(k); apply_ov(s, m); }
         return s; }
-    Settings & edit() { return eff(); }   /* #587: 이 작품 범위의 값 쓰기는 이 작품 칸에 — 끝난 뒤 키 처리부가 바뀐 줄만 개별 값으로 표시 */
+    Settings & edit() { return eff(); }   /* #587: 이 작품 범위의 값 쓰기는 이 작품 칸에 - 끝난 뒤 키 처리부가 바뀐 줄만 개별 값으로 표시 */
     const UiGame * game() const { return (cur >= 0 && cur < (int)games.size()) ? &games[cur] : NULL; }
     /* t48b2 (#632): 실행 막는 사유(block)는 작품 id 로 찾는다 — 배열 위치(행 gi · 현재 cur)로 곧바로 읽지 않는다. 회색 표시 · 시작 팝업 · 정보칸 · 슬롯 불러오기가 모두 이 세 함수를 쓴다 */
     const std::string & blk_id(const std::string & id) const { static const std::string E; if (id.empty()) return E; for (size_t i = 0; i < games.size(); i++) if (games[i].id == id) return games[i].block; return E; }
@@ -121,9 +157,9 @@ struct Ui {
     enum { SM_TITLE, SM_ORIG, SM_YEAR, SM_COMPANY, SM_RECENT, SM_PLAY, SM_CUSTOM, SM_N };
     int tab = TAB_KO, sortm = SM_RECENT; bool sortfav = true;
     std::vector<int> vis, rent;   /* vis: 목록에 보이는 작품(index) 순서 · rent[작품]: 행이 가리키는 실행 방법(ents index, -1 = 자동) */
-    std::string sel_entry;        /* 고른 실행 방법 이름 — 실행 요청(Act.entry)에 실려 간다. 빈칸 = 폴더 기본 */
+    std::string sel_entry;        /* 고른 실행 방법 이름 - 실행 요청(Act.entry)에 실려 간다. 빈칸 = 폴더 기본 */
     bool reorder = false; long long now_s = 0; Env env;
-    std::vector<UiFont> fonts; std::string font_kr, font_jp; int lang = 0; bool lang_chg = false, lang_seen = false;   /* t52g (#133): UI 언어 0 한국어 1 English 2 にほんご (전역 전용 · settings.ini [global] lang=) · 바뀌면 목록을 다시 만든다 */   /* 글꼴 폴더 목록 · 전역 선택(빈칸 = 기본) */
+    std::vector<UiFont> fonts, mfonts; std::string font_kr, font_jp, font_ui = "galmuri14b"; int mfont_ver = 0; ov::BmpFont mbmp; std::string mbmp_name; int lang = 0; bool lang_chg = false, lang_seen = false;   /* t52g (#133): UI 언어 0 한국어 1 English 2 にほんご (전역 전용 · settings.ini [global] lang=) · 바뀌면 목록을 다시 만든다 */   /* 글꼴 폴더 목록 · 전역 선택(빈칸 = 기본) */   /* t859: menufont 없을 때 기본 mg12 → galmuri14b (슨상 결정 2026-11-20) */
     static const char * tab_name(int t) { const char * n[] = { phr_("한글판"), phr_("원판"), phr_("미분류"), phr_("전체") }; return n[t < 0 || t > 3 ? 3 : t]; }
     static const char * sort_name(int m) { static const char * n[] = { phr_("제목"), phr_("원제"), phr_("연도"), phr_("제작사"), phr_("최근 실행"), phr_("자주 실행"), phr_("사용자 지정") }; return n[m < 0 || m >= SM_N ? 0 : m]; }
     static const char * sort_id(int m) { static const char * n[] = { "title", "orig", "year", "company", "recent", "play", "custom" }; return n[m < 0 || m >= SM_N ? 0 : m]; }
@@ -151,7 +187,7 @@ struct Ui {
     std::vector<int> tidy_vis() const; int tidy_nmark() const; std::vector<int> tidy_picked(int cursor_row) const;
     Scr tidy_ret = S_ADD; std::string tidy_goto;   /* 목록 정리에서 × 로 돌아갈 화면 · 처음 커서를 둘 작품 id */
     void open_tidy(Act & a) { tidy_lvl = 0; tidy_filt = 0; tidy_ms = 0; tidy_msg.clear(); sel = 0; tidy_ret = S_ADD; tidy_goto.clear(); scr = S_TIDY; a.t = A_TIDY; a.arg = 0; }
-    void open_tidy_for(Act & a, const std::string & id) { open_tidy(a); tidy_filt = 1; tidy_ret = S_PICK; tidy_goto = id; tidy_msg = phr_("원본 없음 — △ 메뉴: 다시 찾기 / 빼기"); }
+    void open_tidy_for(Act & a, const std::string & id) { open_tidy(a); tidy_filt = 1; tidy_ret = S_PICK; tidy_goto = id; tidy_msg = phr_("원본 없음 - △ 메뉴: 다시 찾기 / 빼기"); }
     void tidy_apply_goto() { if (tidy_goto.empty() || tidy_rows.empty()) return; std::vector<int> v = tidy_vis(); for (size_t i = 0; i < v.size(); i++) if (tidy_rows[v[i]].id == tidy_goto) { sel = (int)i; break; } tidy_goto.clear(); }
     void d_tidy(Canvas & c); void k_tidy(UKey k, Act & a); void tidy_menu_do(int mi, Act & a);
     /* kx-cheat: in-game cheat screen (screens/cheat.h, host side app/kh_cheat.h) */
@@ -234,7 +270,7 @@ struct Ui {
     int entg = -1;               /* 실행 방법 목록의 행 작품(base) */
     std::string en_orig; bool enew = false; ent::Kv ed, ed0; std::string ed_name, ed_name0; bool ed_setdef = false;
     std::string msg;             /* 한 줄 알림 */
-    std::string yn_msg[3]; int yn_act = 0, ynsel = 1; Scr yn_ret = S_MAIN; int yn_arg = 0;
+    std::string yn_msg[3]; int yn_act = 0, ynsel = 1, yn_frames = 0, yn_lock_frames = 18;   /* t854: 확인창이 열린 뒤 18프레임(≈0.3초) 방향 입력 무시 */ Scr yn_ret = S_MAIN; int yn_arg = 0;
     enum { YN_DISCARD, YN_DELETE, YN_TEST, YN_INSTDONE, YN_RESET, YN_TITLE, YN_MAINMENU, YN_DELSLOT, YN_DISKRESET, YN_INDIVRESET, YN_INDIVALL, YN_PREDEL, YN_TIDYHIDE, YN_TIDYMERGE, YN_TIDYDEL };   /* t52e (#131) */
     /* 파일 고르기 */
     std::string fl_key, fl_dir; std::vector<std::pair<std::string, std::string> > fl_roots; int fl_ri = 0, fl_swapi = -1; std::vector<FileItem> fl_items; bool fl_sort_kind = false; Scr fl_ret = S_EDIT;
@@ -250,24 +286,26 @@ struct Ui {
     int xb_cnt() const; int xb_slot(int row) const;
     std::vector<KbCell> kb_cells; int kb_sel = 0;   /* build 5a-2c: key picker on the PC-98 layout (screens/kbpick.h) */
     bool kb_used(const std::string & nm) const; void kb_open(); void d_kbpick(Canvas & c); void k_kbpick(UKey k, Act & a);
+    bool tmini = false;   /* t862e: 터치 설정 작은 창 모드 */
     int conf_grp = 0; bool save_mode = false; Scr scr_from = S_MAIN;   /* build 5b-1: settings group (0 all, 1 sound, 2 control, 3 system) */
     /* build 5b-3: main list = start/pick/settings/save/extra/quit (screen settings only via settings hub) - tests find rows by id */
     int extra_sub = 0; int fnow_cur = -2; std::string fnow_line, fnow_kr, fnow_jp;   /* work menu: 0 main list, 1 "this game's settings" list */
-    static int mi(Scr s) { return s == S_START ? 0 : s == S_PICK ? 1 : s == S_SET ? 2 : s == S_SAVE ? 3 : s == S_EXTRA ? 4 : s == S_QUIT ? 5 : -1; }
-    static const int * extra_main() { static const int o[7] = { 10, 11, 8, 5, 2, 12, 6 }; return o; }   /* ids: 2 boot seq, 3 help, 4 about, 7 values, 100 this-game submenu, 6 reset (5 fav, 8 language live in the submenu). #B4: 옛 id 0 「디스크 정보」 줄은 어느 플랫폼에서도 핸들러가 없어 삭제(오른쪽 인포메이션이 같은 내용) */
-    static int extra_row(int id) { const int * o = extra_main(); for (int i = 0; i < 7; i++) if (o[i] == id) return i; return 0; }
-    std::vector<int> extra_ids() const { std::vector<int> v; if (extra_sub) { v.push_back(8); v.push_back(5); } else v.assign(extra_main(), extra_main() + 7); return v; }
+    static int mi(Scr s) { return s == S_START ? 0 : s == S_PICK ? 1 : s == S_SET ? 2 : s == S_QUIT ? 3 : -1; }   /* #1478: 메인 4줄 (게임 시작·작품 선택·설정·끝내기) */
+    static const int * extra_main() { static const int o[6] = { 10, 11, 8, 5, 12, 6 }; return o; }   /* ids: 2 boot seq, 3 help, 4 about, 7 values, 100 this-game submenu, 6 reset (5 fav, 8 language live in the submenu). #B4: 옛 id 0 「디스크 정보」 줄은 어느 플랫폼에서도 핸들러가 없어 삭제(오른쪽 인포메이션이 같은 내용) */
+    static int extra_row(int id) { const int * o = extra_main(); for (int i = 0; i < 6; i++) if (o[i] == id) return i; return 0; }
+    std::vector<int> extra_ids() const { std::vector<int> v; if (extra_sub) { v.push_back(8); v.push_back(5); } else v.assign(extra_main(), extra_main() + 6); return v; }
     const std::string & font_now();
-    void d_set(Canvas & c); void k_set(UKey k, Act & a); void d_diag(Canvas & c); void k_diag(UKey k, Act & a); void d_gkb(Canvas & c); void k_gkb(UKey k, Act & a);
+    void d_set(Canvas & c); void k_set(UKey k, Act & a); void d_diag(Canvas & c); void k_diag(UKey k, Act & a); void d_lines(Canvas & c); void k_lines(UKey k, Act & a); std::vector<std::string> ln_name; std::vector<int> ln_pct;   /* t844: 줄 음량 */ void d_gkb(Canvas & c); void k_gkb(UKey k, Act & a);
     std::string sh_code, sh_ename, sh_msg; share::Decoded sh_dec; std::vector<std::string> sh_missing, sh_files; int sh_found = 0, sh_total = 0;
     void shr_open_make(int g, int menu_i); void shr_open_import(); void shr_preview(const std::string & code);
     void d_share(Canvas & c); void k_share(UKey k, Act & a); void d_shimp(Canvas & c); void k_shimp(UKey k, Act & a);
     void d_shprev(Canvas & c); void k_shprev(UKey k, Act & a);
-    static int conf_grp_of(int i) { if (i == 34) return 1; if (i == 28) return 3; if (i >= 22) return 2;   /* E2R: overlay pos rows */
+    static int conf_grp_of(int i) { if (i == 34 || i == 36 || i == 37) return 1; if (i == 28) return 3; if (i >= 22) return 2;   /* E2R: overlay pos rows */
         return (i >= 1 && i <= 3) || i == 16 || i == 17 || i == 19 || i == 20 || i == 21 || i == 26 /*E1R*/ ? 1 : (i == 8 || (i >= 11 && i != 15)) ? 3 : 2; }
     void leave_cfg() {   /* leaving S_SCREEN / S_CONF: back to the settings hub when it was opened from there */
         const bool sc = scr == S_SCREEN;
         if (sc && scr_from == S_SET) go(S_SET, 0);
+        else if (!sc && conf_grp >= 4) { const int pg0 = conf_grp; conf_grp = conf_par(pg0); go(S_CONF, rowidx(S_CONF, conf_folder_of(pg0))); nav_skip = true; }   /* #1478: 하위 페이지 → 부모 페이지(폴더 줄 위) */
         else if (!sc && conf_grp) go(S_SET, conf_grp);
         else { go(in_game ? S_GAME : S_MAIN, in_game ? 4 : 0); if (!in_game) sel = 0; }
     }
@@ -318,11 +356,33 @@ struct Ui {
         if (is_def) *is_def = true; return pad_default(i);
     }
     void open_padkey(int row) {
+        if (row >= TOUCH_PK) { open_touchkey(row - TOUCH_PK); return; }   /* t859-K: 터치 줄은 터치 목록으로 */
         pk_row = row; pad_sel_keep = sel; pk_opts.clear(); pk_opts.push_back(std::string()); pk_opts.push_back("none"); pk_opts.push_back("mouse_left"); pk_opts.push_back("mouse_right"); for (int q = 1; q < PAD_FN_N; q++) pk_opts.push_back(std::string("fn:") + pad_fn_name(q));   /* 빌드 5a: 큐하치 기능 */
         if (env.padkeys) for (auto & n : env.padkeys()) pk_opts.push_back(n);
         std::string cv; { std::string k = pad_key(row); if (scope == 1 && row < PAD_N && env.pad_get && cur >= 0 && cur < (int)games.size()) { std::map<std::string, std::string> m; env.pad_get(cur, m); auto it = m.find(k); if (it != m.end()) cv = it->second; } else if (scope == 0 || row >= PAD_N) { auto it = gpad.find(k); if (it != gpad.end()) cv = it->second; } }
         sel = 0; for (size_t i = 0; i < pk_opts.size(); i++) if (pk_opts[i] == cv) sel = (int)i; scr = S_PADKEY;
     }
+    /* ---- t859-K: 터치 8칸(←→↑↓ Enter Esc Space Tab) 재배정. 저장 키 btn_touch_*. 전역 gpad / 작품 [touch].
+       S_PAD 맨 끝 줄에서 진입(scope 계승), 뒤로가기는 S_PAD. fn:/mouse_* 는 목록에 없음. */
+    enum { TOUCH_N = 8, TOUCH_PK = 100 };   /* TOUCH_PK = S_PADKEY에서 터치 줄 식별( 기존 pad 0..15·ext 16..23과 겹치지 않음) */
+    static const char * touch_key(int i) { static const char * const K[TOUCH_N] = { "btn_touch_left", "btn_touch_right", "btn_touch_up", "btn_touch_down", "btn_touch_enter", "btn_touch_esc", "btn_touch_space", "btn_touch_tab" }; return K[i < 0 ? 0 : i >= TOUCH_N ? TOUCH_N - 1 : i]; }
+    std::string touch_row_name(int i) const { if (i < 0 || i >= TOUCH_N) i = 0; return ctlzone::LABELS[i]; }   /* 조종 바와 같은 라벨 */
+    static std::string touch_default(int i) {
+        switch (i) { case 0: return "left"; case 1: return "right"; case 2: return "up"; case 3: return "down"; case 4: return "enter"; case 5: return "esc"; case 6: return "space"; default: return "tab"; }
+    }
+    std::string touch_val(int i, bool * from_work = NULL, bool * is_def = NULL) {   /* 지금 이 범위에서 보이는 값 */
+        std::string k = touch_key(i); if (from_work) *from_work = false; if (is_def) *is_def = false;
+        if (scope == 1 && env.touch_get && cur >= 0 && cur < (int)games.size()) { std::map<std::string, std::string> m; env.touch_get(cur, m); auto it = m.find(k); if (it != m.end() && !it->second.empty()) { if (from_work) *from_work = true; return it->second; } }
+        auto g2 = gpad.find(k); if (g2 != gpad.end() && !g2->second.empty()) return g2->second;
+        if (is_def) { *is_def = true; } return touch_default(i);
+    }
+    void open_touchkey(int t) {
+        pk_row = TOUCH_PK + t; pad_sel_keep = sel; pk_opts.clear(); pk_opts.push_back(std::string()); pk_opts.push_back("none");
+        if (env.padkeys) for (auto & n : env.padkeys()) pk_opts.push_back(n);   /* PC-98 키 이름만(mouse·fn 제외) */
+        std::string cv = touch_val(t);
+        sel = 0; for (size_t i = 0; i < pk_opts.size(); i++) if (pk_opts[i] == cv) sel = (int)i; scr = S_PADKEY;
+    }
+    void d_touch(Canvas & c); void k_touch(UKey k, Act & a);
     void d_pad(Canvas & c);
     void d_padkey(Canvas & c);
     void d_hot(Canvas & c); void k_hot(UKey k, Act & a); void hot_poll(); void d_ext(Canvas & c); void k_ext(UKey k, Act & a);   /* build 5a-2: hotkey tab (screens/hot.h) */
@@ -333,9 +393,9 @@ struct Ui {
     std::vector<std::string> fnt_opts; std::string fnt_need; Scr fnt_ret = S_CONF; std::map<std::string, ov::BmpFont> fnt_cache;
     /* 화면 키보드 */
     Act pend;   /* t49a: 키 처리 중 만들어진 동작(표시 제목 저장) */
-    std::string stage_next_label;   /* t49a (#845): 지금 단계의 다음 단계 이름(비면 없음) — 일시정지 메뉴에 「다음 단계」 */
+    std::string stage_next_label;   /* t49a (#845): 지금 단계의 다음 단계 이름(비면 없음) - 일시정지 메뉴에 「다음 단계」 */
     std::string osk_buf; int osk_target = 0, osk_r = 0, osk_c = 0; bool osk_upper = false; Scr osk_ret = S_EDIT; std::string ime_comp;   /* t48a: ime_comp = IME 조합 중 글자 */
-    hg::Composer hc; bool osk_hg = false, osk_shift = false;   /* t48b: 한글 화면 키보드(이름 칸) — osk_hg = 켜짐, osk_shift = SHIFT 한 번 눌림(다음 자모 하나만) */
+    hg::Composer hc; bool osk_hg = false, osk_shift = false;   /* t48b: 한글 화면 키보드(이름 칸) - osk_hg = 켜짐, osk_shift = SHIFT 한 번 눌림(다음 자모 하나만) */
     std::vector<ValRow> vals; int vals_top = 0;   /* t48a (#614 ③) */
     int tplsel = 0, menusel = 0, hddsel = 0;
     bool install_start = false;  /* 설치 필요 게임을 처음 시작할 때의 HDD 만들기 */
@@ -365,15 +425,24 @@ struct Ui {
     }
     struct Hit { int x, y, w, h, i, sel; };   /* t55a: touch hit-test rows (rect, index, selection at draw time) */
     std::vector<Hit> hits;
-    int prof_x = 0, prof_y = 0, prof_w = 0, prof_h = 0;   /* v0.6.8: 인포 「실행」 줄(방법 2개 이상일 때만) — 터치하면 다음 방법 */
+    int prof_x = 0, prof_y = 0, prof_w = 0, prof_h = 0;   /* v0.6.8: 인포 「실행」 줄(방법 2개 이상일 때만) - 터치하면 다음 방법 */
     /* t677 (#662): 선택 막대 높이를 줄 간격에 맞춘다(간격 24 이상이면 종전 22 그대로, 그보다 좁으면 간격-2, 최소 16). */
     static int gh_bar_h(int pitch) { int h = pitch - 2; if (h > 22) h = 22; if (h < 16) h = 16; return h; }
-    void items(Canvas & c, int x, int y, int w, const std::vector<std::string> & a, int sel, int pitch, const std::vector<bool> * dim = NULL) {
+    int it_key = -1, it_since = 0;
+    int mq_calc(int t, int avail, int since) const {   /* t851: 선택 줄 흐르기 공용식 (1초 쉼 → 흐름 → 끝에서 0.8초) */
+        if (t <= avail) return 0; int maxoff = t - avail + 8, span = maxoff * 25, hold0 = 1000, hold1 = 800, cyc = hold0 + span + hold1;
+        int e = ts_ms - since; if (e < 0) e = 0; int tc = e % cyc; if (tc < hold0) return 0; if (tc < hold0 + span) return (tc - hold0) / 25; return maxoff;
+    }
+    void items(Canvas & c, int x, int y, int w, const std::vector<std::string> & a, int sel, int pitch, const std::vector<bool> * dim = NULL, int base = 0) {
         for (size_t i = 0; i < a.size(); i++) {
-            int yy = y + (int)i * pitch; bool d = dim && (*dim)[i]; int bh = gh_bar_h(pitch), by = yy - (bh - 16) / 2; { Hit ht = { x - 6, by, w, bh, (int)i, sel }; hits.push_back(ht); }
-            if ((int)i == sel) c.rect(x - 6, by, w, bh, d ? GY : WH);
+            int yy = y + (int)i * pitch; bool d = dim && (*dim)[i]; int bh = gh_bar_h(pitch), by = yy - (bh - 16) / 2; { Hit ht = { x - 6, by, w, bh, (int)i + base, sel }; hits.push_back(ht); }
+            if ((int)i + base == sel) c.rect(x - 6, by, w, bh, d ? GY : WH);
             c.clip(x, by, w - 12, bh);   /* r018: 글자가 막대·상자 밖으로 나가지 않게 */
-            if ((int)i == sel) text(c, x, yy, fit(a[i], w - 12), K, d ? GY : WH); else text(c, x, yy, fit(a[i], w - 12), d ? GY : CY, K);
+            if ((int)i + base == sel) {
+                const int tt_ = tw(a[i]);
+                if (tt_ > w - 12) { const int key = (int)scr * 4096 + sel * 16 + (int)(a.size() & 15); if (key != it_key) { it_key = key; it_since = ts_ms; } text(c, x - mq_calc(tt_, w - 12, it_since), yy, a[i], K, d ? GY : WH); }
+                else text(c, x, yy, a[i], K, d ? GY : WH);
+            } else text(c, x, yy, fit(a[i], w - 12), d ? GY : CY, K);
             c.unclip();
         }
     }
@@ -381,15 +450,25 @@ struct Ui {
     void desc(Canvas & c, int y, int h, const std::vector<std::string> & ln, int orfrom = -1, const char * help = NULL) {
         int y0 = 14, dy = 20;
         if (help && y + h > c.h - 32 && help_rows(c, help) == 2) { h = c.h - 32 - 1 - y; y0 = 6; dy = 16; }
-        { int blkh = (ln.empty() ? 0 : ((int)ln.size() - 1) * dy) + 16, cy = (h - blkh) / 2; if (cy < y0) y0 = cy; }   /* v0.6.8 어긋남 수정: 두 줄 글이 상자 아래 테두리에 닿지 않게 세로 가운데 */
-        rbox(c, 16, y, 608, h, OR, NULL); for (size_t i = 0; i < ln.size(); i++) text(c, 40, y + y0 + (int)i * dy, ln[i], (orfrom >= 0 && (int)i >= orfrom) ? OR : WH, K);
+        /* t851: 글자 단위 줄바꿈 — 상자 높이만큼 줄을 쓰고(간격 20 → 모자라면 16) 넘으면 마지막 줄을 … 로 */
+        std::vector<std::pair<std::string, uint32_t> > rows;
+        for (int pass = 0; pass < 2; pass++) {
+            rows.clear(); for (size_t i = 0; i < ln.size(); i++) { std::vector<std::string> w = wrap_text(ln[i], 560, 0); for (auto & s1 : w) rows.push_back(std::make_pair(s1, (orfrom >= 0 && (int)i >= orfrom) ? OR : WH)); }
+            const int maxl = (h - 28) / dy + 1; if ((int)rows.size() <= (maxl < 1 ? 1 : maxl) || dy <= 16 || pass) break; dy = 16;
+        }
+        { int maxl = (h - 28) / dy + 1; if (maxl < 1) maxl = 1;
+          if ((int)rows.size() > maxl) { rows.resize((size_t)maxl); std::string & L = rows.back().first; const std::string el = "\xE2\x80\xA6"; while (!L.empty() && tw(L + el) > 560) { size_t k = L.size() - 1; while (k > 0 && ((unsigned char)L[k] & 0xC0) == 0x80) k--; L.erase(k); } L += el; } }
+        { int blkh = (rows.empty() ? 0 : ((int)rows.size() - 1) * dy) + 16, cy = (h - blkh) / 2; if (cy < y0) y0 = cy; }   /* v0.6.8 어긋남 수정: 두 줄 글이 상자 아래 테두리에 닿지 않게 세로 가운데 */
+        rbox(c, 16, y, 608, h, OR, NULL); if (g_ovf_on) ovf_box(16, y, 608, h);
+        for (size_t i = 0; i < rows.size(); i++) text(c, 40, y + y0 + (int)i * dy, rows[i].first, rows[i].second, K);
+        ovf_nobox();
     }
     void thumb(Canvas & c, const UiGame * g, int x, int y, int w, int h) {
         c.rect(x - 1, y - 1, w + 2, h + 2, GY); c.rect(x, y, w, h, K);
         if (g && !g->thmb.empty()) blit_fit(c, g->thmb.data(), g->tw_, g->th_, x, y, w, h);   /* #M3: 비율 유지 */
         else { const char * m = phr_("저장 없음"); text(c, x + (w - tw(m)) / 2, y + h / 2 - 8, m, GY, K); }   /* r018: 표본 그림 대신 빈 칸 (나중에 타이틀 화면 캡처로 채움) */
     }
-    static void menu_names(std::vector<std::string> & v) { v = { phr_("게임 시작"), phr_("작품 선택"), phr_("mm_settings"), phr_("세이브 관리"), phr_("이 작품"), phr_("끝내기") }; }
+    static void menu_names(std::vector<std::string> & v) { v = { phr_("게임 시작"), phr_("작품 선택"), phr_("mm_settings"), phr_("끝내기") }; }
     static std::string play_str(int s) { char b[48]; if (s >= 3600) snprintf(b, sizeof b, phr_("%d시간 %02d분"), s / 3600, (s / 60) % 60); else snprintf(b, sizeof b, phr_("%d분"), s / 60); return b; }
     int cbx = 0, cby = 0, cbw = 0, cbh = 0;   /* kx-touch: 마지막으로 그린 팝업 상자(바깥 탭 = 취소) */
     /* 확인 창: 화면 가운데, 뒤 화면 어둡게. 반환 = 창 왼쪽 위 x,y */
@@ -425,7 +504,7 @@ struct Ui {
         line(phr_("패치"), gm->patch.empty() ? std::string("-") : gm->patch);
         line(phr_("디스크"), gm->disknote.empty() ? std::string("-") : gm->disknote);
         line(phr_("장치"), gm->devices.empty() ? std::string(phr_("특별한 장치 불필요")) : gm->devices);
-        { static const struct { const char * k; const char * n; } T[] = { { "ratio", phr_("비율") }, { "shader", phr_("셰이더") }, { "curve", phr_("곡면") }, { "scan", phr_("주사선") }, { "mask", phr_("마스크") }, { "bleed", phr_("RGB번짐") }, { "glow", phr_("빛번짐") }, { "bgm", "BGM" }, { "se", phr_("효과음") }, { "pad", phr_("패드") }, { "boost", phr_("배속") }, { "boostmode", phr_("배속방식") } };
+        { static const struct { const char * k; const char * n; } T[] = { { "ratio", phr_("비율") }, { "shader", phr_("셰이더") }, { "curve", phr_("곡면") }, { "scan", phr_("주사선") }, { "mask", phr_("마스크") }, { "bleed", phr_("RGB번짐") }, { "glow", phr_("빛번짐") }, { "bgm", "BGM" }, { "se", phr_("효과음") }, { "vo", phr_("snd_voice") }, { "pad", phr_("패드") }, { "boost", phr_("배속") }, { "boostmode", phr_("배속방식") } };
           std::string o; for (auto & t : T) if (gm->ov.count(t.k)) { if (!o.empty()) o += ", "; o += t.n; }
           if (cur >= 0 && cur < MAXG && ovm[cur]) { if (!o.empty()) o += " + "; o += phr_("내 설정"); }
           line(phr_("설정"), o.empty() ? std::string(phr_("전역과 같음")) : o); }
@@ -441,6 +520,14 @@ struct Ui {
     void info_title(Canvas & c, const UiGame & gb, bool blk, int X, int W, bool big);
     void info_cap(Canvas & c, const UiGame * g, int x, int y, int w, int h);
     void info_cols(Canvas & c, const UiGame & gb, const UiGame & g, bool blk, const std::string & bk, int RX, int RV, int RW, int ry, int rows, bool dim);
+    void info_pane(Canvas & c, const UiGame * gm, int gi);   /* t855 시안 v3: 오른쪽 인포 상자 전체 (제목 · 캡처 200x125 · 2열 4행) - 메인·작품 선택 공용 */
+    bool desc_box(Canvas & c, const UiGame * gm, const std::string & fallback, const std::string & keys);   /* t855: 아래 상자 3줄 = 게임 설명(흐름) · 없으면 fallback(도움말). 설명을 그렸으면 true */
+    void recent_runs(std::vector<int> & rc) const {   /* t855: 최근 실행 5 (last_run 큰 순) */
+        std::vector<std::pair<long long, int> > v; for (size_t i = 0; i < games.size(); i++) if (games[i].last_run > 0 && !games[i].id.empty()) v.push_back(std::make_pair(games[i].last_run, (int)i));
+        std::sort(v.begin(), v.end(), [](const std::pair<long long, int> & a, const std::pair<long long, int> & b) { return a.first > b.first; });
+        rc.clear(); for (size_t i = 0; i < v.size() && i < 5; i++) rc.push_back(v[i].second);
+    }
+    int main_nrc() const { std::vector<int> rc; recent_runs(rc); return (int)rc.size(); }
     void d_main_info(Canvas & c);
     void d_quit(Canvas & c);
     void d_swap(Canvas & c);
@@ -566,14 +653,41 @@ struct Ui {
     /* 2b: 실행 파일 고르기 — 이미지 안 폴더 보기 */
     std::vector<FileItem> xp_items; std::string xp_dir, xp_dk[2]; int xp_drv = 0, xp_nd = 1; bool xp_err = false;
     void xp_load() { xp_items.clear(); xp_err = !(env.exelist && !xp_dk[xp_drv].empty() && env.exelist(eg, xp_dk[xp_drv], xp_dir, xp_items)); }
-    void xp_open() {   /* A: = 첫 FD(디스크 A, 없으면 B), B: = 둘째 FD (둘 다 있을 때만) — 내장 DOS 장착 순서와 같다 */
+    void xp_open() {   /* A: = 첫 FD(디스크 A, 없으면 B), B: = 둘째 FD (둘 다 있을 때만) - 내장 DOS 장착 순서와 같다 */
         std::string da = kv_get("disk_a"), db = kv_get("disk_b"); xp_dk[0] = da.empty() ? db : da; xp_dk[1] = (!da.empty() && !db.empty()) ? db : std::string();
         xp_nd = xp_dk[1].empty() ? 1 : 2; xp_drv = 0; xp_dir.clear(); xp_load(); sel = 0; scr = S_EXEPICK;
     }
     void d_font(Canvas & c);
-    std::string fnt_default_name() const { if (fnt_mode == 1) return font_jp.empty() ? "kyuhachi_font" : font_jp; return font_kr.empty() ? "kyuhachi_font" : font_kr; }   /* t52g: 임시 이름 pc98player_font → kyuhachi_font */
-    void jp_refresh() { const ov::BmpFont * bf = fnt_font(font_jp.empty() ? std::string("kyuhachi_font") : font_jp); ov::jp_set(lang == 2, bf); }   /* t52h (#134): 일본어 글꼴 BMP · 언어를 글자 그리기에 알림 */
-    std::string fnt_cur() const { if (fnt_mode == 0) return font_kr; if (fnt_mode == 1) return font_jp; return kv_get("font"); }
+    static std::string fnt_nice_(const std::string & n) { if (n == "kr_mg15") return phr_("M갈무리 15"); if (n == "kr_maruminya") return phr_("마루미냐(한글)"); if (n == "jp_maruminya") return phr_("마루미냐(일본어)"); return n; }   /* #1729 ③: 내부 파일 이름 대신 사용자용 이름 */
+    std::string fnt_default_name() const { if (fnt_mode == 3) return "galmuri14"; if (fnt_mode == 1) return font_jp.empty() ? "kyuhachi_font" : font_jp; return font_kr.empty() ? "kr_mg15" : font_kr; }   /* t52g: 임시 이름 pc98player_font → kyuhachi_font */
+    void jp_refresh() { const ov::BmpFont * bf = font_jp.empty() ? NULL : fnt_font(font_jp); ov::jp_set(lang == 2, bf); }   /* t858 (#1857): 일본어 글꼴을 따로 고르지 않았으면 BMP 를 쓰지 않는다 - kyuhachi_font.bmp 는 한글이 한자 칸에 들어 있어 言語 가 밋몄로 찍혔다. 비면 동봉 Shinonome FONTX2 가 쓰인다 · t52h (#134): 일본어 글꼴 BMP · 언어를 글자 그리기에 알림 */
+    /* t855 (#1711): 메뉴 글꼴 = M갈무리(MonadABXY, OFL) 계열. 이름 = <계열 mg|dg|gg><크기 10|12|15>[b = 진짜 Bold 판]. quiple 갈무리(galmuri14 …)는 뒤쪽 선택지 */
+    static bool mf_split(const std::string & n, std::string & fam, int & sz, bool & bd) {
+        if (n.size() < 3) return false; fam = n.substr(0, 2); if (fam != "mg" && fam != "dg" && fam != "gg") return false;
+        size_t i = 2; int v = 0, d = 0; while (i < n.size() && isdigit((unsigned char)n[i])) { v = v * 10 + (n[i] - '0'); i++; d++; }
+        if (!d) return false; bd = false; if (i < n.size()) { if (n[i] == 'b' && i + 1 == n.size()) bd = true; else return false; }
+        sz = v; return true;
+    }
+    static std::string mf_make(const std::string & fam, int sz, bool bd) { return fam + std::to_string(sz) + (bd ? "b" : ""); }
+    static int mf_full(const std::string & n) { std::string f; int s; bool b; if (mf_split(n, f, s, b)) return s; return (n == "galmuri14" || n == "galmuri14b") ? 14 : 11; }   /* 전각 칸 폭 = 글꼴 크기 */   /* t858: galmuri14b = 14 (합성 Bold 시트) */
+    static int mf_half(const std::string & n) { std::string f; int s; bool b; if (mf_split(n, f, s, b)) return s / 2 + 2; return 8; }   /* 반각 칸 폭 (10→7 · 12→8 · 15→9) */
+    bool menu_tall() const { return font_ui == "mg15" || font_ui == "mg15b" || font_ui == "galmuri14" || font_ui == "galmuri14b"; }   /* t858: 14·15px급 메뉴 글꼴 - 목록·값 열 줄 피치 18 */
+    bool mf_have(const std::string & n) const { for (auto & x : mfonts) if (x.ok && x.name == n) return true; return false; }
+    std::map<std::string, std::vector<int> > adv_cache;   /* t855: M갈무리 시트 열 1 → 글자 폭표 */
+    const int * mf_adv(const std::string & name, const ov::BmpFont * b) {
+        std::string f_; int s_; bool b_; if (!b || !b->ok || !mf_split(name, f_, s_, b_)) return NULL;
+        auto it = adv_cache.find(name); if (it == adv_cache.end()) { std::vector<int> v(128, 0); bool any = false; const int hw_ = mf_half(name); for (int ch = 32; ch < 127; ch++) { int n = 0; for (int i = 0; i < 16; i++) if (b->ink(1600 + i, ch * 16)) n++; v[ch] = n ? n : hw_; if (n) any = true; } if (!any) v.clear(); it = adv_cache.insert(std::make_pair(name, v)).first; }
+        return it->second.empty() ? NULL : it->second.data();
+    }
+    void menu_font_apply() {
+        if (font_ui.empty() || font_ui == "builtin") { ov::g_menu_bmp = NULL; ov::g_menu_advp = NULL; ov::g_menu_half = 8; ov::g_menu_full = 16; return; }
+        std::string fu = font_ui; if (!mf_have(fu)) { if (mf_have("mg12")) fu = "mg12"; else if (mf_have("galmuri14")) fu = "galmuri14"; }   /* 시트가 없으면 있는 것으로 */
+        if (mbmp_name != fu) { mbmp_name = fu; mbmp.ok = false; for (auto & x : mfonts) if (x.name == fu) { mbmp.load(x.path); break; } }
+        ov::g_menu_bmp = mbmp.ok ? &mbmp : NULL; ov::g_menu_advp = mbmp.ok ? mf_adv(fu, &mbmp) : NULL; ov::g_menu_half = mbmp.ok ? mf_half(fu) : 8; ov::g_menu_full = mbmp.ok ? mf_full(fu) : 16;
+    }
+    const ov::BmpFont * mfont_get(const std::string & name) { for (auto & x : mfonts) if (x.name == name && x.ok) { auto it = fnt_cache.find("\x01" + name); if (it == fnt_cache.end()) { ov::BmpFont & f = fnt_cache["\x01" + name]; f.load(x.path); return f.ok ? &f : NULL; } return it->second.ok ? &it->second : NULL; } return NULL; }
+    static std::string mfont_label(const std::string & n) { { std::string f_; int s_; bool b_; if (mf_split(n, f_, s_, b_)) return std::string(f_ == "mg" ? phr_("M갈무리") : f_ == "dg" ? phr_("둥근갈무리") : phr_("굴린갈무리")) + " " + std::to_string(s_) + (b_ ? " Bold" : ""); } if (n == "galmuri14") return phr_("갈무리14"); if (n == "galmuri14b") return phr_("갈무리14 굵게"); if (n == "galmuri11") return phr_("갈무리11"); if (n == "galmuri11bold") return phr_("갈무리11 굵게"); if (n == "galmurimono11") return phr_("갈무리 모노11"); if (n == "builtin") return phr_("옛 메뉴 글꼴"); return n; }
+    std::string fnt_cur() const { if (fnt_mode == 3) return font_ui; if (fnt_mode == 0) return font_kr; if (fnt_mode == 1) return font_jp; return kv_get("font"); }
     const ov::BmpFont * fnt_font(const std::string & name) {
         if (name.empty()) return NULL; auto it = fnt_cache.find(name); if (it != fnt_cache.end()) return it->second.ok ? &it->second : NULL;
         ov::BmpFont & f = fnt_cache[name]; for (auto & x : fonts) if (x.name == name && x.ok) { f.load(x.path); break; } return f.ok ? &f : NULL;
@@ -684,19 +798,20 @@ struct Ui {
     void d_extra(Canvas & c);
     void d_game(Canvas & c);
     void start_ok(Act & a) {   /* t52i (B1): 0 이어하기 · 1 처음부터 · 2 시스템 디스크만 부팅(= 부가 메뉴의 같은 항목, 호스트 A_EXTRA arg 1) */
+        if (startsel == 3) { slotsel = 0; save_mode = false; save_from_start = true; go(S_SAVE, 0); return; }   /* #1478: 세이브 관리 = 시작 팝업 4번째 줄 (취소하면 팝업으로 돌아옴) */
         if (startsel == 0 && !has_save(game())) return;
         if (game() && (game()->id.empty() || !blk_cur().empty())) return;
         if (startsel >= 1 && game() && game()->need_install) { begin_install(cur); return; }
         if (startsel == 2) { a.t = A_EXTRA; a.arg = 1; a.game = cur; return; }
         a.t = A_START; a.game = cur; a.entry = sel_entry; a.resume = (startsel == 0);
     }
-    void open_vals() {   /* t48a (#614 ③): 적용값 표 열기 — 호스트가 층별 출처를 채우고, 작품별 설정(settings.ini [id])의 전역과 다른 값은 여기서 덧붙인다 */
+    void open_vals() {   /* t48a (#614 ③): 적용값 표 열기 - 호스트가 층별 출처를 채우고, 작품별 설정(settings.ini [id])의 전역과 다른 값은 여기서 덧붙인다 */
         vals.clear(); vals_top = 0;
         if (cur >= 0 && cur < (int)games.size() && env.values) env.values(cur, vals);
         if (cur >= 0 && cur < MAXG && cur < (int)games.size() && ovm[cur]) {
             const Settings t0 = overlay(g, cur); const Settings & g0 = g; const std::string & id = games[cur].id;
 #define VSR(f) if (t0.f != g0.f) { ValRow r; r.key = std::string("설정:" #f); r.val = std::to_string((int)t0.f); r.src = "settings.ini [" + id + "]"; r.cov = std::to_string((int)g0.f) + " (전역)"; vals.push_back(r); }
-            VSR(ratio) VSR(shader) VSR(curve) VSR(bleed) VSR(glow) VSR(scan) VSR(mask) VSR(bgm) VSR(se) VSR(device) VSR(pad) VSR(bmult) VSR(bmode) VSR(boot) VSR(bosd) VSR(bsound) VSR(dsnd) VSR(dvol) VSR(pwrseq) VSR(hddhum) VSR(hvol) VSR(cpuspd) VSR(kbbtn) VSR(kbshader) VSR(ovbtn)
+            VSR(ratio) VSR(shader) VSR(curve) VSR(bleed) VSR(glow) VSR(scan) VSR(mask) VSR(bgm) VSR(se) VSR(vo) VSR(device) VSR(pad) VSR(bmult) VSR(bmode) VSR(boot) VSR(bosd) VSR(bsound) VSR(dsnd) VSR(dvol) VSR(pwrseq) VSR(hddhum) VSR(hvol) VSR(cpuspd) VSR(kbbtn) VSR(kbshader) VSR(ovbtn)
 #undef VSR
         }
         sel = 0; scr = S_VALS;
@@ -706,18 +821,18 @@ struct Ui {
     void d_keys(Canvas & c);
 
     /* ================================================================ t39: 새 화면 입력 */
-    bool new_scr() const { switch (scr) { case S_SORT: case S_ENT: case S_ENTMENU: case S_TPL: case S_EDIT: case S_FILE: case S_KEYSEQ: case S_STEP: case S_SWAPED: case S_FONT: case S_OSK: case S_NAME: case S_YN: case S_HDDASK: case S_LANG: case S_STEM: case S_TIDY: case S_CHEAT: case S_VALS: case S_PAD: case S_PADKEY: case S_HOT: case S_EXT: case S_KBPICK: case S_SET: case S_GKB: case S_SHARE: case S_SHIMP: case S_SHPREV: case S_SHIM: case S_EXEPICK: return true; default: return false; } }
+    bool new_scr() const { switch (scr) { case S_SORT: case S_ENT: case S_ENTMENU: case S_TPL: case S_EDIT: case S_FILE: case S_KEYSEQ: case S_STEP: case S_SWAPED: case S_FONT: case S_OSK: case S_NAME: case S_YN: case S_HDDASK: case S_LANG: case S_STEM: case S_TIDY: case S_CHEAT: case S_VALS: case S_PAD: case S_TOUCH: case S_PADKEY: case S_HOT: case S_EXT: case S_KBPICK: case S_SET: case S_GKB: case S_SHARE: case S_SHIMP: case S_SHPREV: case S_SHIM: case S_EXEPICK: return true; default: return false; } }
     static std::string parent_of(const std::string & p) { size_t d = p.find_last_of("\\/"); return d == std::string::npos || d == 0 ? std::string() : p.substr(0, d); }
     static std::vector<std::string> split_commas(const std::string & s) { std::vector<std::string> r; size_t p = 0; while (p <= s.size() && !s.empty()) { size_t e = s.find(',', p); if (e == std::string::npos) e = s.size(); if (e > p) r.push_back(s.substr(p, e - p)); p = e + 1; } return r; }
     static std::string join_commas(const std::vector<std::string> & v) { std::string o; for (auto & x : v) { if (!o.empty()) o += ","; o += x; } return o; }
-    int lst_top = 0;   /* kx-nova: 설정 목록 스크롤 — 맨 위에 보이는 줄 번호. 커서를 따라간다 */
+    int lst_top = 0;   /* kx-nova: 설정 목록 스크롤 - 맨 위에 보이는 줄 번호. 커서를 따라간다 */
     int lst_win(int n, int sel, int cap) { if (n <= cap) { lst_top = 0; return 0; } if (sel < lst_top) lst_top = sel; if (sel >= lst_top + cap) lst_top = sel - cap + 1; if (lst_top > n - cap) lst_top = n - cap; if (lst_top < 0) lst_top = 0; return lst_top; }
     void lst_arrows(Canvas & c, int top, int n, int cap, int x, int yu, int yd) {   /* 위/아래에 숨은 줄이 있으면 ▲▼ */
         if (top > 0) for (int i = 0; i < 5; i++) c.rect(x - i, yu + i, 1 + 2 * i, 1, CY);
         if (top + cap < n) for (int i = 0; i < 5; i++) c.rect(x - i, yd + 4 - i, 1 + 2 * i, 1, CY);
     }
     int sv_arm = -1;   /* kx-touch: 이미 쓴 슬롯에 저장 = 두 번 눌러야 덮어쓴다 */
-    void yn_open(Scr ret, int act, const std::string & a0, const std::string & a1 = std::string(), const std::string & a2 = std::string(), int arg = 0) { yn_msg[0] = a0; yn_msg[1] = a1; yn_msg[2] = a2; yn_act = act; yn_ret = ret; ynsel = 1; yn_arg = arg; scr = S_YN; }
+    void yn_open(Scr ret, int act, const std::string & a0, const std::string & a1 = std::string(), const std::string & a2 = std::string(), int arg = 0) { yn_msg[0] = a0; yn_msg[1] = a1; yn_msg[2] = a2; yn_act = act; yn_ret = ret; ynsel = 1; yn_frames = 0; yn_arg = arg; scr = S_YN; }
     std::string default_label(int g) const { return games[g].lang == "jp" ? std::string(phr_("원판 일본어")) : games[g].lang == "ko" ? std::string(phr_("한글판")) : std::string(phr_("기본")); }
     void resolved_into(int g, ent::Kv & out) { out.clear(); if (env.resolved) env.resolved(g, out); }
     void begin_new_from_kv(int g, const ent::Kv & kv, const std::string & name) { eg = g; ed = kv; ed_name = ent::unique_name(name, ents_used(g)); en_orig = ed_name; ed0 = ent::Kv(); ed_name0 = ed_name; enew = true; ed_setdef = false; msg.clear(); sel = 0; scr = S_EDIT; }
@@ -780,6 +895,12 @@ struct Ui {
     }
     void open_font(int mode, Scr ret) {
         fnt_mode = mode; fnt_ret = ret; fnt_prev_sel = sel; fnt_opts.clear(); fnt_need.clear(); fnt_opts.push_back(std::string());
+        if (mode == 3) {   /* t852: 메뉴 글꼴 - 갈무리 시트만(게임 글꼴은 섞지 않는다). 맨 끝 builtin = 옛 메뉴 글꼴 */
+            fnt_opts.clear(); { static const char * fm[1] = { "mg" }; for (const char * q : fm) { bool any = false; for (auto & f : mfonts) { std::string f_; int s_; bool b_; if (f.ok && mf_split(f.name, f_, s_, b_) && f_ == q) any = true; } if (any) fnt_opts.push_back(std::string("#") + q); } }   /* t855: M갈무리 계열 3 → quiple 갈무리 → 옛 글꼴 → 크기 · 굵기 줄 */
+            /* #1729: 메뉴 글꼴 선택지 = M갈무리만(크기 10·12·15 · Bold). quiple 갈무리·옛 글꼴·둥근·굴린은 뺌 */
+            if (mf_have("galmuri14")) fnt_opts.push_back("galmuri14"); if (mf_have("galmuri14b")) fnt_opts.push_back("galmuri14b"); fnt_opts.push_back("builtin"); fnt_opts.push_back("#sz"); fnt_opts.push_back("#bd");   /* t857: 슨상 「14」 - quiple 갈무리14 복원 */   /* t858: galmuri14b (합성 Bold 시트) */
+            sel = 0; { std::string f_; int s_; bool b_; const std::string want = mf_split(font_ui, f_, s_, b_) ? std::string("#") + f_ : font_ui; for (size_t i = 0; i < fnt_opts.size(); i++) if (fnt_opts[i] == want) sel = (int)i; } scr = S_FONT; return;
+        }
         if (mode == 2) {
             const UiGame & g = games[eg]; std::string fk = kv_get("font_kind"), lg = kv_get("lang"); std::string lang = !lg.empty() ? lg : fk == "jp" ? "jp" : fk == "kr" ? "ko" : g.lang;
             fnt_need = !g.fgroup.empty() ? g.fgroup : (lang == "jp" ? "jis" : "ks2350");
@@ -793,7 +914,7 @@ struct Ui {
     void text_in(const std::string & s) {   /* 호스트가 물리 키보드 글자를 넘긴다(S_OSK 일 때만) */
         if (scr != S_OSK) return;
         ime_comp.clear();
-        if (osk_hg) { hk_text(s); return; }   /* t48b: 한글 키보드 켜짐 — 물리 키(영문)는 두벌식으로, IME 가 확정한 글자는 그대로 */
+        if (osk_hg) { hk_text(s); return; }   /* t48b: 한글 키보드 켜짐 - 물리 키(영문)는 두벌식으로, IME 가 확정한 글자는 그대로 */
         for (char ch : s) { if (osk_target == 1) { char l = (char)tolower((unsigned char)ch); if (!(isalnum((unsigned char)l) || strchr(".-/\\:|~_'() ", l))) continue; osk_buf += l; } else if ((unsigned char)ch >= 0x20) osk_buf += ch; }
         if (osk_buf.size() > 60) { size_t cut = 60; while (cut > 0 && ((unsigned char)osk_buf[cut] & 0xC0) == 0x80) cut--; osk_buf.resize(cut); }   /* t48a: 한글 3바이트 중간에서 자르지 않는다 */
     }
@@ -826,7 +947,7 @@ struct Ui {
             std::vector<int> v = vents(entg); if (yn_arg >= 0 && yn_arg < (int)v.size()) { const UiEnt & e = games[entg].ents[v[yn_arg]]; if (env.del) env.del(entg, e.name, act == YN_RESET); if (env.reload) env.reload(entg); dirty = true; }
             scr = S_ENT; sel = 0; msg = act == YN_RESET ? phr_("DB 기본값으로 되돌렸습니다.") : phr_("삭제(숨김)했습니다.");
         }
-        else if (act == YN_INDIVRESET || act == YN_INDIVALL) {   /* #587: 개별 설정 초기화 — 값(줄 비트)과 작품별 패드 배정을 지우고 전역을 따른다 */
+        else if (act == YN_INDIVRESET || act == YN_INDIVALL) {   /* #587: 개별 설정 초기화 - 값(줄 비트)과 작품별 패드 배정을 지우고 전역을 따른다 */
             for (int gi = (act == YN_INDIVALL ? 0 : cur); gi < (act == YN_INDIVALL ? (int)games.size() : cur + 1); gi++) { if (gi < 0 || gi >= (int)games.size()) continue; if (gi < MAXG) { ov_set(gi, 0u); sync_t(gi); } if (env.pad_get && env.pad_set) { std::map<std::string, std::string> m; env.pad_get(gi, m); for (auto & kv : m) env.pad_set(gi, kv.first, std::string()); } }
             dirty = true; a.t = A_APPLY; scr = yn_ret;
         }
@@ -861,6 +982,7 @@ struct Ui {
         case S_VALS: k_vals(k, a); break;   /* t48a (#614 ③) */
         case S_FONT: k_font(k, a); break;
         case S_PAD: k_pad(k, a); break;   /* t48e (#646): 조작 설정 */
+        case S_TOUCH: k_touch(k, a); break;   /* t859-K: 터치 키 배치 */
         case S_PADKEY: k_padkey(k, a); break;
         case S_HOT: k_hot(k, a); break;
         case S_EXT: k_ext(k, a); break;
@@ -886,23 +1008,23 @@ struct Ui {
     /* ---- 입력 */
     struct Preset { std::string name; Settings st; };   /* 빌드 6: 화면 프리셋 = 비율·필터·주사선·마스크·RGB 번짐·빛 번짐·곡면 한 묶음 */
     std::vector<Preset> presets; int pre_i = 0;   /* pre_i: 프리셋 줄에서 마지막으로 고른 칸 */
-    enum { PRE_NB = 4, PRE_MAX = 12 };   /* 기본 제공 3 · 내 프리셋 최대 12 · 맨 끝에 「지금 값을 저장」 칸 */
-    static Settings pre_builtin(int i) { Settings s; if (i == 1) { s.scan = 3; s.mask = 3; s.bleed = 2; s.glow = 2; s.curve = 2; } else if (i == 2) { s.scan = 6; s.mask = 6; s.bleed = 4; s.glow = 4; s.curve = 4; } else if (i == 3) { s.phos = 2 | (2 << 4) | (1 << 6) | (3 << 8); } return s; }   /* t662: preset 3 = OLED vivid (beam 2, persistence 18 ms [#S1: 옛 90 ms], breathing 2, glow 1) */
-    static bool pre_same(const Settings & a, const Settings & b) { return a.ratio == b.ratio && (a.shader == 2) == (b.shader == 2) && a.curve == b.curve && a.bleed == b.bleed && a.glow == b.glow && a.scan == b.scan && a.mask == b.mask && a.phos == b.phos; }
-    static void pre_copy(Settings & d, const Settings & p) { d.ratio = p.ratio < 0 ? 0 : p.ratio > 2 ? 2 : p.ratio; d.shader = p.shader == 2 ? 2 : 0; d.curve = p.curve; d.bleed = p.bleed; d.glow = p.glow; d.scan = p.scan; d.mask = p.mask; d.phos = Settings::phos_norm(p.phos); }   /* #S1 */
+    enum { PRE_NB = 5, PRE_MAX = 12 };   /* 기본 제공 3 · 내 프리셋 최대 12 · 맨 끝에 「지금 값을 저장」 칸 */
+    static Settings pre_builtin(int i) { Settings s; if (i == 1) { s.scan = 3; s.mask = 3; s.bleed = 2; s.glow = 2; s.curve = 2; } else if (i == 2) { s.scan = 6; s.mask = 6; s.bleed = 4; s.glow = 4; s.curve = 4; } else if (i == 3) { s.phos = 2 | (2 << 4) | (1 << 6) | (3 << 8); } else if (i == 4) { s.shader = 3; s.scan = 3; s.mask = 3; s.bleed = 0; s.glow = 0; s.curve = 0; } return s; }   /* t852: preset 4 = geom 풍(주사선 3·마스크 3·번짐 0·빛번짐 0·곡면 0·필터 더 선명) */   /* t662: preset 3 = OLED vivid (beam 2, persistence 18 ms [#S1: 옛 90 ms], breathing 2, glow 1) */
+    static bool pre_same(const Settings & a, const Settings & b) { return a.ratio == b.ratio && ((a.shader == 2 || a.shader == 3) ? a.shader : 0) == ((b.shader == 2 || b.shader == 3) ? b.shader : 0) && a.curve == b.curve && a.bleed == b.bleed && a.glow == b.glow && a.scan == b.scan && a.mask == b.mask && a.phos == b.phos; }
+    static void pre_copy(Settings & d, const Settings & p) { d.ratio = p.ratio < 0 ? 0 : p.ratio > 2 ? 2 : p.ratio; d.shader = (p.shader == 2 || p.shader == 3) ? p.shader : 0; d.curve = p.curve; d.bleed = p.bleed; d.glow = p.glow; d.scan = p.scan; d.mask = p.mask; d.phos = Settings::phos_norm(p.phos); }   /* #S1 */
     int pre_total() const { return PRE_NB + (int)presets.size() + 1; }
     Settings pre_get(int i) const { return i < PRE_NB ? pre_builtin(i) : presets[(size_t)(i - PRE_NB)].st; }
     int pre_match() { const Settings e = eff(); for (int i = 0; i < PRE_NB + (int)presets.size(); i++) if (pre_same(e, pre_get(i))) return i; return -1; }
     int pre_pos() { const int nb = PRE_NB + (int)presets.size(); if (pre_i >= 0 && pre_i <= nb) { if (pre_i >= nb) return pre_i; if (pre_same(eff(), pre_get(pre_i))) return pre_i; } return pre_match(); }   /* 지금 줄이 가리키는 칸(-1 = 직접 조정) */
-    std::string pre_name(int i) const { if (i < PRE_NB) { static const char * const KN[4] = { "preset_b0", "preset_b1", "preset_b2", "preset_b3" }; return std::string(phr_(KN[i])); } if (i < PRE_NB + (int)presets.size()) return presets[(size_t)(i - PRE_NB)].name; return std::string(phr_("preset_new")); }
+    std::string pre_name(int i) const { if (i < PRE_NB) { static const char * const KN[5] = { "preset_b0", "preset_b1", "preset_b2", "preset_b3", "preset_b4" }; return std::string(phr_(KN[i])); } if (i < PRE_NB + (int)presets.size()) return presets[(size_t)(i - PRE_NB)].name; return std::string(phr_("preset_new")); }
     void pre_add(const Settings & s) { if ((int)presets.size() >= PRE_MAX) return; std::string nm; for (int n = 1; n < 100; n++) { nm = std::string(phr_("preset_user")) + " " + std::to_string(n); bool dup = false; for (size_t q = 0; q < presets.size(); q++) if (presets[q].name == nm) dup = true; if (!dup) break; } Preset p; p.name = nm; pre_copy(p.st, s); presets.push_back(p); pre_i = PRE_NB + (int)presets.size() - 1; dirty = true; }
     int nitems() const {
-        switch (scr) { case S_MAIN: return 6; case S_START: return 3; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 1; case S_ADD: return 8; case S_SCREEN: return bgfx_pg ? 15 : phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return (scope_lock && scope == 1) ? 4 : 8; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 7; case S_DIAG: return 4; case S_GAME: return 10 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
+        switch (scr) { case S_MAIN: return 4 + main_nrc(); case S_START: return 4; case S_SWAP: return 2; case S_SWAPI: return (game() ? (int)game()->fds.size() : 1); case S_ABOUT: return 1; case S_PICK: return (int)vis.size() + 2; case S_ADD: return 8; case S_SCREEN: return bgfx_pg ? 15 : phos_pg ? 4 : (int)rowids(S_SCREEN).size(); case S_CONF: return (int)rowids(S_CONF).size(); case S_SAVE: return 8; case S_SET: return (scope_lock && scope == 1) ? 4 : 6; case S_SHIM: return 5; case S_GKB: return 5; case S_EXTRA: return extra_sub ? 2 : 6; case S_DIAG: return 4; case S_LINES: return ln_name.empty() ? 1 : (int)ln_name.size(); case S_GAME: return 10 + (stage_next_label.empty() ? 0 : 1); case S_KEYS: return 9; case S_HELP: return 1; default: return 1; }
     }
     int & curSel() { if (scr == S_MAIN) return mainsel; if (scr == S_PICK) return pick; if (scr == S_SAVE) return slotsel; if (scr == S_START) return startsel; if (scr == S_SWAP) return swapdrv; if (scr == S_SWAPI) return swapsel; return sel; }
     void go(Scr s, int selv = 0) { scr = s; sel = selv; phos_pg = false; bgfx_pg = false; fnow_cur = -2; if (s == S_EXTRA) extra_sub = 0; }   /* build 5b-3: font-now cache reset / work menu back to its main list */
     void enter_conf_cfg() { cb_g = g; cb_cur = cur; cb_has_t = false; if (cur >= 0 && cur < MAXG) { cb_has_t = has_t[cur]; cb_t = t[cur]; } cb_scope = scope; cb_ovm = (cur >= 0 && cur < MAXG) ? ovm[cur] : 0u; cb_fkr = font_kr; cb_fjp = font_jp; cb_has = true; }
-    static void conf_fields(Settings & d, const Settings & s) { d.bgm = s.bgm; d.se = s.se; d.device = s.device; d.bmult = s.bmult; d.bmode = s.bmode; d.bsound = s.bsound; d.dsnd = s.dsnd; d.dvol = s.dvol; d.pwrseq = s.pwrseq; d.hddhum = s.hddhum; d.hvol = s.hvol; d.cpuspd = s.cpuspd; d.boot = s.boot; d.bosd = s.bosd; d.ovbtn = s.ovbtn; }   /* 조작 설정(pad)은 하위 화면 [S_PAD] 몫이라 복원하지 않는다 */
+    static void conf_fields(Settings & d, const Settings & s) { d.bgm = s.bgm; d.se = s.se; d.vo = s.vo; d.device = s.device; d.bmult = s.bmult; d.bmode = s.bmode; d.bsound = s.bsound; d.dsnd = s.dsnd; d.dvol = s.dvol; d.pwrseq = s.pwrseq; d.hddhum = s.hddhum; d.hvol = s.hvol; d.cpuspd = s.cpuspd; d.boot = s.boot; d.bosd = s.bosd; d.ovbtn = s.ovbtn; }   /* 조작 설정(pad)은 하위 화면 [S_PAD] 몫이라 복원하지 않는다 */
     bool conf_restore() { if (!cb_has) return false; cb_has = false; conf_fields(g, cb_g); if (cb_cur >= 0 && cb_cur < MAXG) { if (cb_has_t) { has_t[cb_cur] = true; conf_fields(t[cb_cur], cb_t); } else has_t[cb_cur] = false; } if (cb_cur >= 0 && cb_cur < MAXG) { ov_set(cb_cur, cb_ovm); sync_t(cb_cur); } scope = cb_scope; font_kr = cb_fkr; font_jp = cb_fjp; return true; }
     void enter_screen_cfg() { pre_i = 0; phos_pg = false; bgfx_pg = false; bk_cur = cur; bk_ovm = (cur >= 0 && cur < MAXG) ? ovm[cur] : 0u; backup = eff(); backup_has = true; bk_wmult = wmult; bk_winw = winw; bk_winh = winh; }
     static int clampi(int v, int a, int b) { return v < a ? a : v > b ? b : v; }
@@ -947,14 +1069,15 @@ static void (*g_cfg_cb)(bool ok, const char * path) = NULL;   /* #646: set by th
 static void settings_write(const Ui & u, FILE * f) {
     fprintf(f, "; " KH_FULLNAME " 설정 -- [global] 전역, [작품id] 작품별 덮어쓰기(작품별 > 전역)\n[global]\n"); ini_put(f, u.g); fprintf(f, "all_global=%d\n", u.all_global ? 1 : 0);
     fprintf(f, "lastgame=%d\nwmult=%d\nwinw=%d\nwinh=%d\ngamefolder=%s\nlang=%d\n", u.cur, u.wmult, u.winw, u.winh, u.gamefolder.c_str(), u.lang);
-    fprintf(f, "lastgame_id=%s\nlastentry=%s\nsort=%s\nsortfav=%d\ntab=%s\nfont_kr=%s\nfont_jp=%s\n", (u.cur >= 0 && u.cur < (int)u.games.size()) ? u.games[u.cur].id.c_str() : "", u.sel_entry.c_str(), Ui::sort_id(u.sortm), u.sortfav ? 1 : 0, Ui::tab_id(u.tab), u.font_kr.c_str(), u.font_jp.c_str());
+    fprintf(f, "lastgame_id=%s\nlastentry=%s\nsort=%s\nsortfav=%d\ntab=%s\nfont_kr=%s\nfont_jp=%s\nmenufont=%s\n", (u.cur >= 0 && u.cur < (int)u.games.size()) ? u.games[u.cur].id.c_str() : "", u.sel_entry.c_str(), Ui::sort_id(u.sortm), u.sortfav ? 1 : 0, Ui::tab_id(u.tab), u.font_kr.c_str(), u.font_jp.c_str(), u.font_ui.c_str());
+    fprintf(f, "menufont_v=2\n");   /* t859: 메뉴 글꼴 기본 galmuri14b 이주 표시 */
     for (auto & kv : u.gpad) if (!kv.second.empty()) fprintf(f, "%s=%s\n", kv.first.c_str(), kv.second.c_str());   /* t48e (#646): 전역 패드 배정 btn_* (표준 버튼 이름) */
     fprintf(f, "[last]\n"); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].last_run > 0) fprintf(f, "%s=%lld\n", u.games[i].id.c_str(), u.games[i].last_run);
     fprintf(f, "[fav]\n"); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].fav) fprintf(f, "%s=1\n", u.games[i].id.c_str());
     fprintf(f, "[order]\n"); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].order_n > 0) fprintf(f, "%s=%d\n", u.games[i].id.c_str(), u.games[i].order_n);
     fprintf(f, "[play]\n"); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].play_s > 0) fprintf(f, "%s=%d\n", u.games[i].id.c_str(), u.games[i].play_s);
     for (size_t i = 0; i < u.games.size() && i < (size_t)Ui::MAXG; i++) if (u.ovm[i]) { fprintf(f, "[%s]\nindiv=1\nfx=1\n", u.games[i].id.c_str()); ini_put_masked(f, u.t[i], u.ovm[i]); }   /* #587: 바꾼 줄만 */
-    for (size_t i = 0; i < u.presets.size(); i++) { const Settings & p = u.presets[i].st; fprintf(f, "[preset.%s]\nfx=1\nratio=%d\nshader=%d\ncurve=%d\nbleed=%d\nglow=%d\nscan=%d\nmask=%d\nphos=%d\n", u.presets[i].name.c_str(), p.ratio, p.shader == 2 ? 2 : 0, p.curve, p.bleed, p.glow, p.scan, p.mask, p.phos); }   /* 빌드 6: 내 프리셋 */
+    for (size_t i = 0; i < u.presets.size(); i++) { const Settings & p = u.presets[i].st; fprintf(f, "[preset.%s]\nfx=1\nratio=%d\nshader=%d\ncurve=%d\nbleed=%d\nglow=%d\nscan=%d\nmask=%d\nphos=%d\n", u.presets[i].name.c_str(), p.ratio, ((p.shader == 2 || p.shader == 3) ? p.shader : 0), p.curve, p.bleed, p.glow, p.scan, p.mask, p.phos); }   /* 빌드 6: 내 프리셋 */
 }
 /* #646: write to <path>.tmp and rename over the real file (atomic where the file system allows); a read-only or foreign-owned old copy
    is removed and replaced; last resort writes in place. A failure is reported through g_cfg_cb, never swallowed. */
@@ -981,7 +1104,7 @@ static void settings_load(Ui & u, const std::string & path) {
         if (s.empty() || s[0] == ';' || s[0] == '#') continue;
         if (s[0] == '[') {
             std::string id = s.substr(1, s.size() - 2); if (cur) fx_finish(*cur); cur = NULL; in_play = (id == "play"); in_sec = id == "last" ? 1 : id == "fav" ? 2 : id == "order" ? 3 : 0; if (in_sec) continue;
-            pre_p = NULL; if (id.compare(0, 7, "preset.") == 0) { std::string pn = id.substr(7); bool dup = pn.empty(); for (size_t q = 0; q < u.presets.size(); q++) if (u.presets[q].name == pn) dup = true; if (!dup && (int)u.presets.size() < Ui::PRE_MAX) { Ui::Preset np; np.name = pn; u.presets.push_back(np); pre_p = &u.presets.back().st; } continue; }   /* 빌드 6: [preset.이름] — 빈 이름·중복·13번째부터는 버린다 */
+            pre_p = NULL; if (id.compare(0, 7, "preset.") == 0) { std::string pn = id.substr(7); bool dup = pn.empty(); for (size_t q = 0; q < u.presets.size(); q++) if (u.presets[q].name == pn) dup = true; if (!dup && (int)u.presets.size() < Ui::PRE_MAX) { Ui::Preset np; np.name = pn; u.presets.push_back(np); pre_p = &u.presets.back().st; } continue; }   /* 빌드 6: [preset.이름] - 빈 이름·중복·13번째부터는 버린다 */
             if (id == "global") cur = &u.g; else for (size_t i = 0; i < u.games.size() && i < (size_t)Ui::MAXG; i++) if (u.games[i].id == id) { u.has_t[i] = true; u.t[i] = u.g; cur = &u.t[i]; }
             if (cur) fx_begin(*cur);   /* t48c: 구역마다 「옛 형식으로 가정」 → fx=1 줄을 만나면 새 형식 */
             continue;
@@ -989,8 +1112,8 @@ static void settings_load(Ui & u, const std::string & path) {
         if (in_sec) { size_t e2 = s.find('='); if (e2 != std::string::npos) { std::string id = s.substr(0, e2); long long v = atoll(s.c_str() + e2 + 1); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].id == id) { if (in_sec == 1) u.games[i].last_run = v; else if (in_sec == 2) u.games[i].fav = v != 0; else u.games[i].order_n = (int)v; } } continue; }
         if (in_play) { size_t e2 = s.find('='); if (e2 != std::string::npos) { std::string id = s.substr(0, e2); for (size_t i = 0; i < u.games.size(); i++) if (u.games[i].id == id) u.games[i].play_s = atoi(s.c_str() + e2 + 1); } continue; }
         if (pre_p) { size_t ep = s.find('='); if (ep != std::string::npos) ini_set(*pre_p, s.substr(0, ep), atoi(s.c_str() + ep + 1)); continue; }   /* 빌드 6 */
-        if (cur && cur != &u.g && s.compare(0, 14, "follow_global=") == 0) { size_t ix = (size_t)(cur - u.t); if (ix < (size_t)Ui::MAXG) fullold[ix] = atoi(s.c_str() + 14) == 0; continue; }   /* #587: 옛 파일 — follow_global=0 이면 구역 값 전부 개별 값, 1 이면 없음 */
-        if (cur && cur != &u.g && s.compare(0, 6, "indiv=") == 0) { size_t ix = (size_t)(cur - u.t); if (ix < (size_t)Ui::MAXG) indiv[ix] = 1; continue; }   /* t147d: 없으면 따름(기본) — 옛 통째 복사 구역도 값은 보관만 */
+        if (cur && cur != &u.g && s.compare(0, 14, "follow_global=") == 0) { size_t ix = (size_t)(cur - u.t); if (ix < (size_t)Ui::MAXG) fullold[ix] = atoi(s.c_str() + 14) == 0; continue; }   /* #587: 옛 파일 - follow_global=0 이면 구역 값 전부 개별 값, 1 이면 없음 */
+        if (cur && cur != &u.g && s.compare(0, 6, "indiv=") == 0) { size_t ix = (size_t)(cur - u.t); if (ix < (size_t)Ui::MAXG) indiv[ix] = 1; continue; }   /* t147d: 없으면 따름(기본) - 옛 통째 복사 구역도 값은 보관만 */
         if (cur == &u.g && s.compare(0, 11, "all_global=") == 0) { u.all_global = atoi(s.c_str() + 11) != 0; continue; }
         if (cur == &u.g && s.compare(0, 6, "wmult=") == 0) { u.wmult = atoi(s.c_str() + 6); continue; }
         if (cur == &u.g && s.compare(0, 5, "winw=") == 0) { u.winw = atoi(s.c_str() + 5); continue; }
@@ -1004,6 +1127,9 @@ static void settings_load(Ui & u, const std::string & path) {
         if (cur == &u.g && s.compare(0, 5, "lang=") == 0) { int lv = atoi(s.c_str() + 5); u.lang = (lv >= 0 && lv <= 2) ? lv : 0; u.lang_seen = true; continue; }   /* t52g (#133) */
         if (cur == &u.g && s.compare(0, 8, "font_kr=") == 0) { u.font_kr = s.substr(8); continue; }
         if (cur == &u.g && s.compare(0, 8, "font_jp=") == 0) { u.font_jp = s.substr(8); continue; }
+        if (cur == &u.g && s.compare(0, 8, "font_ui=") == 0) { continue; }   /* t855: 옛 키(갈무리14 기본) 무시 - 새 기본 M갈무리12 */
+        if (cur == &u.g && s.compare(0, 9, "menufont=") == 0) { u.font_ui = s.substr(9); continue; }
+        if (cur == &u.g && s.compare(0, 11, "menufont_v=") == 0) { u.mfont_ver = atoi(s.c_str() + 11); continue; }   /* t859 */
         if (cur == &u.g && s.compare(0, 4, "btn_") == 0) { size_t e3 = s.find('='); if (e3 != std::string::npos && e3 > 4) { std::string kk = s.substr(0, e3); for (auto & ch : kk) ch = (char)tolower((unsigned char)ch); u.gpad[kk] = s.substr(e3 + 1); } continue; }   /* t48e (#646) */
         if (s.compare(0, 9, "lastgame=") == 0) { if (has_id) continue; int v = atoi(s.c_str() + 9); if (v >= 0 && v < (int)u.games.size()) { u.cur = v; u.pick = v; } continue; }
         size_t e = s.find('='); if (e == std::string::npos || !cur) continue;
@@ -1011,9 +1137,11 @@ static void settings_load(Ui & u, const std::string & path) {
         if (cur != &u.g) { size_t ix = (size_t)(cur - u.t); if (ix < (size_t)Ui::MAXG) seen[ix] |= Ui::fbit_of(s.substr(0, e)); }
     }
     fclose(f);
-    for (int i1 = 0; i1 < (int)Ui::MAXG; i1++) if (u.has_t[i1]) { unsigned m = indiv[i1] ? seen[i1] : fullold[i1] ? Ui::fbits_all() : 0u; u.ov_set(i1, m); }   /* #587: 읽을 때 해석 — 다음 저장 때 새 모양 */
+    for (int i1 = 0; i1 < (int)Ui::MAXG; i1++) if (u.has_t[i1]) { if (seen[i1] & (1u << 8)) seen[i1] |= (1u << 29);   /* t831: 옛 개별 se 는 vo 도 함께(t[i1].vo 는 ini_set 이 se 에서 복사해 둠) */
+        unsigned m = indiv[i1] ? seen[i1] : fullold[i1] ? (Ui::fbits_all() | (1u << 29)) : 0u; u.ov_set(i1, m); }   /* #587: 읽을 때 해석 - 다음 저장 때 새 모양 */
+    if (u.mfont_ver < 2 && u.font_ui == "mg12") u.font_ui = "galmuri14b"; u.mfont_ver = 2;   /* t859: 옛 기본(mg12) 1회 이주 - 저장 때 menufont_v=2 가 붙는다 */
     if (u.all_global) { for (int i1 = 0; i1 < (int)Ui::MAXG; i1++) u.ov_set(i1, 0u); u.all_global = false; }   /* 옛 「전역 일괄 적용」 = 모든 작품의 개별 값 없음 */
-    u.fit_tab_to_cur(); u.rebuild_vis(u.cur);   /* t39: 탭·정렬을 적용한 목록 만들기 */   if (cur) fx_finish(*cur);   /* t48c: 마지막 구역의 옛 형식 변환 */
+    u.fit_tab_to_cur(); u.rebuild_vis(u.cur);   /* t39: 탭·정렬을 적용한 목록 만들기 */   if (cur) fx_finish(*cur);   u.menu_font_apply();
 }
 
 } /* namespace ui */

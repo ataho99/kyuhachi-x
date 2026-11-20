@@ -112,7 +112,7 @@ static void gh_tidy_do(int arg, int slot) {
         int n = 0; for (auto & id : U.tidy_ids) { const std::string dir = gd + "\\" + id; if (aw::dir_exists(dir) && prof::set_game_key(dir, "tidy_hidden", "")) n++; }
         gh_log("TIDY restore %d", n); gh_tidy_after_reload(); U.tidy_msg = n ? phr_("되살렸습니다.") : phr_("되살리지 못했습니다."); return;
     }
-    if (arg == 4) {   /* 다시 찾기: 원본 폴더를 다시 지정 — 같은 이미지(이름 또는 sha1)가 그 폴더에 있어야 받아들인다 */
+    if (arg == 4) {   /* 다시 찾기: 원본 폴더를 다시 지정 - 같은 이미지(이름 또는 sha1)가 그 폴더에 있어야 받아들인다 */
         if (U.tidy_ids.empty()) return; const std::string id = U.tidy_ids[0], gi_path = gd + "\\" + id + "\\game.ini";
         prof::Ini gi; if (!prof::ini_load(gi_path, gi) || !gi.count("game")) { U.tidy_msg = phr_("다시 찾지 못했습니다."); return; }
         std::map<std::string, std::string> & g = gi["game"]; std::set<std::string> names, shas; gh_tidy_names(g, names, shas);

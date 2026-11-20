@@ -132,7 +132,7 @@ struct Ctx {
     struct Pend { std::string dbid, label, sig; std::vector<std::string> sha; std::string company, year, msrc; };
     std::vector<Pend> pend;                      /* r019: 주 작품이 아직 없는 보조 이미지(주 작품이 등록되면 붙인다) */
     void (*on_dir)(const std::string &) = NULL;  /* r020: 작품 추가 때 작품 폴더를 알려 준다(공용 자원 가져오기) */
-    bool user_add = false;                       /* 사용자가 직접 고른 추가(파일·폴더) — 게임 폴더 자동 훑기는 false. true 이면 「목록에서 뺀」 작품을 같은 원본으로 다시 추가할 때 숨김을 푼다 */
+    bool user_add = false;                       /* 사용자가 직접 고른 추가(파일·폴더) - 게임 폴더 자동 훑기는 false. true 이면 「목록에서 뺀」 작품을 같은 원본으로 다시 추가할 때 숨김을 푼다 */
     int unhid = 0;                               /* 숨김을 푼 작품 수 */
 };
 struct Result { enum St { ADDED, EXISTS, SKIP } st = SKIP; std::string id, title, note, grade, jshort, judge, block, metasrc, year, maker; };
@@ -183,7 +183,7 @@ inline std::string pretty(const std::string & name_sys) { return acp_to_u8(name_
 
 /* 실행 불가 사유(빈칸 = 실행 가능). kv = game.ini/DB 의 값. 호스트가 목록을 만들 때마다 계산 → 지원이 늘면 다시 등록하지 않아도 풀린다. */
 inline bool & mouse_ok() { static bool v = false; return v; }   /* r020: run\res\flags.ini 의 mouse_support=1 (실조작 시험 통과 뒤 데이터로 켠다) */
-inline std::set<std::string> & mouse_games() { static std::set<std::string> s; return s; }   /* t29 (#266): flags.ini mouse_support_games=nadia,ultra — 작품 폴더 id 또는 nk_gid 가 들어 있는 작품만 마우스 필수를 푼다(전역 mouse_support=1 과 별개) */
+inline std::set<std::string> & mouse_games() { static std::set<std::string> s; return s; }   /* t29 (#266): flags.ini mouse_support_games=nadia,ultra - 작품 폴더 id 또는 nk_gid 가 들어 있는 작품만 마우스 필수를 푼다(전역 mouse_support=1 과 별개) */
 inline bool mouse_released(const std::map<std::string, std::string> & kv) {
     if (mouse_ok()) return true; auto f = [&](const char * k) -> bool { auto it = kv.find(k); if (it == kv.end() || it->second.empty()) return false; std::string v = it->second; for (auto & c : v) c = (char)tolower((unsigned char)c); return mouse_games().count(v) != 0; };
     return f("__id") || f("nk_gid");
@@ -292,7 +292,7 @@ inline int merge_dups(Ctx & c, std::vector<std::string> * log) {
         std::string imgdir = sys_from_ini(g.count("imgdir") ? g["imgdir"] : std::string()); if (imgdir.empty() || !dir_exists(imgdir)) continue;
         std::vector<std::string> f2; list_dir(imgdir, f2, NULL); std::set<std::string> hs; std::vector<std::pair<std::string, std::string> > fh; for (auto & f : f2) if (img_ext(f)) { std::string h = c.cache ? c.cache->sha1(join(imgdir, f)) : prof::sha1_file(join(imgdir, f)); if (!h.empty()) { hs.insert(h); fh.push_back(std::make_pair(f, h)); } }
         if (hs.empty()) continue;
-        if (!g.count("files") && g.count("sha1s")) {   /* kx-clean: 옛 항목에 files= (갱신 때 같은 작품을 알아보는 열쇠)를 한 번 채운다 — 기록된 sha1 에 맞는 이미지 이름만 */
+        if (!g.count("files") && g.count("sha1s")) {   /* kx-clean: 옛 항목에 files= (갱신 때 같은 작품을 알아보는 열쇠)를 한 번 채운다 - 기록된 sha1 에 맞는 이미지 이름만 */
             std::set<std::string> rec; { const std::string & sv = g["sha1s"]; size_t p = 0; while (p <= sv.size()) { size_t q = sv.find(',', p); if (q == std::string::npos) q = sv.size(); if (q > p) rec.insert(sv.substr(p, q - p)); p = q + 1; } }
             std::string fv; for (auto & x : fh) if (rec.count(x.second)) fv += (fv.empty() ? "" : ",") + acp_to_u8(x.first);
             if (!fv.empty()) ini_patch(gi, { { "files", fv, 3 } });
@@ -406,7 +406,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
     }
     if (imgs.empty()) { R.st = Result::SKIP; R.note = khtr::tr("이미지 형식을 알 수 없음"); return R; }
     std::vector<std::string> shas; for (auto & i : imgs) if (!i.sha1.empty()) shas.push_back(i.sha1);
-    {   /* r019 (#247-1): 이미지가 전부 이미 등록된 해시면 같은 작품 — 처음 등록한 경로만 남긴다 */
+    {   /* r019 (#247-1): 이미지가 전부 이미 등록된 해시면 같은 작품 - 처음 등록한 경로만 남긴다 */
         size_t nk_ = 0; std::string kid; for (auto & i : imgs) { auto h = c.hashidx.find(i.sha1); if (!i.sha1.empty() && h != c.hashidx.end()) { nk_++; kid = h->second; } }
         if (nk_ == imgs.size()) { R.st = Result::EXISTS; R.id = kid; R.note = std::string(khtr::tr("같은 이미지가 이미 등록됨")) + " → " + kid; if (!dry) { ini_patch(join(join(c.games_dir, kid), "game.ini"), { { "sigs", sig, 1 } }); c.reg[sig] = kid; } return R; }
     }
@@ -434,16 +434,16 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             return R;
         }
         if (ig) {   /* 주 작품이 아직 없음: 주 작품을 등록할 때 붙인다 (이 묶음은 아직 등록된 것으로 치지 않아 다음 훑기에서도 다시 시도) */
-            R.st = Result::EXISTS; R.id = ig->id; R.note = khtr::fmt(khtr::tr("보조 이미지 — 주 작품(%s)이 등록되면 붙음"), ig->id.c_str());
+            R.st = Result::EXISTS; R.id = ig->id; R.note = khtr::fmt(khtr::tr("보조 이미지 - 주 작품(%s)이 등록되면 붙음"), ig->id.c_str());
             if (!dry) { Ctx::Pend pd; pd.dbid = ig->id; pd.label = lab; pd.sig = sig; pd.sha = shas; pd.company = maker; pd.year = year; pd.msrc = msrc; c.pend.push_back(pd); }
             return R;
         }
     }
-    std::string jshort = curated ? std::string(khtr::tr("확인됨 (DB 일치)")) : r.shortt, judge = curated ? khtr::fmt(khtr::tr("DB 일치 — %s"), (q.title.empty() ? q.reason : q.title).c_str()) : r.text;
+    std::string jshort = curated ? std::string(khtr::tr("확인됨 (DB 일치)")) : r.shortt, judge = curated ? khtr::fmt(khtr::tr("DB 일치 - %s"), (q.title.empty() ? q.reason : q.title).c_str()) : r.text;
     R.judge = judge; R.title = title; R.grade = curated ? "A" : std::string(1, r.grade); R.jshort = jshort; R.metasrc = msrc; R.year = year; R.maker = maker;
     {   /* kx-dedup: same srcdir + same file names = patch update. swap images in place, keep id. */
         bool part = false; std::string tgt = find_same_source(c, srcpath, imgs, &part);
-        if (!tgt.empty() && part) {   /* t723: 직접 지정 항목의 이미지 한 장이 바뀐 것 — 해시·sig 만 보태고 손으로 정한 항목 설정(디스크 자리·제목·등급)은 건드리지 않는다 */
+        if (!tgt.empty() && part) {   /* t723: 직접 지정 항목의 이미지 한 장이 바뀐 것 - 해시·sig 만 보태고 손으로 정한 항목 설정(디스크 자리·제목·등급)은 건드리지 않는다 */
             R.st = Result::EXISTS; R.id = tgt;
             R.note = khtr::fmt(khtr::tr("같은 경로·같은 파일명 → %s 이미지 교체 (제목·세이브·설정 유지)"), tgt.c_str());
             if (dry) return R;
@@ -476,7 +476,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
                     if (!b.empty()) fv += (fv.empty() ? "" : ",") + b; }
                 if (!fv.empty()) u.push_back({ "files", fv, 3 }); }
             u.push_back({ "imgdir", acp_to_u8(w.dir), 3 });   /* zip 작품: 새로 푼 사본 폴더로 (옛 사본은 아래에서 _old 로 옮겨지므로 안 바꾸면 이미지를 못 찾는다) */
-            if (!old_dbid.empty() && c.db) {   /* DB 작품은 디스크 자리를 sha1 로 정한다 — 패치판은 sha1 이 달라 자리를 잃으므로, 안 맞는 자리 하나에 바뀐 이미지 하나면 이름으로 직접 잇는다 */
+            if (!old_dbid.empty() && c.db) {   /* DB 작품은 디스크 자리를 sha1 로 정한다 - 패치판은 sha1 이 달라 자리를 잃으므로, 안 맞는 자리 하나에 바뀐 이미지 하나면 이름으로 직접 잇는다 */
                 const prof::DbGame * dg = NULL; for (auto & d : *c.db) if (d.id == old_dbid) { dg = &d; break; }
                 if (dg) {
                     std::set<std::string> dbsha; for (auto & kv : dg->g) { if (kv.first.compare(0, 5, "disk_") == 0) { if (is_hex40(kv.second)) dbsha.insert(kv.second); }
@@ -490,7 +490,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             R.block = block_reason(q, std::map<std::string, std::string>());
             { std::map<std::string, std::string> kv; if (g) { kv["nk_flags"] = g->flags; kv["nk_media"] = g->media; }
                 if (curated) kv["curated"] = "1"; for (auto & k : q.kv) kv[k.first] = k.second; R.block = block_reason(q, kv); }
-            if (old_grade.empty() || grade_rank(R.grade) <= grade_rank(old_grade)) {   /* 등급은 낮추지 않는다 — 새 판정이 같거나 더 높을 때만 판정 글도 바꾼다 */
+            if (old_grade.empty() || grade_rank(R.grade) <= grade_rank(old_grade)) {   /* 등급은 낮추지 않는다 - 새 판정이 같거나 더 높을 때만 판정 글도 바꾼다 */
                 u.push_back({ "grade", R.grade, 3 }); u.push_back({ "jshort", jshort, 3 });
                 u.push_back({ "judge", judge, 3 }); u.push_back({ "auto_note", q.reason, 3 });
             }
@@ -500,7 +500,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
             if (curated && !q.dbhit_id.empty()) u.push_back({ "dbid", q.dbhit_id, 0 });
             if (g) { u.push_back({ "nk_gid", g->gid, 0 }); u.push_back({ "nk_flags", g->flags, 0 });
                 u.push_back({ "nk_media", g->media, 0 }); }
-            ini_patch(gi_path, u);   /* 목록 정리에서 뺀(tidy_hidden) 작품은 갱신돼도 숨김 그대로 — 게임 폴더 훑기가 켤 때마다 되살리지 않게 */
+            ini_patch(gi_path, u);   /* 목록 정리에서 뺀(tidy_hidden) 작품은 갱신돼도 숨김 그대로 - 게임 폴더 훑기가 켤 때마다 되살리지 않게 */
             if (is_zip(srcpath)) retire_zip_copies(c, w.dir, oldshas);
             c.reg[sig] = tgt; for (auto & h : shas) c.hashidx[h] = tgt;
             return R;
@@ -530,6 +530,7 @@ inline Result register_core(Ctx & c, const Work & w, const std::string & sig, co
         { auto cdi = q.kv.find("cd"); if (cdi != q.kv.end() && !cdi->second.empty()) fprintf(f, "cd=%s\n", U(cdi->second).c_str()); }   /* t40: CD 자동 인식 */
     }
     if (!curated && g && r.grade == 'A') fprintf(f, "font_kind=jp\n");   /* r019 (#247-10): 롬셋과 해시가 같은 일본어 원판은 일본어 글꼴 */
+    { auto mi_ = q.kv.find("mouse"); if (!curated && (mi_ == q.kv.end() || mi_->second.empty())) fprintf(f, "mouse=required\n"); }   /* t864 (#2420): 새로 추가하는 작품의 마우스 항목 기본 = 필수(이미 등록된 작품은 그대로, DB 큐레이션 작품은 DB 값) */
     if (!maker.empty()) fprintf(f, "company=%s\n", maker.c_str());
     if (!year.empty()) fprintf(f, "year=%s\n", year.c_str());
     if (!msrc.empty()) fprintf(f, "metasrc=%s\n", msrc.c_str());

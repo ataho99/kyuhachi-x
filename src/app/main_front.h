@@ -30,7 +30,7 @@ static int gh_main_args(int argc, char * argv[], std::string & id) {
         else if (a == "--inwin" && i + 1 < argc) gApp.inwin_enabled = atoi(argv[++i]) != 0;   /* t51a: 0 = 창 안 전환 끔(현행 재실행 경로만) */
         else if (a == "--inwintest" && i + 1 < argc) gApp.inwin_testfail = argv[++i];   /* t51a 시험: attach | noboot | throw */
         else if (a == "--resume" && i + 1 < argc) gApp.resume_slot = atoi(argv[++i]);   /* t51a: 폴백 재실행(메뉴에서 고른 이어하기 슬롯) */
-        else if (a == "--nostage") gApp.nostage = true;   /* t49a: 부트 순서(단계) 기능 끄기 — 시험용 */
+        else if (a == "--nostage") gApp.nostage = true;   /* t49a: 부트 순서(단계) 기능 끄기 - 시험용 */
         else if (a == "--titlelegacy") gApp.titlelegacy = true;
         else if (a == "--axistest") gApp.axistest = true;
         else if (a == "--swaptest" && i + 1 < argc) { double s0 = 0; int d0 = 0, i0 = 0; if (sscanf(argv[++i], "%lf,%d,%d", &s0, &d0, &i0) == 3) { gApp.swap_ms = (unsigned)(s0 * 1000.0); gApp.swap_drv = d0; gApp.swap_idx = i0; } }
@@ -46,6 +46,10 @@ static int gh_main_args(int argc, char * argv[], std::string & id) {
 
         else if (a == "--scrshot" && i + 1 < argc) { char * s = argv[++i]; while (*s) { gApp.scrshots_ms.push_back((unsigned)(atof(s) * 1000.0)); while (*s && *s != ',') s++; if (*s == ',') s++; } }
         else if (a == "--setvol" && i + 1 < argc) { int b = 8, se = 8; if (sscanf(argv[++i], "%d,%d", &b, &se) == 2) { gApp.setvol_b = b; gApp.setvol_s = se; } }
+        else if (a == "--linediag") kh_linediag_on = 1; else if (a == "--linekey") kh_linekey_on = 1;   /* t836 */
+        else if (a == "--wavdump" && i + 1 < argc) khwd::dir = argv[++i];   /* t832 */
+        else if (a == "--wavsolo" && i + 1 < argc) khwd::solo = argv[++i];
+        else if (a == "--wavfrom" && i + 1 < argc) khwd::from_ms = (unsigned)(atof(argv[++i]) * 1000.0);
         else if (a == "--rmswin" && i + 1 < argc) { gApp.rms_from = (unsigned)(atof(argv[++i]) * 1000.0); }
         else if (a == "--mouseok") gApp.mouseok_cli = true;
         else if (a == "--traceexc") gApp.traceexc = 1;
@@ -127,7 +131,7 @@ static void gh_main_logsdl(const std::string & exedir, const bool & ui_mode, std
 #endif
     SDL_SetHint("SDL_IME_SHOW_UI", "1"); SDL_SetHint("SDL_MOUSE_FOCUS_CLICKTHROUGH", "1"); if (gApp.log) gh_log("HINT SDL_MOUSE_FOCUS_CLICKTHROUGH=1 (t48c #639 ②)");   /* t48a: Windows IME 조합·후보 창을 시스템이 그리게 한다 */
     if (!gApp.inject_file.empty()) SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");   /* t48e2: --inject 시험 전용(숨김 창에서도 가상 패드 이벤트 수신). 평소 동작 불변 */
-    SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");   /* v0.6.8: SDL 초기화 전에 — 가속도계를 조이스틱으로 열지 않는다 */
+    SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");   /* v0.6.8: SDL 초기화 전에 - 가속도계를 조이스틱으로 열지 않는다 */
     if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_EVENTS | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | (gApp.headless ? 0 : SDL_INIT_VIDEO)) < 0)
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
     gApp.log_t0 = SDL_GetTicks();

@@ -173,13 +173,13 @@ static bool gh_ovl_build(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로 호�
     return any;
 }
 static void gh_ovl_off(void) { if (gApp.ovl_has) { gApp.ovl_has = false; gApp.ovl_new = true; } }   /* g_fb_mtx 를 잡은 채로 */
-static void gh_ovl_update(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로. 배속 중 프레임이 몰려도 16ms 에 한 번만 다시 만든다. t730 (#P14 4a): 그리는 입력이 하나도 안 바뀌었으면(해시 같음) 다시 만들지 않고 올려 둔 것을 그대로 쓴다 — 500ms 마다는 무조건 다시 만든다(놓친 입력이 있어도 반 초 안에 바로잡힘). fps 표시 켜짐 때는 항상 다시 만든다 */
+static void gh_ovl_update(int fw, int fh) {   /* g_fb_mtx 를 잡은 채로. 배속 중 프레임이 몰려도 16ms 에 한 번만 다시 만든다. t730 (#P14 4a): 그리는 입력이 하나도 안 바뀌었으면(해시 같음) 다시 만들지 않고 올려 둔 것을 그대로 쓴다 - 500ms 마다는 무조건 다시 만든다(놓친 입력이 있어도 반 초 안에 바로잡힘). fps 표시 켜짐 때는 항상 다시 만든다 */
     static Uint32 last = 0; static bool first = true; Uint32 now = SDL_GetTicks();
     if (!first && now - last < 16) return; first = false; last = now;
     static uint64_t s_sig = 0; static Uint32 s_t = 0; static bool s_ok = false, s_has = false;
     bool osd_on = gApp.osd_until && now < gApp.osd_until;
     uint64_t h = 1469598103934665603ULL; auto mix = [&](uint64_t v) { h = (h ^ v) * 1099511628211ULL; };
-    mix((uint64_t)fw); mix((uint64_t)fh); mix(kbov::g_vis); mix(kbov::g_ov_on); mix(kbov::g_btn_on); mix(kbov::g_dirty); mix((uint64_t)(kbov::g_down_slot + 2)); mix(kbov::g_lp_on ? 1u + ((now - kbov::g_lp_t0) >> 4) : 0u); mix((uint64_t)kbov::cur_mul());
+    mix((uint64_t)fw); mix((uint64_t)fh); mix(kbov::g_vis); mix(kbov::ov_on()); mix((uint64_t)kbov::g_ov_size); mix((uint64_t)kbov::g_ov_alpha); mix(kbov::g_btn_on); mix(kbov::g_dirty); mix((uint64_t)(kbov::g_down_slot + 2)); mix(kbov::g_lp_on ? 1u + ((now - kbov::g_lp_t0) >> 4) : 0u); mix((uint64_t)kbov::cur_mul());
     mix((uint64_t)kbov::g_ov_mode); mix((uint64_t)kbov::g_ov_edge); mix((uint64_t)kbov::g_ov_align); mix((uint64_t)kbov::g_ov_free); mix(kbov::active());
     mix(kbov::g_caps_fn ? kbov::g_caps_fn() : false); mix(kbov::g_kana_fn ? kbov::g_kana_fn() : false); mix(kbov::g_boost_fn ? kbov::g_boost_fn() : false);
     mix(osd_on); if (osd_on) mix(std::hash<std::string>()(gApp.osd)); mix(gApp.boost_on && gApp.bosd_on); mix((uint64_t)gApp.boost_xv); mix(std::hash<std::string>()(gApp.bk_osd));
@@ -206,7 +206,7 @@ static bool gl_build(const std::string & src, GProg & g, bool linear, const char
     int ok = 0; F.GetProgramiv(g.p, GL_LINK_STATUS, &ok);
     if (!ok) { char lg[1024]; int n = 0; F.GetProgramInfoLog(g.p, 1023, &n, lg); lg[n < 0 ? 0 : n] = 0; gh_log("GL: shader %s link FAIL: %s", name, lg); return false; }
     F.DeleteShader(sh[0]); F.DeleteShader(sh[1]);
-    g.uTex = F.GetUniformLocation(g.p, "uTex"); g.uSrc = F.GetUniformLocation(g.p, "uSrcSize"); g.uOut = F.GetUniformLocation(g.p, "uOutSize"); g.uCurve = F.GetUniformLocation(g.p, "uCurve"); g.uScan = F.GetUniformLocation(g.p, "uScan"); g.uMask = F.GetUniformLocation(g.p, "uMask"); g.uBleed = F.GetUniformLocation(g.p, "uBleed"); g.uGlow = F.GetUniformLocation(g.p, "uGlow"); g.uNear = F.GetUniformLocation(g.p, "uNear");
+    g.uTex = F.GetUniformLocation(g.p, "uTex"); g.uSrc = F.GetUniformLocation(g.p, "uSrcSize"); g.uOut = F.GetUniformLocation(g.p, "uOutSize"); g.uCurve = F.GetUniformLocation(g.p, "uCurve"); g.uScan = F.GetUniformLocation(g.p, "uScan"); g.uMask = F.GetUniformLocation(g.p, "uMask"); g.uBleed = F.GetUniformLocation(g.p, "uBleed"); g.uGlow = F.GetUniformLocation(g.p, "uGlow"); g.uNear = F.GetUniformLocation(g.p, "uNear"); g.uSharp = F.GetUniformLocation(g.p, "uSharp");
     g.uBeam = F.GetUniformLocation(g.p, "uBeam"); g.uBreath = F.GetUniformLocation(g.p, "uBreath"); g.uTime = F.GetUniformLocation(g.p, "uTime");
     g.uGlowP = F.GetUniformLocation(g.p, "uGlowP"); g.uGTex = F.GetUniformLocation(g.p, "uGTex");   /* t662 (#635) */
     g.ok = true; gh_log("GL: shader %s OK (prog %u)", name, g.p);
@@ -246,7 +246,7 @@ static bool gl_init_all(void) {   /* 메인 스레드, 컨텍스트 current 상�
             const unsigned char * ep = (i == SH_SHARP) ? emb_sh_sharp : emb_sh_crt; size_t en = (i == SH_SHARP) ? emb_sh_sharp_n : emb_sh_crt_n;
             src.assign((const char *)ep, en); gApp.builtin_res = true; if (gApp.osd.empty()) gh_osd(phr_("셰이더 파일이 없어 내장 셰이더로 실행합니다 (exe 옆 shaders 폴더 확인)"), 12000); gh_log("WARN: GL: shader file not found: %s -> 내장 셰이더 사용", path.c_str());
         }
-        if (i == SH_CRT && (src.find("PC98_FX_T48C") == std::string::npos || src.find("PC98_PHOS_T662") == std::string::npos)) { gh_log("GL: pc98_crt.glsl 에 효과 표지(PC98_FX_T48C)가 없다(옛 판) -> 내장 셰이더 사용"); src.assign((const char *)emb_sh_crt, emb_sh_crt_n); }   /* t48c: 옛 res 폴더의 셰이더 파일이 남아 있어도 새 효과가 먹게 한다 */
+        if (i == SH_CRT && (src.find("PC98_FX_T48C") == std::string::npos || src.find("PC98_PHOS_T662") == std::string::npos)) { gh_log("GL: 경고 pc98_crt.glsl 표지 누락(PC98_FX_T48C=%d PC98_PHOS_T662=%d, 둘 다 1 이어야 채택) -> 파일 셰이더를 버리고 내장 셰이더 사용(파일의 효과 변경은 화면에 안 나옴)", (int)(src.find("PC98_FX_T48C") != std::string::npos), (int)(src.find("PC98_PHOS_T662") != std::string::npos)); src.assign((const char *)emb_sh_crt, emb_sh_crt_n); }   /* t48c: 옛 res 폴더의 셰이더 파일이 남아 있어도 새 효과가 먹게 한다 */
         bool bok = gl_build(src, gApp.prog[i], true, names[i]);   /* t662 (#635): the classic program is always built (phos off = the old shader text, same pixels); the phosphor variant is a second program */
         if (i == SH_CRT) { gApp.phos_gl = bok && gl_build(std::string("#define PC98_PHOS 1\n") + src, gApp.prog_ph, true, "pc98_crt.glsl+phos");
             if (bok && !gApp.phos_gl) gh_log("WARN: GL: phosphor shader failed -> classic crt shader only"); }
@@ -259,7 +259,7 @@ static bool gl_init_all(void) {   /* 메인 스레드, 컨텍스트 current 상�
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     return true;
 }
-static void gl_rect(int dw, int dh, int w, int h, int fit, int & x, int & y, int & rw, int & rh) {
+static void gl_rect_raw(int dw, int dh, int w, int h, int fit, int & x, int & y, int & rw, int & rh) {
     if (fit == FIT_INT && w > 0 && h > 0) {
         int s = std::min(dw / w, dh / h);
         if (s >= 1) { rw = w * s; rh = h * s; x = (dw - rw) / 2; y = (dh - rh) / 2; return; }
@@ -268,11 +268,28 @@ static void gl_rect(int dw, int dh, int w, int h, int fit, int & x, int & y, int
     rw = dw; rh = (int)(rw / A + 0.5);
     if (rh > dh) { rh = dh; rw = (int)(rh * A + 0.5); }
     x = (dw - rw) / 2; y = (dh - rh) / 2;
+    if (fit == FIT_1610) { const int vp = (int)gApp.vpos; if (vp == 1) y = 0; else if (vp == 2) y = dh - rh; }   /* t848: 남는 검은 줄을 위/아래로 몰기 */
+}
+/* t857: 화면 둘레 테두리(실기 CRT 틀) — 그림이 놓이는 사각형을 사방 같은 폭(m)만큼 안으로 들인다. 정수배·16:10·4:3 모두 같은 규칙이라 여백이 0 이 되는 경우가 없다(m >= 6 px). android.ini bezel=0..100(천분율, 기본 40 = 짧은 변의 4%, 0 = 끔) */
+static int g_bezel_cfg = -2;
+static int gl_bezel_m(int dw, int dh) {
+    if (g_bezel_cfg == -2) { g_bezel_cfg = 40; FILE * f = fopen((gApp.exedir + "\\android.ini").c_str(), "r"); if (f) { char ln[300]; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bezel=", 6)) { int v = atoi(ln + 6); if (v >= 0 && v <= 100) g_bezel_cfg = v; } fclose(f); } }
+    if (g_bezel_cfg <= 0) return 0;
+    const int sh = dw < dh ? dw : dh; int m = sh * g_bezel_cfg / 1000; if (m < 6) m = 6; if (m * 4 > sh) m = sh / 4; return m;
+}
+static void gl_rect(int dw, int dh, int w, int h, int fit, int & x, int & y, int & rw, int & rh) {
+    const int m = gl_bezel_m(dw, dh); gl_rect_raw(dw - 2 * m, dh - 2 * m, w, h, fit, x, y, rw, rh); x += m; y += m;
+}
+/* t848: 오버레이가 놓이는 틀. 16:10 이어도 오버레이는 4:3 틀(= 4:3 일 때 그림이 놓이는 사각형)에 고정 — 그림만 위/가운데/아래로 움직인다. 나머지 비율은 그림 사각형 그대로 */
+static void gl_ovrect(int dw, int dh, int fit, int sx, int sy, int srw, int srh, int & x, int & y, int & rw, int & rh) {
+    if (fit == FIT_1610) { gl_rect(dw, dh, 640, 400, FIT_43, x, y, rw, rh); return; }
+    x = sx; y = sy; rw = srw; rh = srh;
 }
 static int SDLCALL gl_thread(void *) {
     SDL_GL_MakeCurrent(gApp.win, gApp.glctx);
     int tw = 0, th = 0, cw = 0, ch = 0; int ovw = 0, ovh = 0, otw = 0, oth = 0; bool ov_has = false, ov_dirty = false; std::vector<uint32_t> sw;
     GLuint vp_tex = 0; std::vector<uint32_t> vp_buf; unsigned vp_mask = ~0u; int vp_w = 0, vp_h = 0, vp_sx = -1, vp_sw = -1;   // virtual pad
+    GLuint tl_tex = 0; std::vector<uint32_t> tl_buf; int tl_k[12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };   // t862a 터치 배치
     while (!gApp.gl_stop) {
         pdg::gl_tick();   /* #P2: slowcpu 가 켜졌으면 이 스레드도 느린 코어에 묶기(한 번) */
         { unsigned hd = g_kha_hold; if (hd && (hd == 0xFFFFFFFFu || (int)(SDL_GetTicks() - hd) < 0)) { g_kha_glidle = 1; g_kha_was = 1; SDL_GL_MakeCurrent(gApp.win, NULL); SDL_Delay(10); continue; } g_kha_glidle = 0; if (g_kha_was) { g_kha_was = 0; g_kha_rl = 4; } if (g_kha_rl > 0) { g_kha_rl--; int rc0 = SDL_GL_MakeCurrent(gApp.win, gApp.glctx); gh_log("KHA glres rc=%d err=%s cur=%p ctx=%p", rc0, rc0 ? SDL_GetError() : "", (void *)SDL_GL_GetCurrentContext(), (void *)gApp.glctx); } }   /* t146 glres (a127) */
@@ -296,14 +313,14 @@ static int SDLCALL gl_thread(void *) {
             const GProg & P = (sh == SH_CRT && gApp.phos_gl && (gApp.beamv > 0.0f || gApp.breathv > 0.0f || gApp.glowpv > 0.0f)) ? gApp.prog_ph : gApp.prog[sh];
             int x, y, rw, rh; gl_rect(dw, dh, cw, ch, fit, x, y, rw, rh);
             sx = x; sy = y; srw = rw; srh = rh;
-            glViewport(x, y, rw, rh);
+            glViewport(x, dh - y - rh, rw, rh);   /* t850: gl_rect 의 y 는 위=0, GL 은 아래=0 */
             GLint filt = P.linear ? GL_LINEAR : GL_NEAREST;
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
             Uint64 gt_a = SDL_GetPerformanceCounter();
             unsigned gTex = 0;   /* t662 (#635): persistence / glow passes run first (only with the crt shader and only when switched on) */
             if (sh == SH_CRT && gApp.phos_gl && (gApp.persms > 0 || gApp.glowpv > 0.0f)) {
                 unsigned st = glp_prepare(gApp.tex_gl, cw, ch, gApp.persms, gApp.glowpv > 0.0f, &gTex);
-                glViewport(x, y, rw, rh); glBindTexture(GL_TEXTURE_2D, st);
+                glViewport(x, dh - y - rh, rw, rh); glBindTexture(GL_TEXTURE_2D, st);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
                 if (gTex) { FP.ActTex(GLP_TEXTURE0 + 1); glBindTexture(GL_TEXTURE_2D, gTex); FP.ActTex(GLP_TEXTURE0); }
             }
@@ -316,7 +333,7 @@ static int SDLCALL gl_thread(void *) {
             if (P.uMask >= 0) F.Uniform1f(P.uMask, gApp.maskv);
             if (P.uBleed >= 0) F.Uniform1f(P.uBleed, gApp.bleedv);
             if (P.uGlow >= 0) F.Uniform1f(P.uGlow, gApp.glowv);
-            if (P.uNear >= 0) F.Uniform1f(P.uNear, gApp.nearv);
+            if (P.uNear >= 0) F.Uniform1f(P.uNear, gApp.nearv); if (P.uSharp >= 0) F.Uniform1f(P.uSharp, gApp.sharpv);
             if (P.uBeam >= 0) F.Uniform1f(P.uBeam, gApp.beamv);   /* t662 (#635) */
             if (P.uBreath >= 0) F.Uniform1f(P.uBreath, gApp.breathv);
             if (P.uTime >= 0) F.Uniform1f(P.uTime, (float)fmod((double)SDL_GetTicks() * 0.001, 997.0));
@@ -339,7 +356,7 @@ static int SDLCALL gl_thread(void *) {
             glBindTexture(GL_TEXTURE_2D, gApp.ov_tex);
             if (ov_dirty) { if (ovw != otw || ovh != oth) { glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, ovw, ovh, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(gApp.ovl_gl, (size_t)ovw * ovh, sw)); otw = ovw; oth = ovh; } else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ovw, ovh, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(gApp.ovl_gl, (size_t)ovw * ovh, sw)); ov_dirty = false; }
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glViewport(sx, sy, srw, srh);
+            { int ox_, oy_, orw_, orh_; gl_ovrect(dw, dh, gh_fit_eff(), sx, sy, srw, srh, ox_, oy_, orw_, orh_); glViewport(ox_, dh - oy_ - orh_, orw_, orh_); }   /* t848: 오버레이 4:3 틀 */
             glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             F.UseProgram(gApp.prog_ov.p); if (gApp.prog_ov.uTex >= 0) F.Uniform1i(gApp.prog_ov.uTex, 0);
             F.BindBuffer(GL_ARRAY_BUFFER, gApp.vbo); F.EnableVertexAttribArray(0); F.EnableVertexAttribArray(1);
@@ -361,6 +378,30 @@ static int SDLCALL gl_thread(void *) {
                     vp_buf.assign((size_t)dw * dh, 0); vpad::render(vp_buf.data(), dw, dh, vg, vm);
                     glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, dw, dh, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(vp_buf, (size_t)dw * dh, sw));
                     vp_mask = vm; vp_w = dw; vp_h = dh; vp_sx = sx; vp_sw = srw;
+                }
+                glViewport(0, 0, dw, dh); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                F.UseProgram(gApp.prog_ov.p); if (gApp.prog_ov.uTex >= 0) F.Uniform1i(gApp.prog_ov.uTex, 0);
+                F.BindBuffer(GL_ARRAY_BUFFER, gApp.vbo); F.EnableVertexAttribArray(0); F.EnableVertexAttribArray(1);
+                F.VertexAttribPointer(0, 2, GL_FLOAT, 0, 16, (const void *)0); F.VertexAttribPointer(1, 2, GL_FLOAT, 0, 16, (const void *)8);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                glDisable(GL_BLEND); glBindTexture(GL_TEXTURE_2D, gApp.tex_gl);
+            }
+        }
+        if (tlay::g_show && dw > 0 && dh > 0 && gApp.prog_ov.ok) {   // t862a: 터치 배치(창 좌표)
+            tlay::Geo tg; tlay::layout(dw, dh, TLAY_MODE(), TLAY_DIR(), tg);
+            if (tg.on) {
+                unsigned tm = tlay::g_mask; int tmd = TLAY_MODE(), td = TLAY_DIR(), ton = tlay::g_stk_on, tsx = tlay::g_stk_x, tsy = tlay::g_stk_y, tdx = tlay::g_stk_dx, tdy = tlay::g_stk_dy;
+                if (tl_tex == 0) {
+                    glGenTextures(1, &tl_tex); glBindTexture(GL_TEXTURE_2D, tl_tex);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                }
+                glBindTexture(GL_TEXTURE_2D, tl_tex);
+                int nk9[12] = { (int)tm, td + tmd * 2, ton, tsx, tsy, tdx, tdy, dw, dh, tlay::g_ver, tlay::g_edit * 2 + tlay::g_pick, (int)(unsigned char)tlay::g_msg[0] };
+                if (memcmp(nk9, tl_k, sizeof nk9) != 0) {
+                    tl_buf.assign((size_t)dw * dh, 0); tlay::g_curmode = tmd; tlay::render(tl_buf.data(), dw, dh, tg, tm, td, ton, tsx, tsy, tdx, tdy); if (tlay::g_edit) tlay::render_edit(tl_buf.data(), dw, dh, tg);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GH_INTFMT, dw, dh, 0, GH_PIXFMT, GL_UNSIGNED_BYTE, gh_up(tl_buf, (size_t)dw * dh, sw));
+                    memcpy(tl_k, nk9, sizeof nk9);
                 }
                 glViewport(0, 0, dw, dh); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
                 F.UseProgram(gApp.prog_ov.p); if (gApp.prog_ov.uTex >= 0) F.Uniform1i(gApp.prog_ov.uTex, 0);
@@ -403,7 +444,7 @@ static int SDLCALL gl_thread(void *) {
         if (gApp.shot_req) {
             int r0x = 0, r0y = 0, rwd = dw, rht = dh;
 
-            if (gApp.shot_crop && srw > 0 && srh > 0 && sx >= 0 && sy >= 0 && sx + srw <= dw && sy + srh <= dh) { r0x = sx; r0y = sy; rwd = srw; rht = srh; }
+            if (gApp.shot_crop && srw > 0 && srh > 0 && sx >= 0 && sy >= 0 && sx + srw <= dw && sy + srh <= dh) { r0x = sx; r0y = dh - sy - srh; rwd = srw; rht = srh; }
             std::vector<uint32_t> px((size_t)rwd * rht), fl((size_t)rwd * rht);
             glReadPixels(r0x, r0y, rwd, rht, GH_PIXFMT, GL_UNSIGNED_BYTE, px.data()); gh_swz(px);
             for (int yy = 0; yy < rht; yy++) memcpy(&fl[(size_t)yy * rwd], &px[(size_t)(rht - 1 - yy) * rwd], (size_t)rwd * 4);

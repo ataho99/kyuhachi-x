@@ -7,17 +7,21 @@ inline bool Ui::kb_used(const std::string & nm) const {
         if (i >= PAD_N && xb_get(i - PAD_N).empty()) continue;
         if (const_cast<Ui *>(this)->pad_val(i) == nm) return true;
     }
+    for (int t = 0; t < TOUCH_N; t++) {   /* t859-K: 터치 8칸도 사용 중 표시 */
+        if (TOUCH_PK + t == pk_row) continue;
+        if (const_cast<Ui *>(this)->touch_val(t) == nm) return true;
+    }
     return false;
 }
 inline void Ui::kb_open() {
     kb_cells = env.kbcells ? env.kbcells() : std::vector<KbCell>();
-    kb_sel = 0; const std::string cv = pad_val(pk_row);
+    kb_sel = 0; const std::string cv = pk_row >= TOUCH_PK ? touch_val(pk_row - TOUCH_PK) : pad_val(pk_row);   /* t859-K */
     for (size_t i = 0; i < kb_cells.size(); i++) if (kb_cells[i].name == cv) kb_sel = (int)i;
     scr = S_KBPICK;
 }
 inline void Ui::d_kbpick(Canvas & c) {
     titlebar(c, "");
-    rbox(c, 8, 24, 624, 296, WH, (phr_("kbp_title") + std::string(": ") + pad_row_name(pk_row)).c_str());
+    rbox(c, 8, 24, 624, 296, WH, (phr_("kbp_title") + std::string(": ") + (pk_row >= TOUCH_PK ? touch_row_name(pk_row - TOUCH_PK) : pad_row_name(pk_row))).c_str());   /* t859-K */
     int mx = 1, mr = 1;
     for (auto & k : kb_cells) { if (k.x4 + k.w4 > mx) mx = k.x4 + k.w4; if (k.row + k.rows > mr) mr = k.row + k.rows; }
     const int sc = 600 / mx > 0 ? 600 / mx : 1, rh = 220 / mr > 34 ? 34 : 220 / mr;
@@ -55,9 +59,11 @@ inline void Ui::k_kbpick(UKey k, Act & a) {
             const int d = (dy < 0 ? -dy : dy) * 1000 + (dx < 0 ? -dx : dx); if (d < bd) { bd = d; best = i; } }
         if (best >= 0) kb_sel = best;
     } else if (k == UK_OK) {
-        const std::string o = cu.name, key = pad_key(pk_row);
-        if (scope == 1 && pk_row < PAD_N) { if (env.pad_set && cur >= 0 && cur < (int)games.size()) env.pad_set(cur, key, o); }
+        const std::string o = cu.name; const bool ist = pk_row >= TOUCH_PK;   /* t859-K */
+        std::string key = ist ? touch_key(pk_row - TOUCH_PK) : pad_key(pk_row);
+        if (ist) { if (scope == 1 && env.touch_set && cur >= 0 && cur < (int)games.size()) env.touch_set(cur, key, o); else gpad[key] = o; }
+        else if (scope == 1 && pk_row < PAD_N) { if (env.pad_set && cur >= 0 && cur < (int)games.size()) env.pad_set(cur, key, o); }
         else gpad[key] = o;
-        dirty = true; scr = pk_row >= PAD_N ? S_EXT : S_PAD; sel = pad_sel_keep; a.t = A_APPLY;
+        dirty = true; save_now = true; scr = ist ? S_TOUCH : (pk_row >= PAD_N ? S_EXT : S_PAD); sel = pad_sel_keep; a.t = A_APPLY;
     } else if (k == UK_CANCEL) { open_padkey(pk_row); }
 }

@@ -30,5 +30,5 @@ inline void Ui::k_shim(UKey k, Act & a) {
         int nv = *v[sel] + d;
         if (pick) nv = nv < lo[sel] ? hi[sel] : nv > hi[sel] ? lo[sel] : nv; else nv = clampi(nv, lo[sel], hi[sel]);
         if (nv != *v[sel]) { *v[sel] = nv; dirty = true; a.t = A_APPLY; }
-    } else if (k == UK_CANCEL) go(S_SET, 4);
+    } else if (k == UK_CANCEL) { if (backup_has) { backup.shim = g.shim; backup.shim_amp = g.shim_amp; backup.shim_spd = g.shim_spd; backup.shim_glow = g.shim_glow; backup.shim_col = g.shim_col; } go(S_SCREEN, rowidx(S_SCREEN, 15)); }   /* #1478: 메뉴 꾸밈 = 디스플레이 > 메뉴 꾸밈 */
 }

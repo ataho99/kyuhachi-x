@@ -9,17 +9,18 @@ inline void Ui::d_phos(Canvas & c) {
     const bool offp = s.ratio == 2;   /* integer scaling uses the plain shader: the bundle has no effect there */
     static const char * const nk[4] = { "ph_beam", "ph_pers", "ph_breath", "ph_glow" };
     static const char * const dk[4] = { "desc_ph_beam", "desc_ph_pers", "desc_ph_breath", "desc_ph_glow" };
+    const int P = menu_tall() ? 18 : 16;   /* t858: 14·15px급 글꼴은 목록·값 열 피치 18 */
     rbox(c, 16, 24, 288, 220, WH, phr_("ph_title"));
     std::vector<std::string> n; std::vector<bool> dm;
     for (int i = 0; i < 4; i++) {
         n.push_back((ind ? std::string("● ") : std::string()) + phr_(nk[i])); dm.push_back(offp);
     }
-    items(c, 40, 44, 256, n, sel, 16, &dm);
+    items(c, 40, 44, 256, n, sel, P, &dm);
     rbox(c, 320, 24, 304, 220, WH, phr_("ph_choices"));
     const char * lv[4] = { phr_("ph_lv0"), phr_("ph_lv1"), phr_("ph_lv2"), phr_("ph_lv3") };
     const char * pv[6] = { phr_("ph_lv0"), "8ms", "12ms", "18ms", "27ms", "40ms" };   /* #S1: 잔광 끔 + 5단. 공백 없는 표기 = 한 줄 264px(오른쪽 끝 x=600 < 상자 안쪽 616). 「8 ms」 공백형은 304px 로 넘침 */
     for (int i = 0; i < 4; i++) {
-        choices(c, 344, 44 + i * 16, i == 1 ? pv : lv, i == 1 ? 6 : 4, i == 1 ? s.ph_pers() : (s.phos >> (2 * i)) & 3, offp ? GY : WH, sel == i);
+        choices(c, 344, 44 + i * P, i == 1 ? pv : lv, i == 1 ? 6 : 4, i == 1 ? s.ph_pers() : (s.phos >> (2 * i)) & 3, offp ? GY : WH, sel == i);
     }
     rbox(c, 16, 248, 608, 82, WH, phr_("ph_prev"));
     text(c, 40, 270, std::string(phr_(offp ? "ph_off_note" : "ph_live")), offp ? YL : WH, K);

@@ -225,22 +225,26 @@ static void gh_publish(const uint32_t * px, int w, int h) {
    부품 볼륨은 코어 np2 사운드 setter(0~128, 기본 128 = 슬라이더 8/8). 「FM」 채널은 코어에 없어 예전 BGM 슬라이더는 무효였다. */
 extern "C" { void opngen_setvol(unsigned vol); void psggen_setvol(unsigned vol); void rhythm_setvol(unsigned vol); void rhythm_update(void * rhy);
               void adpcm_setvol(unsigned vol); void adpcm_update(void * ad); void pcm86gen_setvol(unsigned vol); extern char rhythm[]; extern char adpcm[]; }
+static float gh_cda_gain = 1.0f;   /* t831: CD-DA(「CDAUDIO」 채널) 배율 = BGM 슬라이더 */
 static void gh_apply_volume(const ui::Settings & s) {
     static const char * const se_names[] = { "SPKR", "PCSPEAKER", "PCM", "SB", NULL };
-    static int last_b = -1, last_s = -1;
+    static int last_b = -1, last_s = -1, last_v = -1;
+    { float wg_ = 1.0f; if (kh_wavdump_volume(&wg_)) { gh_cda_gain = wg_; return; } }   /* t832: 파형 덤프 중에는 슬라이더 대신 볼륨 고정 */
     MixerChannel * m = MIXER_FindChannel("PC-98"); if (m) m->SetVolume(1.0f, 1.0f);
     for (int i = 0; se_names[i]; i++) { MixerChannel * d = MIXER_FindChannel(se_names[i]); if (d) { float v = s.se_gain(); d->SetVolume(v, v); } }
-    unsigned nb = (unsigned)(s.bgm_gain() * 128.0f + 0.5f), ns = (unsigned)(s.se_gain() * 128.0f + 0.5f);
+    gh_cda_gain = s.bgm_gain(); { MixerChannel * cda = MIXER_FindChannel("CDAUDIO"); if (cda) cda->SetVolume(gh_cda_gain, gh_cda_gain); }   /* 채널은 첫 재생 때 생기므로 gfx_events 가 주기적으로 다시 건다 */   /* t831: CD-DA(오디오 트랙)는 음악 - BGM 슬라이더에 연결(이전엔 어느 슬라이더에도 안 묶였음) */
+    unsigned nb = (unsigned)(s.bgm_gain() * 128.0f + 0.5f), ns = (unsigned)(s.se_gain() * 128.0f + 0.5f), nv = (unsigned)(s.vo_gain() * 128.0f + 0.5f);   /* t831: ADPCM·PCM86 은 음성·PCM(vo) 슬라이더 */
     opngen_setvol(nb); psggen_setvol(nb); rhythm_setvol(nb); rhythm_update(rhythm);
-    adpcm_setvol(ns); adpcm_update(adpcm); pcm86gen_setvol(ns);
-    if (s.bgm != last_b || s.se != last_s) { last_b = s.bgm; last_s = s.se; gh_log("VOLUME parts: bgm=%d -> fm/ssg/rhythm=%u | se=%d -> adpcm/pcm86=%u + spk | PC-98 ch=%p(1.0) SPKR=%p", s.bgm, nb, s.se, ns, (void *)m, (void *)MIXER_FindChannel("SPKR")); }
+    adpcm_setvol(nv); adpcm_update(adpcm); pcm86gen_setvol(nv);
+    if (s.bgm != last_b || s.se != last_s || s.vo != last_v) { last_b = s.bgm; last_s = s.se; last_v = s.vo; gh_log("VOLUME parts: bgm=%d -> fm/ssg/rhythm=%u(+CD-DA) | se=%d(%u) -> spk | vo=%d -> adpcm/pcm86=%u | PC-98 ch=%p(1.0) SPKR=%p", s.bgm, nb, s.se, ns, s.vo, nv, (void *)m, (void *)MIXER_FindChannel("SPKR")); }
 }
 static void gh_apply_settings(const ui::Settings & s, bool vol) {
     kh_stk_set(s.stk_l, s.stk_r, s.dz_l, s.dz_r, s.stk_sp);   /* #619/#620/#624 */
     kbov::apply_pos(s.ovpos_mode, s.ovpos_edge, s.ovpos_align, s.ovpos_free);   /* E2R */
+    kbov::g_ov_size = s.ovsize; kbov::g_ov_alpha = s.ovalpha; kbov::g_ov_auto = s.ovauto != 0; kbov::g_dirty = true; gApp.vpos = s.vpos;   /* t848 */
     gApp.bosd_on = s.bosd != 0; gApp.fps_on = gApp.ui_.g.fpsd != 0; kbov::g_btn_on = kbov::g_cli_btn >= 0 ? kbov::g_cli_btn != 0 : s.kbbtn != 0; kbov::g_ov_on = kbov::g_cli_ov >= 0 ? kbov::g_cli_ov != 0 : s.ovbtn != 0; vpad::g_mode = vpad::g_cli >= 0 ? vpad::g_cli : s.padbtn; gApp.kbshader = gApp.cli_kbsh >= 0 ? gApp.cli_kbsh : (s.kbshader != 0 ? 1 : 0);
-    gApp.fit = gApp.menu43 ? (int)FIT_43 : s.ratio; { bool fxany = s.scan > 0 || s.mask > 0 || s.bleed > 0 || s.glow > 0 || s.curve > 0 || s.phos != 0; gApp.shader = fxany ? SH_CRT : (s.shader == 2 ? SH_NEAREST : SH_SHARP); gApp.nearv = (s.shader == 2) ? 1.0f : 0.0f;   /* t48c: 효과가 하나라도 켜져 있으면 효과 셰이더(밑 그림은 uNear), 아니면 sharp/nearest 셰이더 */
-      static int lfx = -1; int kfx = (s.scan << 0) | (s.mask << 4) | (s.bleed << 8) | (s.glow << 12) | (s.curve << 16) | ((s.shader == 2 ? 1 : 0) << 20); kfx ^= (int)((unsigned)s.phos * 2654435761u); if (kfx != lfx)   /* #S1: phos 가 12비트가 되어 << 21 이 int 를 넘으므로 해시로 */ { lfx = kfx; gh_log("FX filter=%s scan=%d mask=%d rgb=%d glow=%d curve=%d -> shader=%d phos=%d", s.shader == 2 ? "nearest" : "sharp", s.scan, s.mask, s.bleed, s.glow, s.curve, (int)gApp.shader, s.phos); } }
+    gApp.fit = gApp.menu43 ? (int)FIT_43 : s.ratio; { bool fxany = s.scan > 0 || s.mask > 0 || s.bleed > 0 || s.glow > 0 || s.curve > 0 || s.phos != 0; gApp.shader = fxany ? SH_CRT : (s.shader == 2 ? SH_NEAREST : SH_SHARP); gApp.nearv = (s.shader == 2) ? 1.0f : 0.0f; gApp.sharpv = 0.0f;   /* t856: sharper 삭제 */   /* t48c: 효과가 하나라도 켜져 있으면 효과 셰이더(밑 그림은 uNear), 아니면 sharp/nearest 셰이더 */
+      static int lfx = -1; int kfx = (s.scan << 0) | (s.mask << 4) | (s.bleed << 8) | (s.glow << 12) | (s.curve << 16) | ((s.shader == 2 ? 1 : s.shader == 3 ? 2 : 0) << 20); kfx ^= (int)((unsigned)s.phos * 2654435761u); if (kfx != lfx)   /* #S1: phos 가 12비트가 되어 << 21 이 int 를 넘으므로 해시로 */ { lfx = kfx; gh_log("FX filter=%s scan=%d mask=%d rgb=%d glow=%d curve=%d -> shader=%d phos=%d", s.shader == 2 ? "nearest" : s.shader == 3 ? "sharper" : "sharp", s.scan, s.mask, s.bleed, s.glow, s.curve, (int)gApp.shader, s.phos); } }
     { static int lk = -1; if (lk != (int)gApp.kbshader) { lk = (int)gApp.kbshader; gh_log("KBSHADER %d (0=오버레이 평면 합성, 1=셰이더 적용) cli=%d", (int)gApp.kbshader, gApp.cli_kbsh); } }
     gApp.curve = s.curve_f(); gApp.scanv = s.scan > 0 ? 2.0f + (float)s.scan : 0.0f; gApp.maskv = s.mask_f(); gApp.bleedv = s.bleed_f(); gApp.glowv = s.glow_f();
     { static const float bvt[4] = { 0.0f, 0.4f, 0.7f, 1.0f }, rvt[4] = { 0.0f, 0.015f, 0.025f, 0.04f }, gvt[4] = { 0.0f, 0.15f, 0.3f, 0.5f }; static const int pmt[6] = { 0, 8, 12, 18, 27, 40 };   /* #S1: 잔광 τ(ms) 끔+5단(×1.5 등비). 옛 0/40/90/160 */

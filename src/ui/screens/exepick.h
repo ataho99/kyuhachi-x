@@ -12,7 +12,7 @@ inline void Ui::d_exepick(Canvas & c) {
     }
     text(c, 36, 68, fit(std::string(1, (char)('A' + xp_drv)) + ":\\" + xp_dir, 570), YL, K);
     std::vector<std::string> r; std::vector<uint32_t> col;
-    r.push_back(phr_("(DOS 프롬프트로 시작 — 아무것도 실행하지 않음)")); col.push_back(GY);
+    r.push_back(phr_("(DOS 프롬프트로 시작 - 아무것도 실행하지 않음)")); col.push_back(GY);
     r.push_back(phr_("(자동으로 고름)")); col.push_back(GY);
     if (!xp_dir.empty()) { r.push_back(phr_(".. (위로)")); col.push_back(YL); }
     for (auto & f : xp_items) {

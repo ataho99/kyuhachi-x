@@ -18,7 +18,7 @@ inline void Ui::k_entmenu(UKey k, Act & a) {
             else if (menusel == 3) yn_open(S_ENT, YN_RESET, "「" + fit(e.label, 300) + phr_("」 의 내 수정을 버리고"), phr_("DB·game.ini 의 기본값으로 되돌립니까?"), std::string(), menu_ent);
             else if (menusel == 8) { shr_open_make(entg, menu_ent); }
             else if (menusel == 7) { nl_name = e.name; osk_open(3, next_menu_name(entg, menu_ent), S_ENT, true); }   /* t49a (#847): 속성 「다음 단계로」 의 메뉴 이름 바꾸기 */
-            else if (menusel == 6) {   /* t49a (#845): 다음 단계 돌려 고르기 — user.ini [entry:<이름>] next= (기존 저장 경로) */
+            else if (menusel == 6) {   /* t49a (#845): 다음 단계 돌려 고르기 - user.ini [entry:<이름>] next= (기존 저장 경로) */
                 std::vector<std::string> cs = next_cands(entg, v[menu_ent]); auto it = e.kv.find("next"); std::string cur_n = it == e.kv.end() || it->second.empty() ? std::string("none") : it->second; size_t ci = 0; for (size_t i = 0; i < cs.size(); i++) if (cs[i] == cur_n) ci = i;
                 std::string nv = cs[(ci + 1) % cs.size()]; ent::Kv kv = e.kv; kv["next"] = nv; std::string nm = e.name;
                 bool ok = env.save && env.save(entg, nm, kv, std::string()); if (ok && env.reload) env.reload(entg); dirty = true; msg = ok ? std::string(phr_("다음 단계: ")) + next_label(entg, menu_ent) + phr_("(으)로 바꿨습니다.") : std::string(phr_("저장하지 못했습니다."));   /* 1b-3: 바뀐 값을 알림에 넣는다 */

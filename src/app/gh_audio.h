@@ -3,7 +3,7 @@
    안드로이드 SDL2 는 오디오 장치를 한 번에 하나만 열 수 있는데, 삑(gh_beep)·CRT 소리·부팅 소음(pwr_seq)·메뉴 클릭(mclk) 이
    각자 SDL_OpenAudioDevice 를 불러서 먼저 연 쪽만 소리가 났다. 이제 장치는 여기서 한 번만 열고(44100Hz 16비트 모노),
    소리는 모두 gau::play() 로 넣는다. 콜백이 소프트웨어로 합친다(동시 재생 가능). 샘플레이트가 다르면 넣을 때 선형 보간으로 맞춘다.
-   SDL 과 표준 라이브러리만 쓴다(로그 함수에 기대지 않음 — 실패 문구는 gau::err). */
+   SDL 과 표준 라이브러리만 쓴다(로그 함수에 기대지 않음 - 실패 문구는 gau::err). */
 namespace gau {
 static const int RATE = 44100;
 struct Voice { std::vector<int16_t> pcm; size_t pos; int id; };

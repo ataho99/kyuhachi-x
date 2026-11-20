@@ -80,7 +80,7 @@ inline void Ui::tidy_menu_do(int mi, Act & a) {
         if (tidy_ids.empty()) { tidy_msg = phr_("숨긴 항목 보기에서 고르세요."); tidy_lvl = 0; return; }
         a.t = A_TIDY; a.arg = 3; tidy_lvl = 0; return;
     }
-    if (mi >= 7) {   /* t798: 완전삭제 — 큐하치 작품 폴더(설정)를 지운다. 원본 이미지는 건드리지 않는다. mi 7 유지(세이브 남김) · 8 세이브·설정 백업 후 · 9 세이브까지 전부 */
+    if (mi >= 7) {   /* t798: 완전삭제 - 큐하치 작품 폴더(설정)를 지운다. 원본 이미지는 건드리지 않는다. mi 7 유지(세이브 남김) · 8 세이브·설정 백업 후 · 9 세이브까지 전부 */
         tidy_ids.clear(); for (int i : pk) tidy_ids.push_back(tidy_rows[i].id);
         const int dk = mi - 7;
         yn_open(S_TIDY, YN_TIDYDEL, dk == 2 ? phr_("tidy_del_all") : dk == 1 ? phr_("tidy_del_bak") : phr_("tidy_del_keep"), dk == 1 ? phr_("tidy_del_bakpath") : phr_("tidy_del_noimg"), std::string(phr_("tidy_count")) + ": " + std::to_string((int)tidy_ids.size()), dk);

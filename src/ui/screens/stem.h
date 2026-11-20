@@ -32,13 +32,13 @@ inline void Ui::d_stem(Canvas & c) {
             for (auto & k : cs) { cr.push_back(fit(k.name, 200) + "  " + std::to_string(k.n)); cc.push_back(k.gid.empty() ? GY : 0); }
             if (cr.empty()) { cr.push_back(phr_("(후보 없음)")); cc.push_back(GY); }
             rowlist(c, 336, 72, 276, 3, cr, sel, 24, &cc);
-            text(c, 340, 156, phr_("이름 옆 숫자는 일치한 실행 파일 이름 수"), CY, K);
-            if (sel >= 0 && sel < (int)cs.size() && cs[sel].gid.empty()) text(c, 340, 176, phr_("이 후보는 번호가 없어 고를 수 없습니다"), OR, K);
+            text(c, 340, 156, phr_("숫자=일치한 실행 파일 이름 수"), CY, K);
+            if (sel >= 0 && sel < (int)cs.size() && cs[sel].gid.empty()) text(c, 340, 176, phr_("번호가 없는 후보는 고를 수 없습니다"), OR, K);
         } else {
             text(c, 340, 68, phr_("후보 (일치 줄기 수)"), CY, K);
             for (size_t i = 0; i < cs.size() && i < 3; i++) text(c, 340, 92 + (int)i * 22, fit(cs[i].name, 230) + "  " + std::to_string(cs[i].n), i == 0 ? WH : GY, K);
             if (cs.empty()) text(c, 340, 92, phr_("(후보 없음)"), GY, K);
-            text(c, 340, 170, phr_("판 구분(한글판·원판)은 바꾸지 않습니다."), WH, K);
+            text(c, 340, 170, phr_("판 구분(한글판·원판)은 그대로"), WH, K);
         }
     }
     desc(c, 264, 64, { phr_("실행 파일 이름이 가장 비슷한 원판 후보입니다. 고르면 그 원판으로 기동 상태를 표시합니다."), phr_("저장 위치: 작품 폴더 game.ini 의 boot_gid 항목 (고르기 전에는 「미확인」).") });

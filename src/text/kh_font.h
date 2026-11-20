@@ -66,6 +66,7 @@ static bool jp_fx_load(const std::string & dir) {
 }
 static bool jp_cp_ok(uint32_t cp) {
     if (cp >= 0x4E00 && cp <= 0x9FFF) return true;
+    if (cp >= 0x3041 && cp <= 0x30FF && cp != 0x30FB) return true;   /* t858 (#1857): 가나는 한국어·영어 UI 에서도 일본어 글꼴(Shinonome)로 - 시트·KS 글꼴에는 가나 칸이 없다(한글이 찍힘) */
     if (!g_jp_on) return false;
     return (cp >= 0x3000 && cp <= 0x30FF) || (cp >= 0xFF01 && cp <= 0xFF5E);
 }
@@ -174,7 +175,9 @@ static uint32_t u8next(const char *& s) {
     if ((c & 0xF0) == 0xE0 && s[1] && s[2]) { uint32_t r = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F); s += 3; return r; }
     s++; return '?';
 }
-static int tw(const char * s) { int w = 0; for (;;) { uint32_t cp = u8next(s); if (!cp) break; w += cp < 0x80 ? 8 : 16; } return w; }
+static int g_menu_half = 8, g_menu_full = 16; static const int * g_menu_advp = NULL;   /* t855: M갈무리 계열은 영문 글자마다 폭이 다르다(시트 열 1 의 0행 잉크 수 = 글자 폭). NULL = 고정 폭 */
+   /* t852: 메뉴 글꼴 칸 폭(갈무리14 = 8/14 · 11 계열 = 8/11 · 옛 글꼴 8/16) — tw()·그리기가 같이 쓴다 */
+static int tw(const char * s) { int w = 0; for (;;) { uint32_t cp = u8next(s); if (!cp) break; w += cp < 0x80 ? ((g_menu_advp && cp >= 32 && cp < 127) ? g_menu_advp[cp] : g_menu_half) : g_menu_full; } return w; }
 static int tw(const std::string & s) { return tw(s.c_str()); }
 
 /* t48c2 (#641): 한글 낱자모(호환 자모 U+3131~U+3163) 글리프. 글꼴(FONTX2)에 완성형(가~힣)만 있고 낱자모가 없어서

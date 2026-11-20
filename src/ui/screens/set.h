@@ -4,29 +4,27 @@
 inline void Ui::d_set(Canvas & c) {
     titlebar(c, "");
     const bool wk = scope_lock && scope == 1;
-    rbox(c, 16, 24, 288, 224, WH, wk ? phr_("이 작품 설정") : phr_("set_title"));
-    std::vector<std::string> m = { phr_("set_screen"), phr_("set_sound"), phr_("set_control"), phr_("set_system") };
-    if (!wk) { m.push_back(phr_("set_shim")); m.push_back(phr_("진단")); m.push_back(phr_("조작 안내")); m.push_back(phr_("정보·라이선스")); }
-    items(c, 40, 42, 256, m, sel, wk ? 28 : 22);
+    rbox(c, 16, 24, 288, 224, WH, wk ? T("이 작품 설정") : phr_("set_title"));
+    std::vector<std::string> m = { phr_("디스플레이"), phr_("사운드"), phr_("조작"), phr_("실행환경") };   /* #1478: 허브 6줄 (앞 4줄 = 설정 페이지, 뒤 2줄 = 조작 안내·정보) */
+    if (!wk) { m.push_back(T("조작 안내")); m.push_back(T("정보·라이선스")); }
+    items(c, 40, 42, 256, m, sel, wk ? 28 : 28);
     info_box(c, 320, 24, 304, 224);
-    static const char * md[] = { "set_d0", "set_d1", "set_d2", "set_d3", "set_d4" };
-    static const char * md2[] = { "진동 시험·컨트롤러 정보·진단 로그를 만듭니다. (진동이 되네 안되네 할 때)", "조작 방법 안내를 봅니다.", "버전·라이선스를 봅니다." };
+    static const char * md[] = { "set_d0", "set_d1", "set_d2" };
+    static const char * md2[] = { T("조작 방법 안내를 봅니다."), T("버전·라이선스를 봅니다.") };
     const int si = sel >= 0 && sel < (int)m.size() ? sel : 0;
-    desc(c, 264, 64, { si >= 5 ? std::string(phr_(md2[si - 5])) : std::string(phr_(md[si])) });
-    if (wk) text(c, 344, 200, phr_("이 작품만 따로 정합니다. 바꾼 줄은 노랑 ● 입니다."), YL, K);
+    { std::vector<std::string> dl_ = { si == 3 ? std::string(phr_("실행환경: 부팅 시퀀스·언어·성능·글꼴·배속·진단")) : si >= 4 ? std::string(phr_(md2[si - 4])) : std::string(phr_(md[si])) }; if (wk) dl_.push_back(T("이 작품만 따로 정합니다. 바꾼 줄은 노랑 ● 입니다."));   /* t857 (#1858): 인포 칸 밖으로 넘치던 안내를 설명 칸 둘째 줄로 */
+      desc(c, 264, 64, dl_); }
     helpline(c, phr_("set_help"));
 }
 inline void Ui::k_set(UKey k, Act & a) {
     (void)a;
-    const bool wk = scope_lock && scope == 1; const int n = wk ? 4 : 8;
+    const bool wk = scope_lock && scope == 1; const int n = wk ? 4 : 6;
     if (k == UK_UP) sel = (sel + n - 1) % n;
     else if (k == UK_DOWN) sel = (sel + 1) % n;
     else if (k == UK_OK) {
         if (sel == 0) { scr_from = S_SET; enter_screen_cfg(); go(S_SCREEN, 0); }
-        else if (sel == 4) go(S_SHIM, 0);
-        else if (sel == 5) { diag_wait = 0; diag_ans.clear(); go(S_DIAG, 0); }
-        else if (sel == 6) go(S_HELP, 0);
-        else if (sel == 7) go(S_ABOUT, 0);
+        else if (sel == 4) go(S_HELP, 0);
+        else if (sel == 5) go(S_ABOUT, 0);
         else { conf_grp = sel; enter_conf_cfg(); go(S_CONF, 0); }
     } else if (k == UK_CANCEL) {
         conf_grp = 0;

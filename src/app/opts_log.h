@@ -91,7 +91,7 @@ static void gh_tr21_dump_vectors(const char * tag) {
             if ((sel & 4u) || (sel & ~7u) == 0) ok = false;
             else { PhysPt d = cpu.gdt.GetBase() + (PhysPt)(sel & ~7u); hp = (PhysPt)(((unsigned)mem_readw(d + 2)) | (((unsigned)mem_readb(d + 4)) << 16) | (((unsigned)mem_readb(d + 7)) << 24)) + off; }
         } else { off = (unsigned)mem_readw((PhysPt)v * 4u); sel = (unsigned)mem_readw((PhysPt)v * 4u + 2u); hp = ((PhysPt)sel << 4) + off; }
-        if (!ok) { gh_log("tr21 vec %02x: sel=%04x off=%08x (LDT/널 — 생략)", v, sel, off); continue; }
+        if (!ok) { gh_log("tr21 vec %02x: sel=%04x off=%08x (LDT/널 - 생략)", v, sel, off); continue; }
         char hx[128]; int n = 0; for (int i = 0; i < 24; i++) n += snprintf(hx + n, sizeof hx - n, "%02x ", (unsigned)mem_readb(hp + i));
         char wr[96] = ""; if (gApp.watch_off >= 0) {   /* 핸들러 앞 192바이트에서 DS:off 에 쓰는 명령(c6/c7/fe/ff 06 lo hi, 88/89 .. 06 lo hi) 찾기 */
             unsigned lo = (unsigned)gApp.watch_off & 0xff, hi = ((unsigned)gApp.watch_off >> 8) & 0xff; int m = 0;
@@ -179,7 +179,7 @@ static void gh_inj_run(const GInj & g, unsigned since) {
     if (c == "vaxis" && a.size() >= 3 && gApp.vj) { SDL_JoystickSetVirtualAxis(gApp.vj, atoi(a[1].c_str()), (Sint16)atoi(a[2].c_str())); return; }
     if (c == "vdetach") { if (gApp.vj) { SDL_JoystickClose(gApp.vj); gApp.vj = NULL; } if (gApp.vj_idx >= 0) { SDL_JoystickDetachVirtual(gApp.vj_idx); gApp.vj_idx = -1; } return; }
 #else
-    if (c.compare(0, 1, "v") == 0) { gh_log("INJECT %s: SDL < 2.0.14 — 가상 조이스틱 없음", c.c_str()); return; }
+    if (c.compare(0, 1, "v") == 0) { gh_log("INJECT %s: SDL < 2.0.14 - 가상 조이스틱 없음", c.c_str()); return; }
 #endif
     gh_log("INJECT 알 수 없는 명령 %s", c.c_str());
 }

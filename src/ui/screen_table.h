@@ -7,6 +7,7 @@
 #include "ui/screens/start.h"
 #include "ui/screens/extra.h"
 #include "ui/screens/diag.h"   /* 정리안: 설정 > 진단 */
+#include "ui/screens/lines.h"   /* t844: 줄 음량 */
 #include "ui/screens/about.h"
 #include "ui/screens/quit.h"
 #include "ui/screens/lang.h"
@@ -50,6 +51,7 @@
 #include "ui/screens/font.h"
 #include "ui/screens/osk.h"
 #include "ui/screens/exepick.h"
+#include "ui/screens/touch.h"   /* t859-K: S_TOUCH */
 
 inline void Ui::draw(Canvas & c) {
     c.shim = !in_game && g.shim != 0;
@@ -74,7 +76,7 @@ inline void Ui::draw_body(Canvas & c) {
     case S_SWAP: d_swap(c); break;
     case S_SWAPI: d_swapi(c); break;
     case S_ABOUT: d_about(c); break;
-    case S_DIAG: d_diag(c); break;
+    case S_DIAG: d_diag(c); break; case S_LINES: d_lines(c); break;
     case S_PICK: d_pick(c); break;
     case S_SCREEN: d_screen(c); break;
     case S_CONF: d_conf(c); break;
@@ -89,6 +91,7 @@ inline void Ui::draw_body(Canvas & c) {
     case S_OSK: d_osk(c); break; case S_NAME: d_name(c); break; case S_YN: d_yn(c, yn_ret); break; case S_HDDASK: d_hddask(c); break; case S_LANG: d_lang(c); break; case S_STEM: d_stem(c); break; case S_TIDY: d_tidy(c); break; case S_CHEAT: d_cheat(c); break; case S_VALS: d_vals(c); break;
     case S_EXEPICK: d_exepick(c); break;
     case S_PAD: d_pad(c); break; case S_PADKEY: d_padkey(c); break; case S_HOT: d_hot(c); break; case S_EXT: d_ext(c); break; case S_KBPICK: d_kbpick(c); break; case S_SET: d_set(c); break; case S_GKB: d_gkb(c); break;
+    case S_TOUCH: d_touch(c); break;   /* t859-K */
     case S_SHARE: d_share(c); break; case S_SHIMP: d_shimp(c); break; case S_SHPREV: d_shprev(c); break; case S_SHIM: d_shim(c); break;
     }
     {   /* kx-touch: 좌상단 ← (취소). 안드로이드는 항상, 윈도는 시험용으로 KH_BACKARROW 가 있을 때만. 메인 화면에는 그리지 않는다(게임 시작 팝업 = S_START 에는 그린다) */
@@ -133,7 +136,7 @@ inline Act Ui::key(UKey k) {
     case S_SWAP: k_swap(k, a); break;
     case S_SWAPI: k_swapi(k, a); break;
     case S_ABOUT: k_about(k, a); break;
-    case S_DIAG: k_diag(k, a); break;
+    case S_DIAG: k_diag(k, a); break; case S_LINES: k_lines(k, a); break;
     case S_EXTRA: k_extra(k, a); break;
     case S_HELP: k_help(k, a); break;
     case S_GAME: k_game(k, a); break;

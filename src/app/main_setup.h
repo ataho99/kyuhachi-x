@@ -92,7 +92,7 @@ static void gh_main_input_init(std::string & id) {
     kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_seed_assets(); kha_cfg_load(); for (size_t i_ = 0; i_ < gApp.ui_.gamefolder.size(); i_++) if (gApp.ui_.gamefolder[i_] == '\\') gApp.ui_.gamefolder[i_] = '/';   /* 1b-3: 안드 경로 구분자 통일 */ kha_perm_ask_once(); kha_lib_init();   /* t137 */
     gh_android_savedir();
     gh_android_fontdiag();
-    {   /* t734: 설정 > 시스템(전역) 줄 목록 한 줄 — 「CPU 코어」(28) 행이 목록에 들어가는지 확인용 */
+    {   /* t734: 설정 > 시스템(전역) 줄 목록 한 줄 - 「CPU 코어」(28) 행이 목록에 들어가는지 확인용 */
         ui::Ui & U = gApp.ui_; const int sg = U.conf_grp, ss = U.scope; U.conf_grp = 3; U.scope = 0; std::string rr; bool has28 = false;
         for (int id : U.rowids(ui::S_CONF)) { rr += std::to_string(id) + " "; if (id == 28) has28 = true; }
         U.conf_grp = sg; U.scope = ss;
@@ -119,7 +119,7 @@ static void gh_main_input_init(std::string & id) {
 }
 
 static void gh_main_tests(const std::string & exedir) {
-    if (gApp.titletest) {   /* t39 (T11): 작품 제목이 창 제목에서 120바이트를 넘는 수 — 새 방식 vs 옛 방식 */
+    if (gApp.titletest) {   /* t39 (T11): 작품 제목이 창 제목에서 120바이트를 넘는 수 - 새 방식 vs 옛 방식 */
         int over_new = 0, over_old = 0, nlong = 0;
         for (auto & g : gApp.ui_.games) {
             std::string tt = g.title; size_t old_len = tt.size() + sizeof(KH_WT_SUFFIX) - 1, new_len = old_len;
@@ -231,7 +231,7 @@ static void gh_main_select(std::string & id, const bool & ui_mode, const bool & 
 }
 
 static void gh_main_prep(std::string & id, const std::string & exedir) {
-    if (gApp.uitest_dir.empty() && !gh_any_font_bmp(NULL)) {   /* #500 (t52b #127 대체): 글꼴 BMP 0개여도 막지 않는다 — gh_default_font_path 가 빈 글꼴(res\.nofont.bin)을 건네고 화면 안내만 한다 */
+    if (gApp.uitest_dir.empty() && !gh_any_font_bmp(NULL)) {   /* #500 (t52b #127 대체): 글꼴 BMP 0개여도 막지 않는다 - gh_default_font_path 가 빈 글꼴(res\.nofont.bin)을 건네고 화면 안내만 한다 */
         gh_log("WARN: 글꼴 BMP(anex86 형식 524,350 B) 없음: %s\\res\\fonts -> 빈 글꼴로 시작", exedir.c_str());
 #if defined(__ANDROID__)
         gh_log("KHA fontdiag: fontdir=%s (E3R)", ov::g_kha_fontdir.empty() ? "(auto)" : ov::g_kha_fontdir.c_str());
@@ -243,9 +243,10 @@ static void gh_main_prep(std::string & id, const std::string & exedir) {
         if (!gApp.imgdir_given && !gApp.prof_.imgdir.empty()) gApp.imgdir = gApp.prof_.imgdir;
         { auto mk = gApp.prof_.kv.find("mouse"); gApp.mouse_game = (mk != gApp.prof_.kv.end() && !mk->second.empty() && mk->second != "none") || !gApp.amouse.empty() || (gApp.prof_.disk[0] == NULL && gApp.prof_.disk[1] == NULL && gApp.prof_.disk[2] == NULL && gApp.prof_.disk[3] == NULL && !gApp.prof_.cd.empty()); /* t38cd: 내장 DOS(CD 슬롯)는 마우스를 기본 연결 */ gh_log("mouse: 이 작품의 마우스 = %s (호스트 마우스 입력 %s)", mk == gApp.prof_.kv.end() ? "(미지정)" : mk->second.c_str(), gApp.mouse_game ? "연결" : "연결 안 함"); }
         gh_apply_profile_input(gApp.prof_);
+        gh_apply_touch_input(false);   /* t859-K: 부팅 때 저장된 터치 배치 로드(기본값이면 t858과 동일) */
         /* t36cd: 디스크는 없고 CD 슬롯만 있으면 내장 DOS(셸)로 부팅해 D: 에 CD 를 올린다. 디스크도 CD 도 있으면 CD 는 이 시험 빌드에서 무시(게스트 IDE 연결은 범위 밖) */
         gApp.dosfd = gApp.prof_.kv.count("dosfd") && gApp.prof_.kv["dosfd"] == "1" && (gApp.prof_.disk[0] != NULL || gApp.prof_.disk[1] != NULL) && gApp.prof_.disk[2] == NULL && gApp.prof_.disk[3] == NULL;
-        { /* 2d (#580): 시작을 막지 않는다 — 디스크 없음(B3)·부팅 드라이브에 디스크 없음(B4)·부트 섹터가 빈 데이터 디스크(B6)는 내장 DOS 프롬프트로 열고 화면 위에 이유 한 줄 */
+        { /* 2d (#580): 시작을 막지 않는다 - 디스크 없음(B3)·부팅 드라이브에 디스크 없음(B4)·부트 섹터가 빈 데이터 디스크(B6)는 내장 DOS 프롬프트로 열고 화면 위에 이유 한 줄 */
             bool nod_ = gApp.prof_.disk[0] == NULL && gApp.prof_.disk[1] == NULL && gApp.prof_.disk[2] == NULL && gApp.prof_.disk[3] == NULL; int bi_ = gApp.prof_.bootletter - 'A'; const char * why_ = NULL;
             if (nod_ && gApp.prof_.cd.empty()) why_ = phr_("dos_why_nodisk");
             else if (!nod_ && !gApp.dosfd && bi_ >= 0 && bi_ < 4 && gApp.prof_.disk[bi_] == NULL) why_ = phr_("dos_why_noboot");
@@ -253,13 +254,13 @@ static void gh_main_prep(std::string & id, const std::string & exedir) {
             gApp.dosmode = gApp.dosfd || (nod_ && !gApp.prof_.cd.empty()) || why_ != NULL;
             if (why_) { gApp.osd = why_; gApp.osd_until = SDL_GetTicks() + 12000u; gh_log("DOS prompt open: %s", why_); } }
         gApp.cdguest = !gApp.prof_.cd.empty() && !gApp.dosmode;   /* hanacd: 디스크+CD 공존 → 게스트 CD 장치로 장착(main_core.h) */
-        if (gApp.cdguest) gh_log("hanacd: 디스크와 cd 가 함께 있음 — cd 를 게스트 IDE CD 장치로 장착: %s", gApp.prof_.cd.c_str());
+        if (gApp.cdguest) gh_log(T("hanacd: 디스크와 cd 가 함께 있음 - cd 를 게스트 IDE CD 장치로 장착: %s"), gApp.prof_.cd.c_str());
         if (!gApp.dosmode && !gApp.prof_.disk[0] && !gApp.prof_.disk[1] && !gApp.prof_.disk[2] && !gApp.prof_.disk[3]) { gh_log("ERROR: 부팅 가능한 디스크 없음 (%s)", gApp.prof_.reason.c_str()); gh_msgbox(phr_("이 작품은 바로 부팅할 수 있는 디스크가 없습니다.\n(하드 설치 전용이거나 지원하지 않는 형식입니다)")); gh_finish(1); }
     }
     if (!gApp.headless) {
         gApp.ui_.cur = gApp.cur_game;
         { FILE * zf_ = fopen(gApp.cfgpath.c_str(), "rb"); int ex_ = zf_ != NULL; if (zf_) fclose(zf_); int cg_ = gApp.cur_game; bool ht_ = cg_ >= 0 && cg_ < (int)ui::Ui::MAXG && gApp.ui_.has_t[cg_]; gh_log("SETDIAG %s path=%s file=%d g[scan=%d mask=%d bleed=%d glow=%d curve=%d ratio=%d] cur_game=%d has_t=%d games=%d", "before-first-apply", gApp.cfgpath.c_str(), ex_, gApp.ui_.g.scan, gApp.ui_.g.mask, gApp.ui_.g.bleed, gApp.ui_.g.glow, gApp.ui_.g.curve, gApp.ui_.g.ratio, cg_, (int)ht_, (int)gApp.ui_.games.size()); } gh_apply_settings(gApp.ui_.effective(gApp.cur_game), false);
-        if (gApp.win) {   /* t39 (T11): 창 제목은 120바이트 이내 — 길면 short= 또는 자동 줄임 */
+        if (gApp.win) {   /* t39 (T11): 창 제목은 120바이트 이내 - 길면 short= 또는 자동 줄임 */
             SDL_SetWindowTitle(gApp.win, gh_window_title(gApp.ui_.games[gApp.cur_game], gApp.titlelegacy).c_str()); }
         if (!gApp.noboot && gApp.ui_.effective(gApp.cur_game).boot == 0) gh_boot_seq(false);   /* 짧은 헤더 + Now Loading (≤0.5초), 건너뛰기 가능 */
     }

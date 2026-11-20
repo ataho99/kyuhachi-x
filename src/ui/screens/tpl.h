@@ -12,7 +12,7 @@ inline void Ui::d_tpl(Canvas & c) {
         { phr_("원판 일본어 같은 변형을 만듭니다."), phr_("글꼴을 일본어로 정해 둡니다."), "", "" }, { phr_("하드디스크에 설치해야 하는 게임입니다."), phr_("빈 HDD 를 새 이름으로 만듭니다."), phr_("원본 이미지는 쓰기 대상에서 제외됩니다."), "" },
         { phr_("지금 실제로 쓰는 배치를 그대로 복사해"), phr_("새 항목으로 편집합니다."), "", "" }, { phr_("shr_d1"), phr_("shr_d2"), "", "" } };
     for (int i = 0; i < 4; i++) if (dd[sel < 10 ? sel : 0][i][0]) text(c, 344, 48 + i * 22, dd[sel < 10 ? sel : 0][i], i == 0 ? YL : WH, K);
-    text(c, 344, 160, phr_("이미지가 하나뿐이면 알맞은 칸에"), CY, K); text(c, 344, 180, phr_("자동으로 채웁니다."), CY, K);
+    { std::vector<std::string> w_ = wrap_text(std::string(phr_("이미지가 하나뿐이면 알맞은 칸에")) + " " + phr_("자동으로 채웁니다."), 280, 3); for (size_t i = 0; i < w_.size(); i++) text(c, 344, 160 + (int)i * 20, w_[i], CY, K); }   /* t851: 3언어 모두 칸 안에서 줄바꿈 */
     helpline(c, phr_("↑↓:선택, ○:만들기, ×:뒤로"));
 }
 inline void Ui::k_tpl(UKey k, Act & a) {

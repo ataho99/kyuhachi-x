@@ -58,13 +58,13 @@ static const Support g_table[] = {
     { F_HDI,   "HDI",       ".hdi",            "지원(imageDisk, HDD 헤더 0x1000)" },
     { F_NHD,   "NHD (T98HDDIMAGE.R0)", ".nhd", "지원(imageDisk)" },
     { F_RAWFD, "HDM/IMG/IMA/XDF/DSK(원시 FD)", ".hdm .img .ima .xdf .dsk", "지원(크기로 지오메트리: 1261568=2HD 77x2x8x1024, 737280=2DD, 1228800/1474560)" },
-    { F_RAWHD, "HDD/IMG(원시 HD)", ".hdd .img", "지원(imageDisk, 크기로 추정 — 지오메트리 불명확하면 game.ini 로 지정)" },
-    { F_D88,   "D88/D77/88D", ".d88 .d77 .88d .98d", "지원(r017 링크: imageDiskD88, 헤더로 판별 — 확장자 무관)" },
+    { F_RAWHD, "HDD/IMG(원시 HD)", ".hdd .img", "지원(imageDisk, 크기로 추정 - 지오메트리 불명확하면 game.ini 로 지정)" },
+    { F_D88,   "D88/D77/88D", ".d88 .d77 .88d .98d", "지원(r017 링크: imageDiskD88, 헤더로 판별 - 확장자 무관)" },
     { F_NFD0,  "NFD r0",    ".nfd",            "지원(r017 링크: imageDiskNFD revision 0)" },
     { F_NFD1,  "NFD r1",    ".nfd",            "지원(r017 링크: imageDiskNFD revision 1, DOSBox-X 도 부분 지원)" },
     { F_TD0,   "TD0 (TeleDisk)", ".td0",       "미링크(imagedisk_teledisk.cpp)" },
     { F_VHD,   "VHD",       ".vhd",            "미링크(bios_vhd.cpp)" },
-    { F_ISO,   "ISO/CD (CD001)", ".iso .cue .ccd .img", "CD — 부팅 불가/설치 전용(지시 #237)" },
+    { F_ISO,   "ISO/CD (CD001)", ".iso .cue .ccd .img", "CD - 부팅 불가/설치 전용(지시 #237)" },
     { F_DIM,   "DIM(X68k)", ".dim",            "PC-98 용 아님(참고)" },
 };
 inline const char * fmt_name(Fmt f) { for (auto & s : g_table) if (s.f == f) return s.name; return f == F_NOTIMG ? "이미지 아님" : "알 수 없음"; }
@@ -101,7 +101,7 @@ inline ImgInfo probe_raw(const std::string & path) {
     fseek(f, 0, SEEK_END); r.size = (uint64_t)ftell(f); fseek(f, 0, SEEK_SET);
     {   /* t40: .ccd/.cue = CD 시트. 머리를 읽지 않고 CD 로 표시 (같은 줄기의 .img/.bin 을 CD 로 묶는 근거) */
         std::string lb = r.base; for (auto & c : lb) c = (char)tolower((unsigned char)c); size_t dd = lb.find_last_of('.'); std::string ex = dd == std::string::npos ? std::string() : lb.substr(dd);
-        if (ex == ".sub") { fclose(f); r.fmt = F_NOTIMG; r.note = "CD 서브채널(.sub) — 이미지 아님"; return r; }   /* t40: 크기가 512 배수면 HDD 로 오인하던 것 (s046) */
+        if (ex == ".sub") { fclose(f); r.fmt = F_NOTIMG; r.note = "CD 서브채널(.sub) - 이미지 아님"; return r; }   /* t40: 크기가 512 배수면 HDD 로 오인하던 것 (s046) */
         if ((ex == ".ccd" || ex == ".cue") && r.size < (1u << 20)) { fclose(f); r.fmt = F_ISO; r.sheet = true; r.note = "CD 시트(" + ex + ")"; return r; }
     }
     std::vector<uint8_t> h(0x2000, 0); size_t hn = fread(&h[0], 1, h.size(), f); (void)hn;
@@ -181,7 +181,7 @@ inline void probe_sys(ImgInfo & r) {
 
 /* t43s (#369): 보조 — 이름 줄기(대문자), 도구(인터프리터·편집기류) 판별, D88 평탄화, FAT12 접근기(하위폴더) */
 inline std::string stem_up(const std::string & n) { std::string u; for (char c : n) u += (char)toupper((unsigned char)c); size_t d = u.find_last_of('.'); return d == std::string::npos ? u : u.substr(0, d); }
-inline bool is_tool_stem(const std::string & s) {   /* 인터프리터(BASIC98·N88 계열·GWBASIC)·BASIC 도구(B98*)·단순 도구 — 자동 실행 후보에서 뺀다 */
+inline bool is_tool_stem(const std::string & s) {   /* 인터프리터(BASIC98·N88 계열·GWBASIC)·BASIC 도구(B98*)·단순 도구 - 자동 실행 후보에서 뺀다 */
     static const char * const px[] = { "BASIC", "N88", "GWBAS", "B98", "MOUSE" };
     for (auto * k : px) { size_t n = std::string(k).size(); if (s.size() >= n && s.compare(0, n, k) == 0) return true; }
     static const char * const ex[] = { "XREF", "DEBUG", "MSD", "CMD" };
@@ -307,7 +307,7 @@ inline int inst_rank(const std::string & fn) {
 }
 inline std::string inst_pick(const std::vector<std::string> & l) { std::string b; int br = 999; int real = 0; for (auto & x : l) { std::string s = stem_up(x); if (!inst_rank(x) && !is_tool_stem(s) && s != "AUTOEXEC") real++; } for (auto & x : l) { int r = inst_rank(x); if (!r || (r >= 9 && real > 0)) continue; if (r < br) { br = r; b = x; } } return b; }   /* t43s: 약한 이름은 다른 실행 후보가 없을 때만 설치기로 */   /* 9 = SETUP · 10 = INST: 약한 이름 */
 /* 설치 대화 자동 응답(부팅 후 ms:키). 기본 = 설치 드라이브 「C」 → 기본 디렉터리 → 확인 Y. 설치기별 보정은 여기 표에 */
-inline std::string inst_keys(const std::string &) { return "8000:type=y~,14000:type=y~,21000:type=y~"; }   /* t43d: 설치 대상 기본 = A:(HDD) 라 드라이브 입력은 필요 없다 — 확인(Y) 대화만 응답 */
+inline std::string inst_keys(const std::string &) { return "8000:type=y~,14000:type=y~,21000:type=y~"; }   /* t43d: 설치 대상 기본 = A:(HDD) 라 드라이브 입력은 필요 없다 - 확인(Y) 대화만 응답 */
 
 /* t43n (#343): 루트 실행 후보(이름+크기) — dos_runlist 와 같은 걸음, 크기(바이트)를 같이 돌려준다 */
 struct RunEnt { std::string name; uint32_t size = 0; };
@@ -537,8 +537,8 @@ inline Profile auto_profile(std::vector<ImgInfo> imgs, const std::string & id) {
         return p;
     }
     if (!fd.empty()) {
-        { bool anyboot = false; for (auto * x : fd) if (x->boot_ok) anyboot = true;   /* t43j (#323 C4): 첫 섹터가 비었거나 전부 FF 인 디스크뿐 = 추가 시나리오·데이터 디스크만 든 세트 — 부팅시키지 않고 사유를 보인다 */
-          if (!anyboot) { p.reason = std::string(khtr::tr("부팅할 수 있는 디스크가 없음 — 첫 섹터가 비어 있거나 전부 FF 인 데이터 디스크뿐 (본편 디스크가 필요한 추가 디스크)")) + dupnote; return p; } }
+        { bool anyboot = false; for (auto * x : fd) if (x->boot_ok) anyboot = true;   /* t43j (#323 C4): 첫 섹터가 비었거나 전부 FF 인 디스크뿐 = 추가 시나리오·데이터 디스크만 든 세트 - 부팅시키지 않고 사유를 보인다 */
+          if (!anyboot) { p.reason = std::string(khtr::tr("부팅할 수 있는 디스크가 없음 - 첫 섹터가 비어 있거나 전부 FF 인 데이터 디스크뿐 (본편 디스크가 필요한 추가 디스크)")) + dupnote; return p; } }
         std::sort(fd.begin(), fd.end(), [](ImgInfo * a, ImgInfo * b) { int sa = sys_score(*a), sb = sys_score(*b); if (sa != sb) return sa > sb; return a->base < b->base; });
         /* B = A 와 같은 번호가 아닌 디스크 중 점수 최고. 같은 번호(설치 전/후 등)는 뒤로 */
         std::string an = disk_no(fd[0]->base);
@@ -548,13 +548,13 @@ inline Profile auto_profile(std::vector<ImgInfo> imgs, const std::string & id) {
         if (fd.size() >= 2) p.disk[1] = fd[1]->base;
         for (size_t k = 2; k < fd.size(); k++) p.swap.push_back(fd[k]->base);
         p.reason = khtr::fmt(khtr::tr("FD %d개 → 부팅 점수 최고 = A"), (int)fd.size()) + (fd[0]->has_sys ? khtr::tr("(DOS 시스템 디스크)") : "") + (fd.size() >= 2 ? std::string(", ") + khtr::tr("다음 = B") : std::string()) + (fd.size() > 2 ? std::string(", ") + khtr::tr("나머지 교체 목록") : std::string()) + dupnote;
-        if (fd[0]->nosys_boot) {   /* t43 (#315 A1): 부트섹터가 「시스템 없음」 — 이 디스크는 스스로 부팅하지 못한다 → 내장 DOS 에 A:/B: 로 장착하고 실행 파일을 찾는다 */
+        if (fd[0]->nosys_boot) {   /* t43 (#315 A1): 부트섹터가 「시스템 없음」 - 이 디스크는 스스로 부팅하지 못한다 → 내장 DOS 에 A:/B: 로 장착하고 실행 파일을 찾는다 */
             std::vector<std::string> ra = dos_runlist(*fd[0]), rb; if (fd.size() >= 2) rb = dos_runlist(*fd[1]);
             if (ra.empty() && rb.empty() && fd.size() > 2) {   /* t45x β: A·B 후보 0 이면 교체 목록(swap)에서 실행 파일이 든 첫 디스크를 B 로 올린다(정렬 순서 첫째) */
                 for (size_t k = 2; k < fd.size(); k++) { std::vector<std::string> rk = dos_runlist(*fd[k]); if (rk.empty()) continue; std::swap(fd[1], fd[k]); p.disk[1] = fd[1]->base; p.swap.clear(); for (size_t m = 2; m < fd.size(); m++) p.swap.push_back(fd[m]->base); rb = rk; p.reason += " → " + std::string(khtr::tr("swap 에서 실행 디스크 승격")) + ": " + fd[1]->base + "(t45x β)"; break; } }
             const std::vector<std::string> & use = !ra.empty() ? ra : rb; std::string j; for (auto & x : use) { if (!j.empty()) j += ","; j += x; }
             p.kv["dosfd"] = "1"; p.kv["dosdrv"] = fd.size() >= 2 && ra.empty() ? "b" : "a"; p.kv["dosrun"] = j;
-            {   /* t43n (#343): 실행 후보가 여럿이면 선택 규칙으로 하나 고른다 — dosrunsz = 이름:크기 목록, dospick = 고른 이름 */
+            {   /* t43n (#343): 실행 후보가 여럿이면 선택 규칙으로 하나 고른다 - dosrunsz = 이름:크기 목록, dospick = 고른 이름 */
                 const ImgInfo & ud = (!ra.empty() || fd.size() < 2) ? *fd[0] : *fd[1];   /* t43t: FD 1장이면 fd[1] 이 없다(범위 밖 접근 = 프로필 생성 중 크래시, rc=5) */ std::vector<RunEnt> ents = dos_runlist_sz(ud); std::string sz; for (auto & x : ents) { if (!sz.empty()) sz += ","; sz += x.name + ":" + std::to_string(x.size); }
                 p.kv["dosrunsz"] = sz; if (ents.size() > 1) { std::string pk = dos_pick(ents, ud.base); if (!pk.empty()) p.kv["dospick"] = pk; } }
             if (ra.empty() && rb.empty()) {   /* t43s R2: 루트에 실행이 없고 하위폴더(3개 이하)가 하나만 후보를 가지면 그 폴더로 들어가 실행. 모음 디스크(폴더 4개 이상)는 목록 유지 */
@@ -575,14 +575,14 @@ inline Profile auto_profile(std::vector<ImgInfo> imgs, const std::string & id) {
             {   /* t43c (#330 C1): 설치 프로그램이 있으면 C: = 작품별 호스트 폴더로 두고 설치기를 먼저 돌린다(설치 끝난 폴더는 실행 파일 탐지) */
                 std::string ia = inst_pick(ra), ib = inst_pick(rb);
                 if (!ia.empty() || !ib.empty()) { p.kv["doshdd"] = "1"; p.kv["dosinst"] = !ia.empty() ? ia : ib; p.kv["dosinstdrv"] = !ia.empty() ? "a" : "b"; p.kv["bootkeys"] = inst_keys(p.kv["dosinst"]);
-                    {   /* t43d: BAT 설치기가 %1·%2 를 쓰면 인자를 준다 — 둘이면 「설치기 FD 드라이브 C」, 하나면 「C」 (설치 대상 = C:) */
+                    {   /* t43d: BAT 설치기가 %1·%2 를 쓰면 인자를 준다 - 둘이면 「설치기 FD 드라이브 C」, 하나면 「C」 (설치 대상 = C:) */
                         const std::string & in = p.kv["dosinst"]; const ImgInfo & src = (!ia.empty() || fd.size() < 2) ? *fd[0] : *fd[1];
                         if (in.size() > 4 && (in.substr(in.size() - 4) == ".EXE" || in.substr(in.size() - 4) == ".COM") && in.compare(0, 7, "INSTALL") == 0) { p.kv["dosinstargs"] = "@H:"; p.kv["bootkeys"] = "9000:type=y~,16000:type=y~"; }   /* t43f: INSTALL.EXE 류는 「INSTALL A:」(설치 대상 드라이브)가 사용법 */
                         else if (in.size() > 4 && in.substr(in.size() - 4) == ".BAT") { std::string t = dos_readfile(src, in); std::string tn; for (char c : t) if (c != ' ') tn += c; bool a2 = (t.find("%2") != std::string::npos && t.find("\"%2\"") == std::string::npos) || tn.find("\"%2\"==\"\"") != std::string::npos, a1 = t.find("%1") != std::string::npos;
                             if (a2) { p.kv["dosinstargs"] = "@F @H"; p.kv["bootkeys"] = "9000:type=y~,16000:type=y~"; } else if (a1) { p.kv["dosinstargs"] = "@H:"; p.kv["bootkeys"] = "9000:type=y~,16000:type=y~"; } }
                     } }
             }
-            p.reason += " → " + std::string(khtr::tr("부트섹터에 DOS 시스템 없음: 내장 DOS 에 A: 장착")) + (j.empty() ? khtr::tr("(실행 파일 못 찾음 — 목록만)") : (use.size() == 1 ? khtr::tr("(실행 1개: 자동 실행)") : khtr::tr("(실행 여럿: 목록)")));
+            p.reason += " → " + std::string(khtr::tr("부트섹터에 DOS 시스템 없음: 내장 DOS 에 A: 장착")) + (j.empty() ? khtr::tr("(실행 파일 못 찾음 - 목록만)") : (use.size() == 1 ? khtr::tr("(실행 1개: 자동 실행)") : khtr::tr("(실행 여럿: 목록)")));
         }
         return p;
     }
@@ -630,7 +630,7 @@ inline std::vector<std::string> split_list(const std::string & s, char sep = ','
    swap=a.fdi,b.fdi
    cycles=3000         font=gensei_np2kai_font.bmp   extra=<dosbox conf 한 줄들 ; 로 구분>
    keys=15000:enter,17000:enter     (게임 부팅 후 자동 입력)
-   [override]          (전역 설정 위에 얹는 작품별 값 — 화면·소리·패드·배속·글꼴·cycles)
+   [override]          (전역 설정 위에 얹는 작품별 값 - 화면·소리·패드·배속·글꼴·cycles)
    ratio=0..2 shader=0..2 curve=0..10 scan=0..9 mask=0..3 bgm=0..8 se=0..8 pad=<표> boost=2..8 boostmode=0..2 font=… cycles=…
    [pad]               o=RETURN x=ESC sq=CAPS ...
    never_map=F10,STOP,HELP     (패드·단축키 배정 금지)
@@ -658,7 +658,7 @@ inline bool apply_ini_section(Profile & p, const std::map<std::string, std::stri
     if (g.find("ignore") != g.end()) p.ignore = split_list(get("ignore"));
     if (!get("install_required").empty()) p.install_required = get("install_required") == "1";
     if (!get("note").empty()) p.note = get("note");
-    for (const char * k : { "slot_rule", "cd_ide", "cd", "bootkeys", "autoexec", "entry", "next", "next_label", "dosmode", "cycles", "font", "font_kind", "extra", "keys", "never_map", "mouse", "joystick", "sound", "order", "label_a", "label_b", "label_c", "label_d", "container_sha1", "demo", "label_demo", "company", "year", "genre", "patch", "devices", "auto", "grade", "judge", "metasrc", "srcdir", "nk_gid", "block", "jshort", "nk_flags", "nk_media", "sig", "auto_note", "curated", "label", "hide", "tpl", "base", "lang", "variant_of", "variant_label", "install", "hdd_mb", "hdd_name", "font_file", "swap_first", "entry_order", "short", "font_group", "fav_note", "dosexe", "dosargs", "slowcpu", "evdiv" }) if (g.find(k) != g.end()) p.kv[k] = get(k);
+    for (const char * k : { "slot_rule", "cd_ide", "cd", "bootkeys", "autoexec", "entry", "next", "next_label", "dosmode", "cycles", "font", "font_kind", "extra", "keys", "never_map", "mouse", "joystick", "sound", "order", "label_a", "label_b", "label_c", "label_d", "container_sha1", "demo", "label_demo", "company", "year", "genre", "patch", "devices", "auto", "grade", "judge", "metasrc", "srcdir", "nk_gid", "block", "jshort", "nk_flags", "nk_media", "sig", "auto_note", "curated", "label", "hide", "tpl", "base", "lang", "variant_of", "variant_label", "install", "hdd_mb", "hdd_name", "font_file", "swap_first", "entry_order", "short", "font_group", "fav_note", "dosexe", "dosargs", "dosdev", "cdletter", "slowcpu", "evdiv", "linekey", "linegain" }) if (g.find(k) != g.end()) p.kv[k] = get(k);
     { auto c = p.kv.find("cd"); if (c != p.kv.end() && c->second == "-") p.kv.erase(c); }
     return any;
 }
@@ -772,7 +772,7 @@ inline Profile resolve(const std::string & dir, const std::vector<ImgInfo> & img
             if (ui.count("pad")) for (auto & kv : ui["pad"]) p.pad[kv.first] = kv.second;
             st.step(p, "user.ini");
         }
-        p.kv.erase("entry");   /* 「entry」 는 이름 지정용 키 — 결과에는 entry_name 만 남긴다 */
+        p.kv.erase("entry");   /* 「entry」 는 이름 지정용 키 - 결과에는 entry_name 만 남긴다 */
     }
     // disk/swap/ignore 값이 sha1(40 hex) 이면 해시가 같은 이미지의 파일 이름으로 바꾼다
     auto fix = [&](std::string & v) { if (v.size() == 40) for (auto & im : imgs) if (im.sha1 == v) { v = im.base; break; } };
@@ -787,7 +787,7 @@ inline Profile resolve(const std::string & dir, const std::vector<ImgInfo> & img
         /* t44a (#494): 사용자 「언어」(lang=ko/jp)는 저장된 font_kind 보다 먼저 본다 — font= 가 없을 때만. 자동 감지는 lang 이 비고 font_kind 도 비었을 때의 기본값 */
         if (!hf) { std::string l0 = p.kv.count("lang") ? p.kv["lang"] : std::string(); if (l0 == "jp") { p.kv["font_kind"] = "jp"; p.kv["font_kind_src"] = "user"; } else if (l0 == "ko") { p.kv["font_kind"] = "kr"; p.kv["font_kind_src"] = "user"; }
           else if (!hk) { if (lg == "ko") { p.kv["font_kind"] = "kr"; p.kv["font_kind_src"] = "list"; }
-          else if (l0.empty() && (p.kv.count("dosfd") || p.src == "자동" || (p.kv.count("sha1s") && !p.kv.count("dbid")))) { p.kv["font_kind"] = "jp"; p.kv["font_kind_src"] = "auto"; } } }   /* t43c (#330-2): 자동·자동등록 + lang 미지정 + 한글 증거 없음 = 일본어 원판 → jp_default */   /* t39ui3: lang 이 명시되지 않은 항목은 옛 동작(번들 한글 글꼴) 유지 — 이관 전 데이터가 일본어 글꼴로 바뀌지 않게 */
+          else if (l0.empty() && (p.kv.count("dosfd") || p.src == "자동" || (p.kv.count("sha1s") && !p.kv.count("dbid")))) { p.kv["font_kind"] = "jp"; p.kv["font_kind_src"] = "auto"; } } }   /* t43c (#330-2): 자동·자동등록 + lang 미지정 + 한글 증거 없음 = 일본어 원판 → jp_default */   /* t39ui3: lang 이 명시되지 않은 항목은 옛 동작(번들 한글 글꼴) 유지 - 이관 전 데이터가 일본어 글꼴로 바뀌지 않게 */
     }
     st.step(p, "계산(언어·글꼴 기본, 해시→파일명)"); st.emit(p);   /* t48a (#614 ③) */
     return p;
@@ -883,6 +883,19 @@ inline bool set_pad_key(const std::string & dir, const std::string & key, const 
 inline void get_pad_keys(const std::string & dir, std::map<std::string, std::string> & out) {
     out.clear(); Ini ui; if (!ini_load(dir + "/user.ini", ui)) return; auto it = ui.find("pad"); if (it == ui.end()) return;
     for (auto & kv : it->second) if (kv.first.compare(0, 4, "btn_") == 0) out[kv.first] = kv.second;
+}
+/* t859-K: user.ini [touch] 한 줄 쓰기(빈 값 = 줄 지움). set_pad_key 쌍둥이, 구역만 [touch]. */
+inline bool set_touch_key(const std::string & dir, const std::string & key, const std::string & val) {
+    Ini ui; std::vector<std::string> uo; if (!ini_load(dir + "/user.ini", ui, &uo)) { ui.clear(); uo.clear(); }
+    if (!ui.count("touch")) { ui["touch"]; uo.push_back("touch"); }
+    if (val.empty()) ui["touch"].erase(key); else ui["touch"][key] = val;
+    if (ui["touch"].empty()) { ui.erase("touch"); uo.erase(std::remove(uo.begin(), uo.end(), "touch"), uo.end()); }
+    return ini_write(dir + "/user.ini", ui, uo, UINI_HEADER);
+}
+/* t859-K: user.ini [touch] 의 btn_touch_* 줄만 읽기 */
+inline void get_touch_keys(const std::string & dir, std::map<std::string, std::string> & out) {
+    out.clear(); Ini ui; if (!ini_load(dir + "/user.ini", ui)) return; auto it = ui.find("touch"); if (it == ui.end()) return;
+    for (auto & kv : it->second) if (kv.first.compare(0, 10, "btn_touch_") == 0) out[kv.first] = kv.second;
 }
 inline bool set_game_key(const std::string & dir, const std::string & key, const std::string & val) {
     Ini ui; std::vector<std::string> uo; if (!ini_load(dir + "/user.ini", ui, &uo)) { ui.clear(); uo.clear(); }

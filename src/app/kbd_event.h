@@ -1,4 +1,7 @@
 /* app/kbd_event.h -- S9b: keyboard overlay glue, key/game events. Moved unchanged from gensei_host.cpp lines 672-840 (as of t54t). Included in place; single translation unit. */
+/* E(t858): + ctlzone(kbm) 앞단. 기본 입력(키보드·게임패드) 경로는 무수정. */
+/* E2(t858): + K_TAB(12번째 칸) 전송 · 눌림 미러(ctlzone::g_down + kbov::g_dirty) · 그리기 가시 훅(gh_ctl_visible). 그 외 E 로직 무변경. */
+#include "input/kh_ctlzone.h"
 #if defined(__ANDROID__)
 /* t85: min key-hold table (key id < 256); gh_kbhold_tick() is called every frame from gfx_events.h */
 static unsigned gh_kbhold_down[256]; static bool gh_kbhold_pend[256]; static unsigned gh_kbhold_due[256];
@@ -41,14 +44,21 @@ static void gh_kb_log(const char * s) { gh_log("KBOV %s", s); }
 static void gh_ov_act(int a) {
     if (a == 5) { gh_osd(phr_("길게 누르세요"), 1500); gh_log("OVBTN load 짧게 누름 -> 동작 안 함 (「길게 누르세요」 표시)"); return; }
     if (!gApp.boot_tick) { gh_log("OVBTN act=%d 무시 (아직 부팅 전)", a); return; }
-    if (a == 1) { gApp.menu_req = true; gh_log("OVBTN menu -> g_menu_req"); }
+    if (a == 1) { gApp.menu_req = true;
+#if defined(__ANDROID__)
+        ov::g_helpdev = 2;   /* t862e: 오버레이 ≡ 버튼(터치)으로 연 메뉴는 열 때부터 안내 장치 = 터치 */
+#endif
+        gh_log("OVBTN menu -> g_menu_req"); }
     else if (a == 2) { std::string p = gh_slot_path(); bool ok = gh_do_save(p, false); gh_log("OVBTN save quick %s", ok ? "OK" : "FAIL"); gh_osd(ok ? phr_("퀵 슬롯에 저장했습니다") : phr_("저장에 실패했습니다"), 2000); }
     else if (a == 3) { std::string p = gh_slot_path(); bool ok = gh_do_load(p); gh_log("OVBTN load quick %s", ok ? "OK" : "FAIL"); gh_osd(ok ? phr_("퀵 슬롯을 불러왔습니다") : phr_("불러오기에 실패했습니다"), 2000); }
+    else if (a == 6) { ui::Ui & U_ = gApp.ui_; U_.g.touchbar = U_.g.touchbar ? 0 : 1; ui::settings_save(U_, gApp.cfgpath); kbov::g_dirty = true; gh_log("OVBTN tbar -> touchbar=%d (settings.ini 저장)", U_.g.touchbar); gh_osd(U_.g.touchbar ? phr_("터치 키 켜짐") : phr_("터치 키 꺼짐"), 1500); }   /* t860 #2068 */
+    else if (a == 7) { gApp.tset_req = true; gApp.menu_req = true; ov::g_helpdev = 2; gh_log("OVBTN tbar 길게 -> 터치 설정 창 요청 (g_menu_req)"); }
     else if (a == 4) { gApp.boost_tog = !gApp.boost_tog; gh_boost_update(); gh_log("OVBTN boost toggle -> tog=%d on=%d", (int)gApp.boost_tog, (int)gApp.boost_on); }
 }
 static bool gh_ov_boostlit(void) { return gApp.boost_on; }
+static bool gh_ov_tbarlit(void) { return gApp.ui_.g.touchbar != 0; }   /* t860 */
 static unsigned gh_ov_now(void) { return (unsigned)SDL_GetTicks(); }
-static bool g_kb_inited = (kbov::g_send = gh_kb_send, kbov::g_ibm_fn = gh_kb_ibm, kbov::g_caps_fn = gh_kb_caps, kbov::g_kana_fn = gh_kb_kana, kbov::g_logfn = gh_kb_log, kbov::g_act = gh_ov_act, kbov::g_boost_fn = gh_ov_boostlit, kbov::g_now = gh_ov_now, true);
+static bool g_kb_inited = (kbov::g_send = gh_kb_send, kbov::g_ibm_fn = gh_kb_ibm, kbov::g_caps_fn = gh_kb_caps, kbov::g_kana_fn = gh_kb_kana, kbov::g_logfn = gh_kb_log, kbov::g_act = gh_ov_act, kbov::g_boost_fn = gh_ov_boostlit, kbov::g_tbar_fn = gh_ov_tbarlit, kbov::g_now = gh_ov_now, true);
 static void gh_kb_cursor(void) {   /* 키보드가 보이는 동안은 커서를 보이게(전체화면 마우스 클릭용). 끄면 원래대로 */
     if (!gApp.win) return;
     if (kbov::g_vis) { if (gApp.kb_prevcur < 0) gApp.kb_prevcur = SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE ? 1 : 0; SDL_ShowCursor(SDL_ENABLE); }
@@ -93,12 +103,17 @@ static bool gh_kb_geom(int & ww, int & wh, int & dw, int & dh, int & rx, int & r
     if (ww <= 0 || wh <= 0 || dw <= 0 || dh <= 0) return false;
     gl_rect(dw, dh, gApp.fbw, gApp.fbh, gh_fit_eff(), rx, ry, rw, rh); return rw > 0 && rh > 0;
 }
+static bool gh_ov_geom(int & ww, int & wh, int & dw, int & dh, int & rx, int & ry, int & rw, int & rh) {   /* t848: 오버레이 틀(16:10 이어도 4:3 틀). 셰이더 적용 모드(kbshader)는 오버레이가 프레임에 구워져 그림과 같이 움직이므로 그림 사각형 그대로 */
+    if (!gh_kb_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
+    if (gh_fit_eff() == FIT_1610 && !gApp.kbshader) gl_ovrect(dw, dh, FIT_1610, rx, ry, rw, rh, rx, ry, rw, rh);
+    return rw > 0 && rh > 0;
+}
 static bool gh_kb_curved(void) { return (int)gApp.shader == (int)SH_CRT && (int)gApp.fit != (int)FIT_INT && gApp.curve > 0.0f && gApp.kbshader != 0; }   /* GL 스레드와 같은 조건: crt 셰이더 + 곡면 > 0 (정수배는 nearest 로 바뀌어 곡면 없음) */
 static void gh_kb_warp(double & u, double & v) {   /* 화면 uv(0..1) → 프레임 uv. pc98_crt_t42.glsl 의 warp() 와 같은 식 */
     double c = (double)gApp.curve, px = u * 2.0 - 1.0, py = v * 2.0 - 1.0; double nx = px * (1.0 + py * py * c), ny = py * (1.0 + px * px * c * 1.33); u = nx * 0.5 + 0.5; v = ny * 0.5 + 0.5;
 }
-static bool gh_kb_win2virt(int mx, int my, int & vx, int & vy) {
-    int ww, wh, dw, dh, rx, ry, rw, rh; if (!gh_kb_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
+static bool gh_kb_win2virt(int mx, int my, int & vx, int & vy) {   /* t848: 오버레이 틀 기준 */
+    int ww, wh, dw, dh, rx, ry, rw, rh; if (!gh_ov_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
     double u = ((double)mx * dw / ww - rx) / rw, v = ((double)my * dh / wh - ry) / rh;
     if (gh_kb_curved()) gh_kb_warp(u, v);   /* 곡면: 화면 위치 → 셰이더가 읽는 프레임 위치(오버레이도 같은 프레임에 그려져 같이 휜다) */
     vx = (int)(u * 640.0 + (u < 0 ? -0.5 : 0.5)); vy = (int)(v * 400.0 + (v < 0 ? -0.5 : 0.5)); return true;
@@ -112,7 +127,7 @@ static bool gh_menu_win2virt(int mx, int my, int & vx, int & vy) {   /* t48b: �
     vx = (int)(u * 640.0 + (u < 0 ? -0.5 : 0.5)); vy = (int)(v * 400.0 + (v < 0 ? -0.5 : 0.5)); if (gh_menu_sq()) vx = gh_menu_ux(vx); return true;
 }
 static bool gh_kb_virt2win(int vx, int vy, int & wx, int & wy) {   /* 시험 전용 역변환: 곡면이면 warp 의 역을 고정점 반복으로 푼다 */
-    int ww, wh, dw, dh, rx, ry, rw, rh; if (!gh_kb_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
+    int ww, wh, dw, dh, rx, ry, rw, rh; if (!gh_ov_geom(ww, wh, dw, dh, rx, ry, rw, rh)) return false;
     double qu = vx / 640.0, qv = vy / 400.0, u = qu, v = qv;
     if (gh_kb_curved()) { for (int it = 0; it < 40; it++) { double a = u, b = v; gh_kb_warp(a, b); u -= (a - qu); v -= (b - qv); } }
     wx = (int)((rx + u * rw) * ww / dw + 0.5); wy = (int)((ry + v * rh) * wh / dh + 0.5); return true;
@@ -135,6 +150,7 @@ static bool gh_kbd_event(const SDL_Event & e) {
     int vx = -1000, vy = -1000; if (!gh_kb_win2virt(mx, my, vx, vy) && !kbov::any_owned()) return false;
     int btn = (e.type == SDL_MOUSEMOTION || fin) ? SDL_BUTTON_LEFT : e.button.button;
     if (btn != SDL_BUTTON_LEFT) { bool in = kbov::in_ui(vx, vy); if (in && ph != 2) { gApp.kb_cons++; return true; } return false; }
+    { int bk_ = ctlzone::key_at(vx, vy); if (ph == 0 && bk_ >= 0 && ctlzone::show()) { if (kbov::in_ui(vx, vy)) gh_log("TAPOWNER 겹침 x=%d y=%d -> 터치 바 키 %d (오버레이 건너뜀)", vx, vy, bk_); return false; } }   /* t860 #2085: 바가 맨 위에 그려지므로 겹친 자리는 바가 받는다(한 번의 터치 = 한 곳) */
     bool c = kbov::pointer(0, ph, vx, vy);
     if (fin) { if (ph == 0) fown = c; static int fl = 0; if (ph == 0 && fl < 40) { fl++; gh_log("KHA ov finger x=%d y=%d v=(%d,%d) relmouse=%d -> %s (%d/40)", mx, my, vx, vy, (int)gApp.relmouse, c ? "overlay" : "passthrough", fl); } if (ph == 1) fown = fown && c; }
     if (ph != 2) { if (c) gApp.kb_cons++; else gApp.kb_pass++; }
@@ -149,6 +165,8 @@ static void gh_vpad_fire(int b, bool d) {
     else kh_bind_fire(b == vpad::B_O ? PB_EAST : b == vpad::B_X ? PB_SOUTH : b == vpad::B_SEL ? PB_BACK : PB_START, d, W[b]);
 }
 static bool g_vpad_inited = (vpad::g_fire = gh_vpad_fire, true);
+static bool gh_ov_padconn(void) { return !kh_pads.empty(); }   /* t848: 패드 연결 시 오버레이 숨김 */
+static bool g_ovpad_inited = (kbov::g_pad_fn = gh_ov_padconn, true);
 static bool gh_vpad_update(vpad::Geo & g, int & ww, int & wh, int & dw, int & dh) {   /* decides whether the pad is shown and active */
     bool ok = !(gApp.headless || !gApp.win || !gApp.use_gl || !gApp.boot_tick || gApp.menu_open || (gApp.loading && !gApp.noload));
     if (ok && vpad::g_mode == 0) ok = false;
@@ -168,7 +186,63 @@ static bool gh_vpad_update(vpad::Geo & g, int & ww, int & wh, int & dw, int & dh
     if (!ok) vpad::release_all();
     return ok;
 }
-static void gh_vpad_tick(void) { vpad::Geo g; int a = 0, b = 0, c = 0, d = 0; gh_vpad_update(g, a, b, c, d); }
+/* ---- t862a: 터치 배치 엔진 연결(창 좌표, 키보드 모드). 키 전송은 gh_ctl_fire(kh_touch[]) 를 나중에 tlay::g_fire 로 잇는다 */
+static void gh_tlay_paths(void) {   /* t862c: 배치 저장 파일(설정 폴더) · 공유 파일(안드로이드 /sdcard/Kyuhachi, 윈도 exe 폴더) */
+    std::string cp = std::string(gApp.cfgpath); size_t k = cp.find_last_of("/\\"); std::string dir = k == std::string::npos ? std::string("") : cp.substr(0, k + 1);
+    snprintf(tlay::g_path, sizeof tlay::g_path, "%stouchlay.ini", dir.c_str());
+    snprintf(tlay::g_expath2, sizeof tlay::g_expath2, "%stouchlay_share.ini", dir.c_str());
+#if defined(__ANDROID__)
+    snprintf(tlay::g_expath, sizeof tlay::g_expath, "/sdcard/Kyuhachi/touchlay_share.ini");
+#else
+    snprintf(tlay::g_expath, sizeof tlay::g_expath, "%s\\touchlay_share.ini", std::string(gApp.exedir).c_str());
+#endif
+}
+static bool gh_tlay_update(tlay::Geo & g, int & ww, int & wh, int & dw, int & dh) {
+    bool ok = !(gApp.headless || !gApp.win || !gApp.use_gl || !gApp.boot_tick || gApp.menu_open || (gApp.loading && !gApp.noload));
+    if (ok && gApp.ui_.g.touchbar == 0) ok = false;
+    if (ok && vpad::g_show) ok = false;   /* 기존 가상 패드(옆 띠)가 켜져 있으면 양보 */
+    if (ok && SDL_GetNumTouchDevices() <= 0) ok = false;
+    int rx = 0, ry = 0, rw = 0, rh = 0;
+    if (ok) ok = gh_kb_geom(ww, wh, dw, dh, rx, ry, rw, rh);
+    if (ok) { if (!tlay::g_path[0]) gh_tlay_paths(); tlay::g_curmode = TLAY_MODE(); if (dw != tlay::g_curw || dh != tlay::g_curh) tlay::load_layout(dw, dh); tlay::layout(dw, dh, TLAY_MODE(), TLAY_DIR(), g); ok = g.on; }
+    tlay::g_show = ok ? 1 : 0;
+    static int lastk = -1; int gk = ok ? (dw * 7 + dh * 13 + (TLAY_MODE() * 2 + TLAY_DIR()) * 29 + 1) : 0;
+    if (gk != lastk) { lastk = gk; if (ok) gh_log("TLAY geo dw=%d dh=%d dir=%d UP=(%d,%d) SPC=(%d,%d)", dw, dh, gApp.ui_.g.touchdir, g.r[tlay::T_UP].x, g.r[tlay::T_UP].y, g.r[tlay::T_SPACE].x, g.r[tlay::T_SPACE].y); else gh_log("TLAY hidden"); }
+    if (!ok) { tlay::release_all(); tlay::g_edit = 0; tlay::g_pick = 0; }
+    return ok;
+}
+static void gh_tlay_tick(void) { tlay::tick(SDL_GetTicks());
+    { static int la_ = -1; const int na_ = kbov::idle_a() * 256 / 110; if (na_ != la_) { la_ = na_; tlay::g_aa = na_; tlay::g_ver++; } }   /* t863: 오버레이 진하기 설정과 같이 */ tlay::Geo g; int a = 0, b = 0, c = 0, d = 0; const bool ok_ = gh_tlay_update(g, a, b, c, d);
+    tlay::g_stk_mouse = (ok_ && TLAY_MODE() == 1 && TLAY_DIR() == 1 && gApp.ui_.g.tstick) ? 1 : 0;   /* t862f: 스틱 = 마우스 */
+    static unsigned lt_ = 0; const unsigned nw_ = SDL_GetTicks(); unsigned dt_ = lt_ ? nw_ - lt_ : 16u; lt_ = nw_; if (dt_ > 50u) dt_ = 50u;
+    if (tlay::g_stk_mouse && tlay::g_stk_on) { float fx = tlay::g_stk_fx, fy = tlay::g_stk_fy; const float dz = 0.15f;
+        auto cv_ = [dz](float v) { float m = fabsf(v); if (m < dz) return 0.0f; m = (m - dz) / (1.0f - dz); m = m * m; return v < 0 ? -m : m; };   /* 데드존 + 제곱 곡선(작게 기울이면 정밀) */
+        const float sp = 520.0f * (gApp.ui_.g.tsens == 0 ? 0.6f : gApp.ui_.g.tsens == 2 ? 1.5f : 1.0f);   /* 최대 속도(가상 640 폭 픽셀/초) */
+        kh_vmouse_move_rel(cv_(fx) * sp * (float)dt_ / 1000.0f, cv_(fy) * sp * (float)dt_ / 1000.0f); } }
+static bool gh_tlay_event(const SDL_Event & e) {
+    tlay::Geo g; int ww = 0, wh = 0, dw = 0, dh = 0;
+    if (!gh_tlay_update(g, ww, wh, dw, dh)) return false;
+    long long id = -1; int ph = 0, x = 0, y = 0; bool echo = false;
+    if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERUP || e.type == SDL_FINGERMOTION) {
+        id = (long long)e.tfinger.fingerId; ph = e.type == SDL_FINGERDOWN ? 0 : e.type == SDL_FINGERUP ? 1 : 2;
+        x = (int)(e.tfinger.x * dw); y = (int)(e.tfinger.y * dh);
+    } else if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
+        if (e.button.button != SDL_BUTTON_LEFT) return false;
+        ph = e.type == SDL_MOUSEBUTTONDOWN ? 0 : 1; x = e.button.x * dw / ww; y = e.button.y * dh / wh; echo = e.button.which == SDL_TOUCH_MOUSEID;
+    } else if (e.type == SDL_MOUSEMOTION) {
+        ph = 2; x = e.motion.x * dw / ww; y = e.motion.y * dh / wh; echo = e.motion.which == SDL_TOUCH_MOUSEID;
+    } else return false;
+    if (echo) return tlay::hit(g, x, y) >= 0 || tlay::owned() || tlay::g_edit;   /* 손가락이 이미 처리한 터치의 마우스 에코는 삼킨다 */
+    bool wall = false;   /* 보이지 않는 벽: 오버레이 줄·옆 탭 위에서 시작한 터치는 오버레이가 받는다 */
+    if (ph == 0) { int vx = -1000, vy = -1000; if (gh_kb_win2virt(x * ww / dw, y * wh / dh, vx, vy) && kbov::in_ui(vx, vy)) wall = true; }
+    if (tlay::g_edit && tlay::g_pick == 2) {   /* t863: 화면 키보드로 키 고르는 중 — 키보드 위에서 시작한 터치는 키보드가 받는다 */
+        static long long own[4] = { -2, -2, -2, -2 }; int vx = -1000, vy = -1000;
+        for (int i = 0; i < 4; i++) if (own[i] == id) { if (ph == 1) own[i] = -2; return false; }
+        if (ph == 0 && gh_kb_win2virt(x * ww / dw, y * wh / dh, vx, vy) && kbov::in_panel(vx, vy)) { for (int i = 0; i < 4; i++) if (own[i] == -2) { own[i] = id; break; } return false; }
+    }
+    return tlay::pointer(g, TLAY_MODE(), TLAY_DIR(), dw, dh, id, ph, x, y, wall);
+}
+static void gh_vpad_tick(void) { vpad::Geo g; int a = 0, b = 0, c = 0, d = 0; gh_vpad_update(g, a, b, c, d); gh_tlay_tick(); }
 static bool gh_vpad_testpos(const char * nm, int & wx, int & wy) {   /* test only: window position of a pad button */
     static const char * N[vpad::NB] = { "UP", "DOWN", "LEFT", "RIGHT", "O", "X", "SEL", "START" };
     vpad::Geo g; int ww = 0, wh = 0, dw = 0, dh = 0; if (!gh_vpad_update(g, ww, wh, dw, dh)) return false;
@@ -178,6 +252,7 @@ static bool gh_vpad_testpos(const char * nm, int & wx, int & wy) {   /* test onl
     return false;
 }
 static bool gh_vpad_event(const SDL_Event & e) {
+    if (gh_tlay_event(e)) return true;   /* t862a: 새 배치 엔진 먼저 */
     vpad::Geo g; int ww = 0, wh = 0, dw = 0, dh = 0;
     if (!gh_vpad_update(g, ww, wh, dw, dh)) return false;
     long long id = -1; int ph = 0, x = 0, y = 0; bool echo = false;
@@ -194,7 +269,7 @@ static bool gh_vpad_event(const SDL_Event & e) {
     return vpad::pointer(g, id, ph, x, y);
 }
 /* 시험 전용(--kbshow/--kbhide/--kbclick/--kbbtn): SDL 마우스 이벤트를 창 좌표로 밀어 넣어 hit-test·표시 사각형 변환까지 통과시킨다(키 함수를 직접 부르지 않음) */
-static void gh_parse_kbclick(const char * a) {   /* "<시작초>:라벨,라벨,..." — 라벨은 키 표의 label, 같은 이름이 여럿이면 라벨#n(0부터), BTN = 토글 버튼, OUT = 영역 밖 */
+static void gh_parse_kbclick(const char * a) {   /* "<시작초>:라벨,라벨,..." - 라벨은 키 표의 label, 같은 이름이 여럿이면 라벨#n(0부터), BTN = 토글 버튼, OUT = 영역 밖 */
     gApp.kbt_click_ms = (unsigned)(atof(a) * 1000.0); const char * p = strchr(a, ':'); if (!p) return; p++;
     std::string cur; for (const char * q = p;; q++) { if (*q == ',' || !*q) { if (!cur.empty()) gApp.kbt_seq.push_back(cur); cur.clear(); if (!*q) break; } else cur += *q; }
 }
@@ -207,8 +282,8 @@ static void gh_kbtest_tick(unsigned since) {
     if (since < nextat) return;
     std::string lb = gApp.kbt_seq[ci]; bool hold = false; if (!lb.empty() && lb[lb.size() - 1] == '!') { hold = true; lb.erase(lb.size() - 1); } int vx = 320, vy = 100;   /* 라벨 끝 ! = 누른 채로 둠(뗌 없음) */
     int wx = 0, wy = 0; bool padl = false;
-    if (lb == "WINSHOT") { gh_winshot(); gh_log("KBTEST WINSHOT at %u ms", since); ci++; nextat = since + 300; return; }   // test: full window capture
-    bool lng = false; int ovs = -1; if (lb.size() >= 3 && lb[0] == 'O' && lb[1] == 'V' && lb[2] >= '1' && lb[2] <= '4') { ovs = lb[2] - '0'; lng = lb.size() > 3 && lb[3] == 'L'; }   /* t52f: OV1 메뉴 · OV2 저장 · OV3 불러오기 · OV4 배속, 끝 L = 0.9초 누름 */
+    if (lb == "WINSHOT") { gh_winshot(false); gh_log("KBTEST WINSHOT at %u ms", since); ci++; nextat = since + 300; return; }   // test: full window capture
+    bool lng = false; int ovs = -1; if (lb.size() >= 3 && lb[0] == 'O' && lb[1] == 'V' && lb[2] >= '1' && lb[2] <= '5') { ovs = lb[2] - '0'; lng = lb.size() > 3 && lb[3] == 'L'; }   /* t52f: OV1 메뉴 · OV2 저장 · OV3 불러오기 · OV4 배속, 끝 L = 0.9초 누름 */
     if (ovs >= 0) { vx = kbov::sx(ovs) + kbov::BW / 2; vy = kbov::BY + kbov::BH / 2; }
     else if (lb == "BTN") { vx = kbov::BX + kbov::BW / 2; vy = kbov::BY + kbov::BH / 2; }
     else if (lb.compare(0, 4, "PAD_") == 0) {
@@ -224,37 +299,129 @@ static void gh_kbtest_tick(unsigned since) {
     gh_log("KBTEST %s %s at %u ms win=(%d,%d) virt=(%d,%d) 소비=%u 통과=%u", lb.c_str(), phase == 0 ? "누름" : "뗌", since, wx, wy, vx, vy, gApp.kb_cons, gApp.kb_pass);
     if (phase == 0) { if (hold) { ci++; nextat = since + 300; } else { phase = 1; nextat = since + (lng ? 900 : 80); } } else { phase = 0; ci++; nextat = since + 300; }
 }
+/* ---- E(t858): kbm 오버레이 글루. 키 줄(L/R 버튼+핵심 키)은 여기서, 그 밖은 기존 gh_tpad_finger(트랙패드)로. */
+/* ---- E2(t858): 12번째 칸 K_TAB 전송 추가 · 눌림 미러(그리기 반전용) · 그리기 가시 훅. */
+static int gh_ctl_own[8]; static bool gh_ctl_own_init = false;   /* finger slot -> ctlzone KeyId+1 (0 = 빈칸) */
+static void gh_ctl_fire(int kid, bool down) {
+    if (kid >= 0 && kid < ctlzone::NKEYS) { ctlzone::g_down[kid] = down ? 1 : 0; kbov::g_dirty = true; }   /* E2: 눌림 반전용 미러(그리기 파일이 읽음) */
+    if (kid == ctlzone::BTN_L) { kh_vmouse_button(0, down); gh_log("CTL %s L", down ? "down" : "up"); return; }
+    if (kid == ctlzone::BTN_R) { kh_vmouse_button(1, down); gh_log("CTL %s R", down ? "down" : "up"); return; }
+    if (kid == ctlzone::K_MENU) { if (down) { gApp.menu_req = true;
+#if defined(__ANDROID__)
+        ov::g_helpdev = 2;   /* t862e: 터치 MENU 키도 같은 규칙 */
+#endif
+        gh_log("CTL menu -> g_menu_req"); } return; }
+    if (kid == ctlzone::K_KBD) { if (down) gh_kb_toggle(); return; }
+    /* t859-K: kid 0..7 = 터치 8칸. 배정표 kh_touch[] 조회(기본값 = 구 고정표 left/right/up/down/enter/esc/space/tab). */
+    if (kid >= 0 && kid < 8) { KBD_KEYS kk = kh_touch[kid]; if (kk == KBD_NONE) { gh_log("CTL key %d none, skip", kid); return; } KEYBOARD_AddKey(kk, down); gh_log("CTL key %d (%d) %s", kid, (int)kk, down ? "down" : "up"); }
+}
+/* E2: 그리기 시점 가시 조건. E-6(메뉴 열림時は 안 그림) + want_kbm 과 같은 조건의 읽기 전용 쌍둥이(손가락 이벤트를 소비하지 않음). */
+static void gh_tlay_fire(int k, bool d) { gh_ctl_fire(k < 8 ? k : (k == tlay::T_L ? ctlzone::BTN_L : ctlzone::BTN_R), d); }   /* t862b: 8 L 9 R */
+static bool g_tlay_inited = (tlay::g_fire = gh_tlay_fire, true);
+static const char * g_tlay_labv[160];
+static bool gh_tlay_initlab(void) { for (int i = 0; i < kbt::g_nkeys && i < 160; i++) g_tlay_labv[i] = kbt::g_keys[i].label; return true; }
+static void gh_tlay_firex(int idx, bool d) { if (idx >= 0 && idx < kbt::g_nkeys) { const int kv = kbov::kbd_of(idx); gh_log("TLAY extra key idx=%d %s %s", idx, kbt::g_keys[idx].label, d ? "down" : "up"); if (kv >= 0) KEYBOARD_AddKey((KBD_KEYS)kv, d); } }   /* t863: 추가 키 = 화면 키보드 표의 키 */
+static void gh_tlay_kbshow(bool v) { kbov::set_visible(v); gh_kb_cursor(); }
+static bool gh_tlay_pickfn(int k) { return tlay::pick_key(k); }
+static bool g_tlay_inited2 = (gh_tlay_initlab(), tlay::g_lab = g_tlay_labv, tlay::g_nlab = kbt::g_nkeys, tlay::g_firex = gh_tlay_firex, tlay::g_kbshow = gh_tlay_kbshow, kbov::g_pickfn = gh_tlay_pickfn, true);
+   /* t862a: 새 엔진 키 전송 = 기존 gh_ctl_fire(kh_touch[]) */
+static bool gh_ctl_visible(void) {
+    kbov::sync_ky();   /* t860 */
+    if (gApp.menu_open) return false;   /* 메뉴가 열려 있으면 안 그림(지시서 ①) */
+    int dw = 0, dh = 0; if (gApp.win) SDL_GL_GetDrawableSize(gApp.win, &dw, &dh);
+    return ctlzone::want_kbm(gApp.mouse_game, gApp.boot_tick != 0, gApp.menu_open, true /* t862b: 옛 하단 바 폐기 — tlay 가 대체 */, dw, dh);
+}
+static bool g_ctl_show_init = (ctlzone::g_show_fn = gh_ctl_visible, true);
+/* true = 소비. 메뉴 열림時は 손대지 않고 false(호출 쪽이 메뉴 경로로 흘려보냄 — E-6). */
+static bool gh_ctl_event(const SDL_Event & e) {
+    if (!gh_ctl_own_init) { for (int i = 0; i < 8; i++) gh_ctl_own[i] = 0; gh_ctl_own_init = true; }
+    if (gApp.menu_open) return false;   /* E-6 메뉴 우선 */
+    kbov::sync_ky();   /* t860 */
+    int dw = 0, dh = 0; if (gApp.win) SDL_GL_GetDrawableSize(gApp.win, &dw, &dh);
+    if (!ctlzone::want_kbm(gApp.mouse_game, gApp.boot_tick != 0, gApp.menu_open, true /* t862b: 옛 하단 바 폐기 — tlay 가 대체 */, dw, dh)) {
+        for (int i = 0; i < 8; i++) if (gh_ctl_own[i]) { gh_ctl_fire(gh_ctl_own[i] - 1, false); gh_ctl_own[i] = 0; }
+        return false;
+    }
+    long long fid = -1; int ph = -1;
+    if (e.type == SDL_FINGERDOWN) { ph = 0; fid = (long long)e.tfinger.fingerId; }
+    else if (e.type == SDL_FINGERUP) { ph = 1; fid = (long long)e.tfinger.fingerId; }
+    else if (e.type == SDL_FINGERMOTION) { ph = 2; fid = (long long)e.tfinger.fingerId; }
+    else return false;
+    /* fingerId↔slot 대응은 아래 정적 표로 (SDL_FingerID 64비트 그대로 보관) */
+    static long long s_id[8]; static bool s_has[8]; static bool s_init = false;
+    if (!s_init) { for (int i = 0; i < 8; i++) { s_id[i] = 0; s_has[i] = false; } s_init = true; }
+    int si = -1; for (int i = 0; i < 8; i++) if (s_has[i] && s_id[i] == fid) si = i;
+    if (ph == 0) {
+        int ww = 640, wh = 400; if (gApp.win) SDL_GetWindowSize(gApp.win, &ww, &wh);
+        int mx = (int)(e.tfinger.x * (float)ww), my = (int)(e.tfinger.y * (float)wh), vx = -1, vy = -1;
+        if (!gh_kb_win2virt(mx, my, vx, vy)) return false;
+        int k = ctlzone::key_at(vx, vy);
+        if (ctlzone::route(gApp.menu_open, true, k) != ctlzone::R_KEY) return false;   /* E-5 키 밖 = 터치패드(호출 쪽 gh_tpad_finger 로) */
+        if (si < 0) for (int i = 0; i < 8; i++) if (!s_has[i]) { si = i; break; }
+        if (si < 0) return true;
+        s_has[si] = true; s_id[si] = fid; gh_ctl_own[si] = k + 1; gh_ctl_fire(k, true); return true;
+    }
+    if (si < 0) return false;
+    if (ph == 2) {
+        int k = gh_ctl_own[si] - 1;
+        if (ctlzone::is_mouse_btn(k)) {   /* E-4/E-8①: 버튼 누른 채 끌기 = 그 버튼 드래그 */
+            int ww = 640, wh = 400; if (gApp.win) SDL_GetWindowSize(gApp.win, &ww, &wh);
+            float px = e.tfinger.dx * (float)ww * ctlzone::PAD_GAIN, py = e.tfinger.dy * (float)wh * ctlzone::PAD_GAIN;
+            kh_vmouse_move_rel(px, py);
+        }
+        return true;
+    }
+    { int k = gh_ctl_own[si] - 1; gh_ctl_fire(k, false); gh_ctl_own[si] = 0; s_has[si] = false; return true; }
+}
 /* 게임 중 이벤트(메뉴가 닫혀 있을 때). true = 소비 */
 static void gh_tp_btn(int btn, bool down) { SDL_Event e; SDL_zero(e); e.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP; e.button.button = (Uint8)btn; e.button.state = down ? SDL_PRESSED : SDL_RELEASED; e.button.x = -1; e.button.y = -1; SDL_PushEvent(&e); }
 static Uint32 SDLCALL gh_tp_tim(Uint32, void * p) { gh_tp_btn((int)(intptr_t)p, false); return 0; }
 static void gh_tp_click(int btn) { gh_tp_btn(btn, true); SDL_AddTimer(60, gh_tp_tim, (void *)(intptr_t)btn); }
-static bool gh_tpad_finger(const SDL_Event & e) {   /* kx-touch: 게임 마우스 트랙패드. 끌기=커서 이동 · 탭=왼쪽 · 두 손가락 탭=오른쪽 · 세 손가락 탭=가운데 · 0.2초 누르고 끌기=드래그 */
+static bool gh_tpad_finger(const SDL_Event & e) {   /* kx-touch+E: 게임 마우스 트랙패드. 끌기=커서 이동 · 탭=왼쪽 · 0.2초 누르고 끌기=드래그 · 두 손가락 이상 탭=무시(E: 우클릭은 R 버튼) */
     struct F { bool on; SDL_FingerID id; float x, y; };
-    static F fs[4]; static int maxn = 0; static unsigned t0 = 0; static float mv = 0; static bool drag = false;
+    static F fs[4]; static int maxn = 0; static unsigned t0 = 0; static float mv = 0; static bool drag = false; static bool lpm = false; static unsigned lmt = 0;   /* t862f: 길게 누름 방식 · 이전 이동 시각(가속) */
     int ww = 640, wh = 400; if (gApp.win) SDL_GetWindowSize(gApp.win, &ww, &wh); if (ww <= 0) ww = 640; if (wh <= 0) wh = 400;
     const unsigned now = SDL_GetTicks(); int n = 0; for (int i = 0; i < 4; i++) if (fs[i].on) n++;
     int si = -1; for (int i = 0; i < 4; i++) if (fs[i].on && fs[i].id == e.tfinger.fingerId) si = i;
     if (e.type == SDL_FINGERDOWN) {
         if (si < 0) for (int i = 0; i < 4; i++) if (!fs[i].on) { si = i; break; }
         if (si < 0) return true;
-        if (n == 0) { t0 = now; mv = 0; maxn = 0; drag = false; }
+        if (n == 0) { t0 = now; mv = 0; maxn = 0; drag = false; lpm = false; lmt = now; }
         fs[si].on = true; fs[si].id = e.tfinger.fingerId; fs[si].x = e.tfinger.x; fs[si].y = e.tfinger.y; n++; if (n > maxn) maxn = n; return true; }
     if (si < 0) return true;
     if (e.type == SDL_FINGERMOTION) {
         const float px = (e.tfinger.x - fs[si].x) * (float)ww, py = (e.tfinger.y - fs[si].y) * (float)wh; fs[si].x = e.tfinger.x; fs[si].y = e.tfinger.y;
         mv += fabsf(px) + fabsf(py);
         if (n == 1 && maxn == 1) {
-            if (!drag && now - t0 >= 200u && mv < 12.0f) { drag = true; gh_tp_btn(SDL_BUTTON_LEFT, true); gh_log("TPAD drag start"); }
-            if (mv >= 12.0f || drag) { const float sc = 1.5f * 640.0f / (float)ww; kh_vmouse_move_rel(px * sc, py * sc); } }
+            auto & ts_ = gApp.ui_.g; const float ks_ = ts_.tsens == 0 ? 0.7f : ts_.tsens == 2 ? 1.5f : 1.0f;   /* t862f: 감도 3단 */
+            float gain_ = 1.0f; { unsigned dtm_ = now - lmt; if (dtm_ < 1u) dtm_ = 1u; const float v_ = sqrtf(px * px + py * py) / (float)dtm_ * (1280.0f / (float)ww);   /* 창 px/ms (1280 폭 기준 환산) */
+                if (ts_.taccel > 0) { const float v0 = 0.4f, v1 = ts_.taccel == 2 ? 1.6f : 2.2f, gm = ts_.taccel == 2 ? 3.5f : 2.0f; float t_ = (v_ - v0) / (v1 - v0); if (t_ < 0.0f) t_ = 0.0f; if (t_ > 1.0f) t_ = 1.0f; gain_ = 1.0f + (gm - 1.0f) * t_; } }   /* 느리면 1배, 빠르면 커짐 */
+            lmt = now;
+            if (ts_.tmmode == 1) {   /* t862f: 길게 누름 방식 — 0.3초 가만히 누르면 이동 모드, 그때부터 끌면 커서 이동 */
+                if (!lpm && now - t0 >= 300u && mv < 12.0f) { lpm = true; gh_log("TPAD longpress move start"); }
+                if (lpm) { const float sc = 1.5f * 640.0f / (float)ww * ks_ * gain_; kh_vmouse_move_rel(px * sc, py * sc); } }
+            else if (!drag && now - t0 >= 200u && mv < 12.0f) { drag = true; gh_tp_btn(SDL_BUTTON_LEFT, true); gh_log("TPAD drag start"); }
+            if (ts_.tmmode != 1 && (mv >= 12.0f || drag)) { const float sc = 1.5f * 640.0f / (float)ww * ks_ * gain_; kh_vmouse_move_rel(px * sc, py * sc); } }
         return true; }
     fs[si].on = false; n--;
     if (n == 0) {
-        if (drag) { gh_tp_btn(SDL_BUTTON_LEFT, false); drag = false; gh_log("TPAD drag end"); }
-        else if (mv < 16.0f) { const int b = maxn >= 3 ? SDL_BUTTON_MIDDLE : maxn == 2 ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT; gh_log("TPAD click fingers=%d button=%d dt=%u", maxn, b, now - t0); gh_tp_click(b); } }
+        if (lpm) { lpm = false; gh_log("TPAD longpress move end"); }
+        else if (drag) { gh_tp_btn(SDL_BUTTON_LEFT, false); drag = false; gh_log("TPAD drag end"); }
+        else if (mv < 16.0f && maxn == 1) { const int b = SDL_BUTTON_LEFT; gh_log("TPAD click fingers=%d button=%d dt=%u", maxn, b, now - t0); gh_tp_click(b); }   /* E(§0 슨상 결정): 두 손가락 이상 탭은 1차 우클릭 없음 - R 버튼으로 */
+        else if (mv < 16.0f) { if (gApp.ui_.g.trclick && maxn == 2) { gh_log("TPAD two-finger tap -> right click"); gh_tp_click(SDL_BUTTON_RIGHT); } else gh_log("TPAD multitap fingers=%d ignored (R 버튼으로 우클릭)", maxn); } }
     return true; }
 static bool gh_game_event(const SDL_Event & e) {
-    if (gApp.ui_.g.tmouse == 0 && gApp.mouse_game && gApp.boot_tick && !gApp.menu_open) {   /* kx-touch: 트랙패드 — 손가락은 직접 처리하고 SDL 의 터치→마우스 흉내는 삼킨다 */
-        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERUP || e.type == SDL_FINGERMOTION) return gh_tpad_finger(e);
+    if (gApp.menu_open) return false;   /* E-6 메뉴 우선: 메뉴 열림時は 게임 입력이 손대지 않음(호출 쪽 GFX_Events 도 menu_open時は 안 부름) */
+    if (gApp.ui_.g.tmouse == 0 && gApp.mouse_game && gApp.boot_tick && !gApp.menu_open) {   /* kx-touch: 트랙패드 - 손가락은 직접 처리하고 SDL 의 터치→마우스 흉내는 삼킨다 */
+        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERUP || e.type == SDL_FINGERMOTION) {
+            if (gh_ctl_event(e)) return true;   /* E: 키 줄·L/R 버튼이 먼저(E-5), 밖은 터치패드(E-2) */
+            if (TLAY_MODE() == 1 && gApp.ui_.g.touchbar != 0) {   /* t862b/c: 키보드+마우스 = 마우스 영역은 화면 오른쪽 절반만(왼쪽에서 시작한 손가락은 무시) */
+                static SDL_FingerID rid[8]; static bool rok[8]; int ri = -1; for (int i = 0; i < 8; i++) if (rok[i] && rid[i] == e.tfinger.fingerId) ri = i;
+                if (e.type == SDL_FINGERDOWN && ri < 0 && e.tfinger.x < 0.5f) { for (int i = 0; i < 8; i++) if (!rok[i]) { rok[i] = true; rid[i] = e.tfinger.fingerId; break; } return true; }
+                if (ri >= 0) { if (e.type == SDL_FINGERUP) rok[ri] = false; return true; }
+            }
+            return gh_tpad_finger(e);
+        }
         if ((e.type == SDL_MOUSEMOTION && e.motion.which == SDL_TOUCH_MOUSEID) || ((e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) && e.button.which == SDL_TOUCH_MOUSEID)) return true; }
     switch (e.type) {
     case SDL_CONTROLLERBUTTONDOWN: case SDL_CONTROLLERBUTTONUP: {

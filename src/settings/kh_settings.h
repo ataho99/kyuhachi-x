@@ -16,6 +16,7 @@ struct Settings {
     int bleed = 0;      /* t48c: 이제 「RGB 번짐」 0..10 (컨버전스 어긋남 + 가로 번짐). 옛 「번짐」은 RGB 번짐 + 빛 번짐 같은 값으로 변환 */      /* t42(#311): 0..10 → 번짐(실물 RGB 모니터 결함: 컨버전스·가로 번짐·형광체 번짐) 0.0..1.0, 0 = 끔 */
     int bgm = 8;        /* 0..8 */
     int se = 8;         /* 0..8 */
+    int vo = 8;         /* t831: 음성·PCM(PCM86·ADPCM) 0..8 - 옛 설정은 읽을 때 옛 se 값을 이어받는다 */
     int device = 0;     /* 0 기본 장치 */
     int pad = 0;        /* 0 일본식 ○결정 */
     int bmult = 1;      /* 0..4 = x2 x3 x4 x6 x8 */
@@ -26,7 +27,7 @@ struct Settings {
     int cpuspd = 0;   /* t665: 0 표준 1 빠름 2 매우빠름 3 최대 */       /* FPS / speed display 0 off 1 on (ini key fpsdisp) */
     int stk_l = 0, stk_r = 2, dz_l = 0, dz_r = 0, stk_sp = 2;   /* #624: stick role 0 off 1 d-pad 2 mouse (left default off, right default mouse); deadzone level 0 default .. 3 largest; mouse speed 1 slow .. 3 fast */
     int bgfx = 1, bgspd = 0, bgbri = 1;   /* kx-bg: menu background effect (global only): 0 off 1 stars 2 twinkle 3 warp 4 noise 5-12 bars,sine,liss,tunnel,rain,speed,plasma,moire / speed / brightness */
-    int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) — phos_norm() moves it. 0 = all off */
+    int phos = 0;       /* t662 (#635): phosphor bundle: beam width (bits 0-1) | breathing << 4 | glow << 6 | persistence << 8 (3 bits, 0..5 = off/8/12/18/27/40 ms; #S1). Old files kept persistence in bits 2-3 (0..3 = off/40/90/160 ms) - phos_norm() moves it. 0 = all off */
     static int phos_norm(int v) {   /* #S1: clamp + move an old-format persistence (bits 2-3) to bits 8-10: old 40 -> 27 ms, old 90/160 -> 40 ms */
         v = v < 0 ? 0 : v > 2047 ? 2047 : v; int lg = (v >> 2) & 3;
         if (lg) { v &= ~(3 << 2); if (((v >> 8) & 7) == 0) v |= (lg == 1 ? 4 : 5) << 8; }
@@ -43,11 +44,20 @@ struct Settings {
     int ovpos_edge = 0;   /* E2R: 0 bottom 1 top 2 left 3 right */
     int ovpos_align = 0;  /* E2R: horiz 0 left 1 mid 2 right, vert 0 top 1 mid 2 bot */
     int ovpos_free = 0;   /* E2R: free pos 0..100 */
+    int ovsize = 1;       /* t848: 오버레이 크기 0 작게 1 보통 2 크게 3 아주 크게 (전역 전용) */
+    int ovalpha = 1;      /* t848: 오버레이 평소 진하기 0 연하게 1 보통 2 진하게 3 항상 진하게 (전역 전용) */
+    int touchmode = 1;    /* t862a: 터치 모드 0 키보드 1 키보드+마우스 (t864: 새 설치 기본 = 키보드+마우스) */
+    int touchdir = 0;     /* t862a: 방향 입력(키보드 모드) 0 십자 1 아날로그 */
+    int touchdir2 = 1;    /* t862b: 방향 입력(키보드+마우스 모드) — 기본 떠다니는 스틱 */
+    int touchbar = 1;     /* t860: 터치 키 표시 0 꺼짐 1 켜짐 (전역 전용, 패드 연결과 무관) */
+    int tstick = 0, tmmode = 0, taccel = 1, tsens = 1, trclick = 0;   /* t862f: 스틱 조종 0 방향키 1 마우스 · 마우스 방식 0 트랙패드 1 길게 누름 · 가속 0 끔 1 약 2 강 · 감도 0~2 · 두 손가락 탭 우클릭 */
+    int ovauto = 0;       /* t848: 패드 연결 시 오버레이 자동 숨김 0 끔 1 켬 (전역 전용) */
+    int vpos = 0;         /* t848: 16:10 일 때 게임 화면 세로 위치 0 가운데 1 위 2 아래 (전역 전용) */
     int padbtn = 2;     // virtual pad in the side bands: 0 off, 1 on, 2 auto (on with a touch screen and no real pad)
     int bsound = 2;     /* r017 배속 중 소리: 0 끔 1 빠르게(음높이 상승) 2 음높이 유지 */
-    int dsnd = 2;       /* #641: disk drive sound 0 off 1 seek only 2 on (t798: 슨상 결정 2026-11-14 — 기본 켬) */
+    int dsnd = 2;       /* #641: disk drive sound 0 off 1 seek only 2 on (t798: 슨상 결정 2026-11-14 - 기본 켬) */
     int dvol = 4;       /* #641: disk sound volume 0..8 */
-    int pwrseq = 2;   /* t807: 0 끔 1 짧게 2 길게(기본 길게 — 슨상 2026-11-15) */
+    int pwrseq = 2;   /* t807: 0 끔 1 짧게 2 길게(기본 길게 - 슨상 2026-11-15) */
     int hddhum = 1;   /* t673: 0 끔 1 게임 중만 2 메뉴 포함(기본 1) */
     int hvol = 3;     /* t667: 0..8(기본 3) */
     int vibe = 1;   /* t794: 진동 0 끔 1 켬(전역 전용) */
@@ -70,6 +80,7 @@ struct Settings {
     int boost_x() const { static const int x[5] = { 2, 3, 4, 6, 8 }; return x[bmult < 0 ? 0 : bmult > 4 ? 4 : bmult]; }
     int bs_gain256() const { return boost_x() >= 3 ? 205 : 256; }   /* x3 이상은 조금 낮춤(-2 dB) */
     float se_gain() const { return se / 8.0f; }
+    float vo_gain() const { return vo / 8.0f; }
     float bgm_gain() const { return bgm / 8.0f; }
 };
 /* t48c (#639 ①): 옛 설정(shader=1 crt 프리셋 + scan/mask/bleed) → 새 설정(필터 + 효과). 같은 그림이 나오게 옮긴다 */
@@ -83,7 +94,7 @@ inline void fx_finish(Settings & s) {
 
 /* ---- 설정 파일 (settings.ini) -- 전역 [global] + 작품별 [id] */
 static void ini_put(FILE * f, const Settings & s) {
-    fprintf(f, "fx=1\nratio=%d\nshader=%d\ncurve=%d\nbleed=%d\nglow=%d\nscan=%d\nmask=%d\nbgm=%d\nse=%d\ndevice=%d\npad=%d\nbmult=%d\nbmode=%d\nboot=%d\nbosd=%d\nbsound=%d\nkbbtn=%d\nkbshader=%d\novbtn=%d\npadbtn=%d\n", s.ratio, (s.shader == 2 ? 2 : 0), s.curve, s.bleed, s.glow, s.scan, s.mask, s.bgm, s.se, s.device, s.pad, s.bmult, s.bmode, s.boot, s.bosd, s.bsound, s.kbbtn, s.kbshader, s.ovbtn, s.padbtn);
+    fprintf(f, "fx=1\nratio=%d\nshader=%d\ncurve=%d\nbleed=%d\nglow=%d\nscan=%d\nmask=%d\nbgm=%d\nse=%d\ndevice=%d\npad=%d\nbmult=%d\nbmode=%d\nboot=%d\nbosd=%d\nbsound=%d\nkbbtn=%d\nkbshader=%d\novbtn=%d\npadbtn=%d\n", s.ratio, (((s.shader == 2 || s.shader == 3) ? s.shader : 0)), s.curve, s.bleed, s.glow, s.scan, s.mask, s.bgm, s.se, s.device, s.pad, s.bmult, s.bmode, s.boot, s.bosd, s.bsound, s.kbbtn, s.kbshader, s.ovbtn, s.padbtn);
     fprintf(f, "shim=%d\nshim_amp=%d\nshim_spd=%d\nshim_glow=%d\nshim_col=%d\n", s.shim, s.shim_amp, s.shim_spd, s.shim_glow, s.shim_col);
     fprintf(f, "sk_l=%d\nsk_r=%d\ndz_l=%d\ndz_r=%d\nsk_sp=%d\n", s.stk_l, s.stk_r, s.dz_l, s.dz_r, s.stk_sp);
     fprintf(f, "phos=%d\n", s.phos);
@@ -92,17 +103,21 @@ static void ini_put(FILE * f, const Settings & s) {
     fprintf(f, "pwrseq=%d\nhddhum=%d\nhvol=%d\n", s.pwrseq, s.hddhum, s.hvol);   /* t667 */
     fprintf(f, "vibe=%d\n", s.vibe);   /* t794 */
     fprintf(f, "vibe_pct=%d\n", s.vibe_pct);   /* t798 */
+    fprintf(f, "vo=%d\n", s.vo);   /* t831: 음성·PCM (se 바로 뒤가 아니어도 읽을 때 se→vo 복사 뒤에 덮어쓴다) */
     fprintf(f, "mclick=%d\n", s.mclick);   /* E1R */
     fprintf(f, "touchfx=%d\ntfxsz=%d\ntfxmouse=%d\ntmouse=%d\n", s.touchfx, s.tfxsz, s.tfxmouse, s.tmouse);   /* kx-touch */
     fprintf(f, "backpos=%d\n", s.backpos);   /* kx-touch */
     fprintf(f, "cpuspd=%d\n", s.cpuspd);   /* t665 */
     fprintf(f, "ovpos_mode=%d\novpos_edge=%d\n", s.ovpos_mode, s.ovpos_edge);   /* E2R */
     fprintf(f, "ovpos_align=%d\novpos_free=%d\n", s.ovpos_align, s.ovpos_free);   /* E2R */
+    fprintf(f, "ovsize=%d\novalpha=%d\novauto=%d\nvpos=%d\n", s.ovsize, s.ovalpha, s.ovauto, s.vpos);   /* t848 */
+    fprintf(f, "touchbar=%d\n", s.touchbar);   /* t860 */
+    fprintf(f, "touchmode=%d\n", s.touchmode); fprintf(f, "touchdir=%d\n", s.touchdir); fprintf(f, "touchdir2=%d\n", s.touchdir2); fprintf(f, "tstick=%d\n", s.tstick); fprintf(f, "tmmode=%d\n", s.tmmode); fprintf(f, "taccel=%d\n", s.taccel); fprintf(f, "tsens=%d\n", s.tsens); fprintf(f, "trclick=%d\n", s.trclick);   /* t862a/b */
     fprintf(f, "fpsdisp=%d\n", s.fpsd ? 1 : 0);   /* 0 도 쓴다: 작품 구역은 전역 값을 먼저 복사하므로 줄이 없으면 전역 켬이 새어 든다 */
 }
 static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587: 작품 구역에는 바꾼 줄만 쓴다 (비트 = Ui::fbit_of 순서) */
     if (m & (1u << 0)) fprintf(f, "ratio=%d\n", s.ratio);
-    if (m & (1u << 1)) fprintf(f, "shader=%d\n", s.shader == 2 ? 2 : 0);
+    if (m & (1u << 1)) fprintf(f, "shader=%d\n", ((s.shader == 2 || s.shader == 3) ? s.shader : 0));
     if (m & (1u << 2)) fprintf(f, "curve=%d\n", s.curve);
     if (m & (1u << 3)) fprintf(f, "bleed=%d\n", s.bleed);
     if (m & (1u << 4)) fprintf(f, "glow=%d\n", s.glow);
@@ -110,6 +125,7 @@ static void ini_put_masked(FILE * f, const Settings & s, unsigned m) {   /* #587
     if (m & (1u << 6)) fprintf(f, "mask=%d\n", s.mask);
     if (m & (1u << 7)) fprintf(f, "bgm=%d\n", s.bgm);
     if (m & (1u << 8)) fprintf(f, "se=%d\n", s.se);
+    if (m & (1u << 29)) fprintf(f, "vo=%d\n", s.vo);   /* t831 */
     if (m & (1u << 9)) fprintf(f, "pad=%d\n", s.pad);
     if (m & (1u << 10)) fprintf(f, "bmult=%d\n", s.bmult);
     if (m & (1u << 11)) fprintf(f, "bmode=%d\n", s.bmode);
@@ -161,13 +177,26 @@ static bool ini_set(Settings & s, const std::string & k, int v) {
     if (k == "dz_r") { s.dz_r = v < 0 ? 0 : v > 3 ? 3 : v; return true; }
     if (k == "fx") { s.lmode = false; }   /* t48c: 새 형식 표지. 이 구역의 화면 키는 새 범위로 읽는다 */
     else if (s.lmode && (k == "shader" || k == "curve" || k == "bleed" || k == "scan" || k == "mask")) { s.lseen = true; if (k == "shader") s.l_sh = v; else if (k == "curve") s.l_curve = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "bleed") s.l_bleed = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "scan") s.l_scan = v < 0 ? 0 : v > 10 ? 10 : v; else s.l_mask = v < 0 ? 0 : v > 3 ? 3 : v; }   /* 옛 형식: 구역이 끝날 때 fx_finish 가 옮긴다 */
-    else if (k == "ratio") s.ratio = v; else if (k == "shader") s.shader = (v == 2) ? 2 : 0; else if (k == "curve") s.curve = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "bleed") s.bleed = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "glow") s.glow = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "scan") s.scan = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "mask") s.mask = v < 0 ? 0 : v > 10 ? 10 : v;
-    else if (k == "bgm") s.bgm = v; else if (k == "se") s.se = v; else if (k == "device") s.device = v; else if (k == "pad") s.pad = v; else if (k == "bmult") s.bmult = v; else if (k == "bmode") s.bmode = v; else if (k == "boot") s.boot = v; else if (k == "bosd") s.bosd = v; else if (k == "bsound") s.bsound = v; else if (k == "kbbtn") s.kbbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "ovbtn") s.ovbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "padbtn") s.padbtn = v < 0 ? 0 : v > 2 ? 2 : v; else if (k == "kbshader") s.kbshader = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "fpsdisp") s.fpsd = v ? 1 : 0;
+    else if (k == "ratio") s.ratio = v; else if (k == "shader") s.shader = (v == 2 || v == 3) ? v : 0; else if (k == "curve") s.curve = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "bleed") s.bleed = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "glow") s.glow = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "scan") s.scan = v < 0 ? 0 : v > 10 ? 10 : v; else if (k == "mask") s.mask = v < 0 ? 0 : v > 10 ? 10 : v;
+    else if (k == "bgm") s.bgm = v; else if (k == "se") { s.se = v; s.vo = v; /* t831: 옛 파일 - vo 가 없으면 옛 se 를 이어받는다. vo= 줄이 뒤에 오면 덮어쓴다 */ } else if (k == "vo") s.vo = v < 0 ? 0 : v > 8 ? 8 : v; else if (k == "device") s.device = v; else if (k == "pad") s.pad = v; else if (k == "bmult") s.bmult = v; else if (k == "bmode") s.bmode = v; else if (k == "boot") s.boot = v; else if (k == "bosd") s.bosd = v; else if (k == "bsound") s.bsound = v; else if (k == "kbbtn") s.kbbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "ovbtn") s.ovbtn = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "padbtn") s.padbtn = v < 0 ? 0 : v > 2 ? 2 : v; else if (k == "kbshader") s.kbshader = v < 0 ? 0 : v > 1 ? 1 : v; else if (k == "fpsdisp") s.fpsd = v ? 1 : 0;
     else if (k == "cpuspd") s.cpuspd = v < 0 ? 0 : v > 3 ? 3 : v;
     if (k == "ovpos_mode") { s.ovpos_mode = v ? 1 : 0; return true; }   /* E2R */
     if (k == "ovpos_edge") { s.ovpos_edge = v < 0 ? 0 : v > 3 ? 3 : v; return true; }   /* E2R */
     if (k == "ovpos_align") { s.ovpos_align = v < 0 ? 0 : v > 2 ? 2 : v; return true; }   /* E2R */
     if (k == "ovpos_free") { s.ovpos_free = v < 0 ? 0 : v > 100 ? 100 : v; return true; }   /* E2R */
+    if (k == "ovsize") { s.ovsize = v < 0 ? 0 : v > 3 ? 3 : v; return true; }   /* t848 */
+    if (k == "ovalpha") { s.ovalpha = v < 0 ? 0 : v > 3 ? 3 : v; return true; }
+    if (k == "ovauto") { s.ovauto = v ? 1 : 0; return true; }
+    if (k == "touchbar") { s.touchbar = v ? 1 : 0; return true; }   /* t860 */
+    if (k == "touchmode") { s.touchmode = v ? 1 : 0; return true; }   /* t862a */
+    if (k == "touchdir") { s.touchdir = v ? 1 : 0; return true; }
+    if (k == "touchdir2") { s.touchdir2 = v ? 1 : 0; return true; }
+    if (k == "tstick") { s.tstick = v ? 1 : 0; return true; }   /* t862f */
+    if (k == "tmmode") { s.tmmode = v ? 1 : 0; return true; }
+    if (k == "taccel") { s.taccel = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
+    if (k == "tsens") { s.tsens = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
+    if (k == "trclick") { s.trclick = v ? 1 : 0; return true; }
+    if (k == "vpos") { s.vpos = v < 0 ? 0 : v > 2 ? 2 : v; return true; }
     else return false;
     return true;
 }

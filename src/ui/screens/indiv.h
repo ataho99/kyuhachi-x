@@ -7,6 +7,7 @@ inline unsigned Ui::indiv_bit(Scr s, int id) {
                                      1u << 12, 1u << 13, 1u << 15, 0u, 0u, 0u, 0u, 0u, 1u << 23, 1u << 24, 1u << 25,
                                      1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u }; /*E1R*/
     if (s == S_SCREEN) return (id >= 0 && id < 14) ? sc[id] : 0u;
+    if (s == S_CONF && id == 36) return 1u << 29;   /* t831: 음성·PCM */
     if (s == S_CONF) return (id >= 0 && id < 27) ? cf[id] : 0u; /*E1R*/
     return 0u;
 }

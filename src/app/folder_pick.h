@@ -119,7 +119,7 @@ static bool fp_explore(const char * title_u8, bool filemode, std::string & out, 
                 else if (r.kind == 1) { cur = fp_up(cur); sel = 0; rebuild(); fp_last_save(cur); }
                 else if (r.kind == 2) { cur = r.path; sel = 0; rebuild(); fp_last_save(cur); }
                 else if (r.kind == 6) toggle(r);   /* B2: A/탭 = 고르기·해제 */
-                else if (r.kind == 7) {   /* B2: 선택 등록 — 고른 게 없으면 아무 일 없음 */
+                else if (r.kind == 7) {   /* B2: 선택 등록 - 고른 게 없으면 아무 일 없음 */
                     if (chosen.empty()) continue;
                     if (files) { files->assign(chosen.begin(), chosen.end()); }
                     gh_log("FOLDER files picked: %d (first %s)", (int)chosen.size(), chosen.begin()->c_str());

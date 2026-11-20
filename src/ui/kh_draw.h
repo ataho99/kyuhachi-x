@@ -118,26 +118,51 @@ static void tri_right(Canvas & c, int x, int y, uint32_t fg, uint32_t bg) {
     if (bg != NOBG) c.rect(x, y, 16, 16, bg);
     for (int j = 2; j < 14; j++) { int half = j < 8 ? j - 1 : 14 - j; int len = half * 2; if (len > 12) len = 12; c.rect(x + 2, y + j, len > 0 ? len : 1, 1, fg); }
 }
+/* t851: 넘침 검사 — --uitest 의 ovf 토큰이 켜면, 클립 없이 그린 글자가 화면 밖 또는 지정 상자(ovf_box) 밖으로 나가면 센다 (FAIL 조건) */
+static bool g_ovf_on = false; static int g_ovf_n = 0; static bool g_ovf_box = false; static int g_ovf_x0 = 0, g_ovf_y0 = 0, g_ovf_x1 = 0, g_ovf_y1 = 0; static std::string g_ovf_first;
+static bool g_pos_on = false; static std::vector<std::string> g_pos;   /* t855 틀 고정 시험: 상자(B) · 라벨(L = 청록 글자) 시작 좌표 기록 */
+static void ovf_box(int x, int y, int w, int h) { if (g_pos_on) { char b_[64]; snprintf(b_, sizeof b_, "B %d %d %d %d", x, y, w, h); g_pos.push_back(b_); } g_ovf_box = true; g_ovf_x0 = x; g_ovf_y0 = y; g_ovf_x1 = x + w; g_ovf_y1 = y + h; }
+static void ovf_nobox() { g_ovf_box = false; }
+static void ovf_chk(const Canvas & c, int x, int y, int wd, const char * s0) {
+    if (c.clx1 < (1 << 29) || wd <= 0 || y < -1000) return;   /* y 가 -1000 아래 = 일부러 화면 밖에 둔 숨김 글 */   /* 클립이 걸린 글은 의도된 잘림(흐르기) */
+    bool bad = x < 0 || x + wd > c.w || y < 0 || y + 16 > c.h; if (g_ovf_box && (x < g_ovf_x0 || x + wd > g_ovf_x1 || y < g_ovf_y0 || y + 16 > g_ovf_y1)) bad = true;
+    if (bad) { g_ovf_n++; if (g_ovf_first.empty()) { char b[96]; snprintf(b, sizeof b, "x=%d y=%d w=%d ", x, y, wd); g_ovf_first = std::string(b) + (s0 ? s0 : ""); } }
+}
+/* t852: 메뉴 글꼴 시트(갈무리 등). 반각 = 0열 cp 행 왼쪽 8px, 전각 = 구·점 칸. 시트에 없는(빈) 칸은 옛 경로(FONTX2·점자·일본어 글꼴)로 넘어간다 */
+static const BmpFont * g_menu_bmp = NULL;
+static bool menu_cell(Canvas & c, int cx, int y, int col, int row, int w, uint32_t fg, uint32_t bg, bool need_ink) {
+    const BmpFont & f = *g_menu_bmp; if (need_ink) { bool any = false; for (int j = 0; j < 16 && !any; j++) for (int i = 0; i < w; i++) if (f.ink(col * 16 + i, row * 16 + j)) { any = true; break; } if (!any) return false; }
+    for (int j = 0; j < 16; j++) for (int i = 0; i < w; i++) {
+        if (f.ink(col * 16 + i, row * 16 + j)) { if (c.shim) shim_put(c, cx + i, y + j, fg, cx, y); else c.set(cx + i, y + j, fg); } else if (bg != NOBG) c.set(cx + i, y + j, bg);
+    }
+    return true;
+}
 /* 텍스트 그리기. 반각 8px, 전각 16px. 폭 반환. bg=NOBG 면 투명. */
 static int text(Canvas & c, int x, int y, const char * s, uint32_t fg, uint32_t bg = NOBG) {
-    int cx = x;
+    int cx = x; const char * s0_ = s; if (g_pos_on && fg == CY && x >= 256 && y < 300) { char b_[64]; snprintf(b_, sizeof b_, "L %d %d", x, y); g_pos.push_back(b_); }
     for (;;) {
         uint32_t cp = u8next(s); if (!cp) break;
-        if (cp < 0x80) { const uint8_t * g = g_sb.glyph(cp); if (g) blit_glyph(c, g, 8, 1, cx, y, fg, bg); else if (bg != NOBG) c.rect(cx, y, 8, 16, bg); cx += 8; continue; }
-        if (cp == 0x25B6) { tri_right(c, cx, y, fg, bg); cx += 16; continue; }
+        if (g_menu_bmp && g_menu_bmp->ok) {
+            if (cp < 0x80) { const int ha_ = (g_menu_advp && cp >= 32 && cp < 127) ? g_menu_advp[cp] : g_menu_half; if (cp >= 32 && cp < 127) { menu_cell(c, cx, y, 0, (int)cp, ha_, fg, bg, false); } else if (bg != NOBG) c.rect(cx, y, 8, 16, bg); cx += ha_; continue; }
+            const bool kjcp_ = (cp >= 0x3000 && cp <= 0x30FF) || (cp >= 0x3400 && cp <= 0x9FFF) || (cp >= 0xFF00 && cp <= 0xFFEF);   /* t857 (#1857): 가나·한자·전각은 시트(KS 배치)에서 구·점이 달라 한글 칸이 찍힌다(言語→밋몄) - 일본어 글꼴 경로로 */
+            int mku, mten; if (!kjcp_ && cp != 0x25B6 && cp != 0xB7 && cp != 0x2026 && !(cp >= 0x3131 && cp <= 0x3163) && bmp_cell(cp, mku, mten) && menu_cell(c, cx, y, mku, mten + 32, 16, fg, bg, true)) { cx += g_menu_full; continue; }
+        }
+        if (cp < 0x80) { const uint8_t * g = g_sb.glyph(cp); if (g) blit_glyph(c, g, 8, 1, cx, y, fg, bg); else if (bg != NOBG) c.rect(cx, y, 8, 16, bg); cx += g_menu_half; continue; }
+        if (cp == 0x25B6) { tri_right(c, cx, y, fg, bg); cx += g_menu_full; continue; }
         if (cp == 0xB7 || cp == 0x2026) {   /* r018: 글꼴에 없는 점 모양 글자(가운뎃점 · 말줄임표)는 직접 그린다 */
             if (bg != NOBG) c.rect(cx, y, 16, 16, bg);
             if (cp == 0xB7) c.rect(cx + 7, y + 7, 2, 2, fg); else { c.rect(cx + 2, y + 12, 2, 2, fg); c.rect(cx + 7, y + 12, 2, 2, fg); c.rect(cx + 12, y + 12, 2, 2, fg); }
-            cx += 16; continue;
+            cx += g_menu_full; continue;
         }
         if (cp >= 0x3131 && cp <= 0x3163) {   /* t48c2 (#641): hangul compat jamo are drawn in code (font has syllables only) */
-            const uint8_t * jg = jm::glyph(cp); if (jg) { blit_glyph(c, jg, 16, 2, cx, y, fg, bg); cx += 16; continue; }
+            const uint8_t * jg = jm::glyph(cp); if (jg) { blit_glyph(c, jg, 16, 2, cx, y, fg, bg); cx += g_menu_full; continue; }
         }
-        { uint8_t jb[32]; const uint8_t * jg = jp_glyph(cp, jb); if (jg) { blit_glyph(c, jg, 16, 2, cx, y, fg, bg); cx += 16; continue; } }   /* t52h (#134): 일본어 글꼴 */
+        { uint8_t jb[32]; const uint8_t * jg = jp_glyph(cp, jb); if (jg) { blit_glyph(c, jg, 16, 2, cx, y, fg, bg); cx += g_menu_full; continue; } }   /* t52h (#134): 일본어 글꼴 */
         unsigned code = cp2code(cp); const uint8_t * g = code ? g_db.glyph(code) : NULL;
         if (g) blit_glyph(c, g, 16, 2, cx, y, fg, bg); else if (bg != NOBG) c.rect(cx, y, 16, 16, bg);
-        cx += 16;
+        cx += g_menu_full;
     }
+    if (g_ovf_on) ovf_chk(c, x, y, cx - x, s0_);
     return cx - x;
 }
 static int text(Canvas & c, int x, int y, const std::string & s, uint32_t fg, uint32_t bg = NOBG) { return text(c, x, y, s.c_str(), fg, bg); }
@@ -171,7 +196,7 @@ static void rbox(Canvas & c, int x, int y, int w, int h, uint32_t col, const cha
 static void fillbox(Canvas & c, int x, int y, int w, int h, uint32_t bg, uint32_t col, const char * title) { c.rect(x, y, w, h, bg); rbox(c, x, y, w, h, col, title); }
 
 /* ---- 막대: 왼쪽 라벨 · 트랙(눈금) · 마커 · 오른쪽 라벨. v = 0..1 */
-static std::string g_row_val;   /* 정리안 A안: 지금 고른 줄의 값 글자(「저장함: 이름=값」 한 줄용) — choices/barv 가 고른 줄을 그릴 때 적어 둔다 */
+static std::string g_row_val;   /* 정리안 A안: 지금 고른 줄의 값 글자(「저장함: 이름=값」 한 줄용) - choices/barv 가 고른 줄을 그릴 때 적어 둔다 */
 static void barv(Canvas & c, int x, int y, int w, double v, const char * l, const char * r, uint32_t fg, bool sel) {
     if (sel) { char vb_[24]; snprintf(vb_, sizeof vb_, "%d%%", (int)(v * 100.0 + 0.5)); g_row_val = vb_; }
     int lw = tw(l) + 8, rw = tw(r) + 8, tx = x + lw, tl = w - lw - rw;
@@ -186,17 +211,20 @@ static void barv(Canvas & c, int x, int y, int w, double v, const char * l, cons
 /* 선택지 나열: 현재값 반전. 반환 = 끝 x */
 struct ChHit { int x, y, w, h, idx, n, cur; };   /* #638: option rects of the last drawn frame (touch) */
 static std::vector<ChHit> g_chit;
-static int g_tap_half = 0; static long long g_tap_ms = 0;   /* kx-touch: 값 줄 탭 — 오른쪽 절반 +1 / 왼쪽 절반 -1 (○ 로 들어온 탭 한 번만, 0.4초 안에서만 유효) */
+static int g_tap_half = 0; static long long g_tap_ms = 0;   /* kx-touch: 값 줄 탭 - 오른쪽 절반 +1 / 왼쪽 절반 -1 (○ 로 들어온 탭 한 번만, 0.4초 안에서만 유효) */
 static long long tap_now_ms() { return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 static int choices(Canvas & c, int x, int y, const char * const * arr, int n, int cur, uint32_t fg, bool rowsel) {
     if (rowsel && cur >= 0 && cur < n) g_row_val = arr[cur];
-    int cx = x;
+    int tot_ = 0, sw_ = 0; for (int i = 0; i < n; i++) { tot_ += tw(arr[i]) + 16; sw_ += tw(arr[i]); } const bool tight_ = (x + tot_ - 8 > 632); const int pad_ = tight_ ? 4 : 8, gap_ = tight_ ? 2 : 8, hp_ = pad_ / 2; int cx = x;   /* t855: 큰 글꼴·영어에서 선택지가 화면 밖으로 나가면 여백을 줄인다 */
+    const int room_ = 632 - x - n * pad_ - (n - 1) * gap_ + hp_;   /* 그래도 모자라면(15 굵게 영어) 글자 폭에 비례해 …로 줄인다 */
+    const bool cut_ = tight_ && sw_ > room_ && room_ > 0;
     for (int i = 0; i < n; i++) {
-        int w = tw(arr[i]) + 8;
-        { ChHit q = { cx - 4, y - 2, w, 20, i, n, cur }; g_chit.push_back(q); }
-        if (i == cur) { c.rect(cx - 4, y - 2, w, 20, WH); text(c, cx, y, arr[i], K, WH); }
-        else text(c, cx, y, arr[i], fg, K);
-        cx += w + 8;
+        const std::string s_ = cut_ ? fit(arr[i], std::max(16, tw(arr[i]) * room_ / sw_)) : std::string(arr[i]);
+        int w = tw(s_.c_str()) + pad_;
+        { ChHit q = { cx - hp_, y - 2, w, 20, i, n, cur }; g_chit.push_back(q); }
+        if (i == cur) { c.rect(cx - hp_, y - 2, w, 20, WH); text(c, cx, y, s_.c_str(), K, WH); }
+        else text(c, cx, y, s_.c_str(), fg, K);
+        cx += w + gap_;
     }
     return cx;
 }
@@ -232,9 +260,10 @@ static void fncells(Canvas & c, const char * const * it, int n) {
 /* ---- 맨 아랫줄(A안): 노란 글자 한 줄. t49a (#812): 마지막 입력 장치(패드/키보드)에 맞춰 기호↔키 이름을 이 한 곳에서 번역하고, 구분자를 줄이며, 폭을 넘으면 두 줄로 나눈다 */
 static int g_helpdev = 0;                       /* 0 = 패드 기호, 1 = 키보드 키 이름 (마지막 입력 장치; 마우스는 바꾸지 않음) */
 static bool g_help_osk = false;                 /* 한글 화면 키보드 화면(글자 키가 입력이라 별도 문구) */
-static bool g_help_two = false;                 /* v0.6.8: 한 번만 — 도움말 칸을 한 줄이어도 두 줄 자리(높이 32, 시작 y=c.h-32)에 그린다(작품 선택: 작품마다 줄 수가 달라 어긋나 보이던 것) */
+static bool g_help_two = false;                 /* v0.6.8: 한 번만 - 도움말 칸을 한 줄이어도 두 줄 자리(높이 32, 시작 y=c.h-32)에 그린다(작품 선택: 작품마다 줄 수가 달라 어긋나 보이던 것) */
+static bool g_help_fix2 = false;                /* t855 (#1728 틀 고정): 메인·작품 선택은 키 도움말을 항상 두 줄 자리(높이 32)에 그리고 오른쪽 안내(help_right)는 그리지 않는다 - 내용 길이로 칸이 움직이지 않게 */
 struct HelpKey { std::string sym, name; };
-static std::vector<HelpKey> g_helpkeys;         /* 호스트가 실제 키 매핑 표(gh_keytab)에서 채운다 — 표 한 곳 */
+static std::vector<HelpKey> g_helpkeys;         /* 호스트가 실제 키 매핑 표(gh_keytab)에서 채운다 - 표 한 곳 */
 typedef void (*HelpLogFn)(const std::string & text, int padw, int kbdw, int cellw, bool two);
 static HelpLogFn g_help_logfn = NULL;
 static std::string help_rep(std::string s, const std::string & from, const std::string & to) { size_t p = 0; while ((p = s.find(from, p)) != std::string::npos) { s.replace(p, from.size(), to); p += to.size(); } return s; }
@@ -263,6 +292,13 @@ static std::string help_kbd(std::string s) {
     for (auto & k : g_helpkeys) s = help_rep(s, k.sym + ":", k.name + ":");
     return s;
 }
+/* t862d (#167 A·B): 입력 장치 2 = 터치. 키 이름 대신 손가락 동작으로 안내(메뉴 터치 규칙: 위아래 끌기=선택, 좌우 끌기=값, 누르기=결정, ← 칸=뒤로, 팝업은 바깥 누르기=취소) */
+static std::string help_touch(const std::string & s0, bool osk) {
+    if (osk) return phr_("누르기:입력");
+    if (s0.find("\xE2\x86\x90\xE2\x86\x92:") != std::string::npos && s0.find("\xE2\x86\x91") != std::string::npos) return phr_("위아래 끌기:선택  좌우 끌기:값  누르기:결정  ←:뒤로");
+    if (s0.find("\xE2\x86\x90\xE2\x86\x92:") == 0) return phr_("누르기:선택  바깥 누르기:취소");
+    return phr_("끌기:선택  누르기:결정  ←:뒤로");
+}
 /* t50a (#873 안 C): 알림 문구의 장치 표식 {SEL} {○} {□} {△} {×} 를 마지막 입력 장치(패드/키보드)에 맞춰 바꾼다 — 도움말과 같은 표(g_helpkeys) 한 곳 */
 static std::string dkey(std::string s) {
     { const std::string sel = help_name("SEL"); s = help_rep(s, "{SEL}{로}", g_helpdev == 1 ? sel + (sel == "Tab" ? "으로" : "로") : std::string("SEL로")); }   /* t52a (#49): 「Tab」은 받침 ㅂ 이라 「으로」 */
@@ -277,29 +313,55 @@ static void fncells_boot(Canvas & c) {
 }
 /* t50a (#873 안 A): 이 도움말이 지금 한 줄인지 두 줄인지(helpline 과 같은 판정, g_help_osk 는 소비하지 않음) */
 static int help_rows(const Canvas & c, const std::string & s0) {
+    if (g_help_fix2) return 2;
     std::string sp = help_common(s0), sk = help_kbd(sp);
     if (g_help_osk && g_helpdev == 1) sk = phr_("키보드로 입력  Enter:완료  Esc:취소  Backspace:지움  한/영 키:한글/영문");
-    return tw(g_helpdev == 1 ? sk : kh_lbl(sp)) > c.w - 16 ? 2 : 1;
+    return tw(g_helpdev == 2 ? help_touch(s0, g_help_osk) : g_helpdev == 1 ? sk : kh_lbl(sp)) > c.w - 16 ? 2 : 1;
+}
+/* t855: 도움말이 한 줄일 때의 글줄 폭(두 줄이면 0) — 맨 아랫줄 오른쪽 안내(help_right)가 비켜 줄 자리를 계산 */
+static int help_wd(const Canvas & c, const std::string & s0) {
+    if (g_help_fix2) return 0;
+    std::string sp = help_common(s0), sk = help_kbd(sp); const int w = tw(g_helpdev == 2 ? help_touch(s0, g_help_osk) : g_helpdev == 1 ? sk : kh_lbl(sp)); return w > c.w - 16 ? 0 : w;
 }
 static void helpline(Canvas & c, const std::string & s0) {
     const int maxw = c.w - 16; const bool osk = g_help_osk; g_help_osk = false;
     std::string sp = help_common(s0), sk = help_kbd(sp);
     if (osk && g_helpdev == 1) sk = phr_("키보드로 입력  Enter:완료  Esc:취소  Backspace:지움  한/영 키:한글/영문");
-    std::string s = g_helpdev == 1 ? sk : kh_lbl(sp);
-    const bool f2 = g_help_two; g_help_two = false; bool two = f2 || tw(s) > maxw;
+    std::string s = g_helpdev == 2 ? help_touch(s0, osk) : g_helpdev == 1 ? sk : kh_lbl(sp);
+    const bool f2 = g_help_two; g_help_two = false; bool two = f2 || g_help_fix2 || tw(s) > maxw;
     if (g_help_logfn) g_help_logfn(s0, tw(sp), tw(sk), maxw, tw(sp) > maxw || tw(sk) > maxw);
     if (!two) { c.rect(0, c.h - 16, c.w, 16, K); text(c, 8, c.h - 16, s, YL, K); return; }
     const int maxw2 = c.w - 32;   /* t50a (안 D): 두 줄일 때는 틀(x=16) 안쪽에 맞춘다 */
-    std::string l1 = s, l2; size_t cut = std::string::npos, p = 0;   /* 구분 공백 두 칸에서 나눔: 윗줄이 들어가는 마지막 위치 */
-    if (tw(s) > maxw2) while ((p = s.find("  ", p)) != std::string::npos) { if (tw(s.substr(0, p)) <= maxw2) cut = p; else break; p += 2; }   /* 한 줄에 다 들어가면 나누지 않음(g_help_two) */
-    if (cut != std::string::npos) { l1 = s.substr(0, cut); l2 = s.substr(cut + 2); }
-    c.rect(0, c.h - 32, c.w, 32, K); text(c, 16, c.h - 32, fit(l1, maxw2), YL, K); if (!l2.empty()) text(c, 16, c.h - 16, fit(l2, maxw2), YL, K);
+    /* t851: 어절(구분 공백 두 칸) 단위로 두 줄에 채운다. 두 줄에도 안 들어가는 뒤쪽(덜 중요한) 항목은 생략. 한 항목이 한 줄보다 길면 글자 단위로 줄임(…) */
+    std::vector<std::string> tk; { size_t b = 0; for (;;) { size_t e = s.find("  ", b); tk.push_back(s.substr(b, e == std::string::npos ? std::string::npos : e - b)); if (e == std::string::npos) break; b = e + 2; } }
+    std::string l1, l2; size_t ti = 0;
+    for (int r = 0; r < 2; r++) { std::string & L = r ? l2 : l1; while (ti < tk.size()) { std::string t = fit(tk[ti], maxw2); std::string cand = L.empty() ? t : L + "  " + t; if (tw(cand) > maxw2) { if (L.empty()) { L = t; ti++; } break; } L = cand; ti++; } }
+    c.rect(0, c.h - 32, c.w, 32, K); if (g_ovf_on) ovf_box(0, c.h - 32, c.w, 32); text(c, 16, c.h - 32, l1, YL, K); if (!l2.empty()) text(c, 16, c.h - 16, l2, YL, K); ovf_nobox();
+}
+/* t855 (시안 v3): 맨 아랫줄 = 왼쪽 키 도움말(노랑) + 오른쪽 안내(주황, 남는 폭에 …로 자름). 키 도움말이 두 줄이면 그리지 않는다. helpline 직후에 부른다 */
+static void help_right(Canvas & c, const std::string & keys, const std::string & txt) {
+    const int kw = help_wd(c, keys); if (kw <= 0 || txt.empty()) return;
+    int x = 8 + kw + 20; if (x < 300) x = 300; const int w = c.w - 8 - x; if (w < 48) return;
+    text(c, x, c.h - 16, fit(txt, w), OR, K);
 }
 /* 뒤 화면 어둡게(확인 창 아래) */
 static void dim(Canvas & c) { for (int i = 0; i < c.w * c.h; i++) c.p[i] = (c.p[i] >> 1) & 0x7F7F7F; }
 static int choices_w(const char * const * arr, int n) { int w = 0; for (int i = 0; i < n; i++) w += tw(arr[i]) + 8 + (i ? 8 : 0); return w; }
 /* 폭을 넘으면 … 로 자른다 */
 static std::string fit(const std::string & s, int maxw) { if (tw(s) <= maxw) return s; std::string o; const char * p = s.c_str(); for (;;) { const char * q = p; uint32_t cp = u8next(q); if (!cp) break; std::string ch(p, q - p); if (tw(o + ch + "\xE2\x80\xA6") > maxw) break; o += ch; p = q; } return o + "\xE2\x80\xA6"; }
+/* t851: 글자 단위 줄바꿈 — 폭 maxw 로 끊고, maxl 줄을 넘으면 마지막 줄 끝을 … 로 줄인다. 줄 머리의 공백은 버린다. maxl<=0 이면 줄 수 제한 없음 */
+static std::vector<std::string> wrap_text(const std::string & s, int maxw, int maxl) {
+    std::vector<std::string> out; std::string cur; const char * p = s.c_str(); bool trunc = false;
+    for (;;) {
+        const char * q = p; uint32_t cp = u8next(q); if (!cp) break; std::string ch(p, q - p); p = q;
+        if (cur.empty() && cp == ' ') continue;
+        if (tw(cur + ch) > maxw && !cur.empty()) { out.push_back(cur); cur.clear(); if (maxl > 0 && (int)out.size() >= maxl) { trunc = true; break; } if (cp == ' ') continue; }
+        cur += ch;
+    }
+    if (!trunc && !cur.empty()) out.push_back(cur);
+    if (trunc && !out.empty()) { std::string & L = out.back(); const std::string el = "\xE2\x80\xA6"; while (!L.empty() && tw(L + el) > maxw) { size_t k = L.size() - 1; while (k > 0 && ((unsigned char)L[k] & 0xC0) == 0x80) k--; L.erase(k); } L += el; }
+    return out;
+}
 /* kx-ars: fit the tail instead of the head (file names: the differing part is at the end).
  * Titles and messages keep fit() (head matters); only file-name displays use this. */
 static std::string fit_tail(const std::string & s, int maxw) {

@@ -31,7 +31,7 @@ static std::string gh_workpath(const std::string & name) {
     std::string orig = gApp.imgdir + "\\" + name, dd = gh_disk_dir(); std::string base = name; { size_t p = base.find_last_of("\\/"); if (p != std::string::npos) base = base.substr(p + 1); }
     std::string wp = dd + "\\" + base;
     plat::FileInfo ao, aw; bool hasorig = plat::stat_file(orig, ao), hascopy = plat::stat_file(wp, aw);
-    if (hascopy) {   /* t601 (#544·#557): 사본 우선 — 원본이 없어도·바뀌어도 사본 그대로 구동하고 자동 재복사(= 게임 안 세이브 덮어쓰기)는 하지 않는다. 바뀜은 안내만 */
+    if (hascopy) {   /* t601 (#544·#557): 사본 우선 - 원본이 없어도·바뀌어도 사본 그대로 구동하고 자동 재복사(= 게임 안 세이브 덮어쓰기)는 하지 않는다. 바뀜은 안내만 */
         if (hasorig && (aw.size_hi != ao.size_hi || aw.size_lo != ao.size_lo)) { gh_log("origin size differs from work copy (kept copy): %s", orig.c_str()); gApp.note = phr_("원본 이미지가 바뀌었습니다 (사본으로 계속합니다)"); gApp.note_until = SDL_GetTicks() + 6000u; }
         return wp;
     }
@@ -129,7 +129,7 @@ static bool gh_boot_dos_kernel() {
     DispatchVMEvent(VM_EVENT_DOS_INIT_AT_PROMPT);
     gApp.boot_tick = SDL_GetTicks(); if (!gApp.boot_tick) gApp.boot_tick = 1; gApp.pic0 = PIC_Ticks;
     if (!gApp.headless) { int cg_ = gApp.cur_game; std::string o_; if (cg_ >= 0 && cg_ < (int)gApp.ui_.games.size()) for (auto & kv_ : gApp.ui_.games[cg_].ov) o_ += kv_.first + "=" + kv_.second + " "; gh_log("APPLYDIAG id=%s has_t=%d ov[%s] g.scan=%d glow=%d curve=%d", (cg_ >= 0 && cg_ < (int)gApp.ui_.games.size()) ? gApp.ui_.games[cg_].id.c_str() : "-", (int)(cg_ >= 0 && cg_ < (int)ui::Ui::MAXG && gApp.ui_.has_t[cg_]), o_.c_str(), gApp.ui_.g.scan, gApp.ui_.g.glow, gApp.ui_.g.curve); } gh_apply_settings(gApp.ui_.effective(gApp.cur_game), true);
-    gh_log("DOS boot: 프롬프트 도달 — 셸 실행");
+    gh_log("DOS boot: 프롬프트 도달 - 셸 실행");
     SHELL_Run();
     gh_log("DOS boot: 셸 종료");
     GH_QUITSET();

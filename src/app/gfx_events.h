@@ -72,13 +72,13 @@ void GFX_Events(void) {
         if (gApp.menu_req) { gApp.menu_req = false; gh_menu_run(); }
         if (gApp.boot_tick) {
             unsigned int since = now - gApp.boot_tick;
-            if (!gApp.bk_started) { gApp.bk_started = true; gApp.bk_last = now; gApp.bk_t = since; }   /* t47a: 자동 입력 시계 — 일시정지·메뉴 시간은 빼고 흐른다 */
+            if (!gApp.bk_started) { gApp.bk_started = true; gApp.bk_last = now; gApp.bk_t = since; }   /* t47a: 자동 입력 시계 - 일시정지·메뉴 시간은 빼고 흐른다 */
             { int dd = (int)(now - gApp.bk_last); if (dd > 0) { if (!gApp.bk_paused) gApp.bk_t += (unsigned)dd; gApp.bk_last = now; } }
             if (gApp.bkp_to && !gApp.bkp_a && since >= gApp.bkp_from) { gApp.bkp_a = true; gh_bk_pause_set(true, "CLI"); }
             if (gApp.bkp_to && !gApp.bkp_b && since >= gApp.bkp_to) { gApp.bkp_b = true; gh_bk_pause_set(false, "CLI"); }
 
             if (gApp.play_last && !gApp.menu_open) gApp.play_ms += now - gApp.play_last; gApp.play_last = now;
-            while (gApp.next_mouse < gApp.amouse.size() && since >= gApp.amouse[gApp.next_mouse].at_ms) {   /* r020: 시험용 자동 마우스 — SDL 이벤트로 밀어 넣어 실제 입력 경로(gh_game_event)를 지나게 한다 */
+            while (gApp.next_mouse < gApp.amouse.size() && since >= gApp.amouse[gApp.next_mouse].at_ms) {   /* r020: 시험용 자동 마우스 - SDL 이벤트로 밀어 넣어 실제 입력 경로(gh_game_event)를 지나게 한다 */
                 const GMouse & m = gApp.amouse[gApp.next_mouse]; SDL_Event se; memset(&se, 0, sizeof se);
                 if (m.act == 0 || m.dx != 0 || m.dy != 0) { se.type = SDL_MOUSEMOTION; se.motion.xrel = (int)m.dx; se.motion.yrel = (int)m.dy; SDL_PushEvent(&se); memset(&se, 0, sizeof se); }
                 if (m.act) { se.type = (m.act == 1 || m.act == 3) ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP; se.button.button = (m.act <= 2) ? SDL_BUTTON_LEFT : SDL_BUTTON_RIGHT; se.button.state = (m.act == 1 || m.act == 3) ? SDL_PRESSED : SDL_RELEASED; SDL_PushEvent(&se); }
@@ -92,7 +92,7 @@ void GFX_Events(void) {
             gh_kbhold_tick();   /* t85: deferred release of short key presses */
 #endif
             if (gApp.key_down != KBD_NONE && now >= gApp.key_release_at) { KEYBOARD_AddKey(gApp.key_down, false); gApp.key_down = KBD_NONE; }
-            if (!gApp.bk_paused && gApp.next_bk < gApp.prof_.bootkeys.size() && gApp.bk_t >= gApp.prof_.bootkeys[gApp.next_bk].at_ms && gApp.key_down == KBD_NONE) {   /* t36cd: bootkeys — 실행 항목이 정한 부팅 후 키·명령 */
+            if (!gApp.bk_paused && gApp.next_bk < gApp.prof_.bootkeys.size() && gApp.bk_t >= gApp.prof_.bootkeys[gApp.next_bk].at_ms && gApp.key_down == KBD_NONE) {   /* t36cd: bootkeys - 실행 항목이 정한 부팅 후 키·명령 */
                 gApp.key_down = gApp.prof_.bootkeys[gApp.next_bk].key; gApp.key_release_at = now + gApp.keyhold;
                 KEYBOARD_AddKey(gApp.key_down, true);
                 gh_log("bootkey #%u at %u ms", (unsigned)gApp.next_bk, gApp.bk_t); gApp.next_bk++; }
@@ -123,7 +123,7 @@ void GFX_Events(void) {
                 gh_do_load(gApp.state_path.empty() ? gh_slot_path() : gApp.state_path);
                 gApp.ev_tick = now ? now : 1;
             }
-            if (gApp.resume_slot && since >= 300) {   /* r012: UI 에서 「이어하기」로 시작 (t798: 2000→300 ms — 2초 안에 메뉴를 열면 로드가 안 불리던 문제) */
+            if (gApp.resume_slot && since >= 300) {   /* r012: UI 에서 「이어하기」로 시작 (t798: 2000→300 ms - 2초 안에 메뉴를 열면 로드가 안 불리던 문제) */
                 int sl = gApp.resume_slot - 1; gApp.resume_slot = 0;
                 bool ok = gh_do_load(gh_slot_n(gApp.cur_game, sl)); gh_log("RESUME slot %d %s", sl + 1, ok ? "OK" : "FAIL"); gh_osd(ok ? phr_("슬롯 ") + ui::Ui::slot_lbl(sl) + phr_(" 에서 이어합니다") : std::string(phr_("이어하기에 실패했습니다")), 2000);
             }
@@ -170,12 +170,15 @@ void GFX_Events(void) {
             }
             static unsigned int next_scr = 0;
             if (next_scr < gApp.scrshots_ms.size() && since >= gApp.scrshots_ms[next_scr]) { gApp.scr_req = true; next_scr++; }
-            if (gApp.setvol_b >= 0 && gApp.boot_tick && !gApp.vol_forced && since >= 3000) { gApp.vol_forced = true; ui::Settings sv = gApp.ui_.effective(gApp.cur_game); sv.bgm = gApp.setvol_b; sv.se = gApp.setvol_s; gh_apply_volume(sv); }
+            if (gApp.setvol_b >= 0 && gApp.boot_tick && !gApp.vol_forced && since >= 3000) { gApp.vol_forced = true; ui::Settings sv = gApp.ui_.effective(gApp.cur_game); sv.bgm = gApp.setvol_b; sv.se = gApp.setvol_s; sv.vo = gApp.setvol_s; gh_apply_volume(sv); }
             { static bool dsn_once = false; if (!dsn_once && gApp.boot_tick && since >= 1500) { dsn_once = true; gh_apply_settings(gApp.ui_.effective(gApp.cur_game), false); } }   /* 641: first apply after boot */
+            { static unsigned lastc = 0; if (gApp.boot_tick && since - lastc >= 500) { lastc = since; MixerChannel * cdc = MIXER_FindChannel("CDAUDIO"); if (cdc) cdc->SetVolume(gh_cda_gain, gh_cda_gain); } }   /* t831: CD-DA 채널은 첫 재생 때 생기므로 주기적으로 BGM 배율을 건다 */
+            kh_wavdump_tick(since);   /* t832: 파형 덤프 시작 시각 확인 */
+            KHLK_HOOK(since); kh_linediag_tick(since);   /* t836: 줄 진단 */
             if (gApp.rms_from && !gApp.rms_started && since >= gApp.rms_from) { gApp.rms_started = true; gensei_out_sumsq = 0; gensei_out_n = 0; gh_log("RMS window start @%u ms", since); }
             static unsigned int next_shot = 0;
             if (next_shot < gApp.shots_ms.size() && since >= gApp.shots_ms[next_shot]) { gh_dump_shot(gApp.shots_ms[next_shot]); next_shot++; }
-            { static bool n88 = false; if (!n88 && (unsigned)SegValue(cs) == 0xE800u && (reg_eip & 0xffffu) < 0x10u) { n88 = true;   /* t43k (#334 A2): N88-BASIC ROM 진입 = PC 판 미지원 — 안내 후 정상 종료 */
+            { static bool n88 = false; if (!n88 && (unsigned)SegValue(cs) == 0xE800u && (reg_eip & 0xffffu) < 0x10u) { n88 = true;   /* t43k (#334 A2): N88-BASIC ROM 진입 = PC 판 미지원 - 안내 후 정상 종료 */
                 gh_log("N88: reached E800:%04x (t=%u) - this title needs N88-BASIC: not supported on PC (Nova np2kai path planned)", (unsigned)(reg_eip & 0xffffu), since); if (!gApp.headless) { plat::msgbox_utf8(phr_("이 작품은 N88-BASIC 필요:\nPC 판 미지원(노바 np2kai 경로 예정)"), 0, 256); } GH_QUITSET(); } }
             static unsigned int last_stat = 0;
             if (gApp.dumpcode && since / 2000 != last_stat && since > 12000) {
@@ -217,7 +220,7 @@ void GFX_Events(void) {
                 else if (!hp) { hp = true; std::vector<std::pair<unsigned, uint64_t>> v; for (auto & kv2 : hh) v.push_back({ kv2.second, kv2.first }); std::sort(v.begin(), v.end(), [](const std::pair<unsigned, uint64_t> & a, const std::pair<unsigned, uint64_t> & b) { return a.first > b.first; });
                     gh_log("hist: 표본 %u개, 서로 다른 CS:EIP %u개 (구간 %u~%u ms)", hn, (unsigned)hh.size(), gApp.hist_from, gApp.hist_to);
                     for (size_t i = 0; i < v.size() && i < 60; i++) gh_log("hist #%02u %5u회 %04x:%08x", (unsigned)i, v[i].first, (unsigned)(v[i].second >> 32), (unsigned)(v[i].second & 0xffffffffu)); } }
-            if (gApp.keytrace) {   /* t29 (#266): 게임이 키를 읽는가 — BDA 키 버퍼/포인터/키 상태(0x502~0x541) 변화와 PIC 마스크(2초마다) */
+            if (gApp.keytrace) {   /* t29 (#266): 게임이 키를 읽는가 - BDA 키 버퍼/포인터/키 상태(0x502~0x541) 변화와 PIC 마스크(2초마다) */
                 static uint8_t kprev[0x40]; static bool kinit = false; static unsigned knl = 0, kst = 0; uint8_t kc[0x40]; for (int i = 0; i < 0x40; i++) kc[i] = mem_readb((PhysPt)(0x502 + i));
                 if (!kinit || memcmp(kprev, kc, sizeof kc) != 0) { if (knl < 400) { knl++; char b[160]; int k = 0; for (int i = 0x22; i < 0x28; i++) k += snprintf(b + k, sizeof b - k, "%02x ", kc[i]); char b2[160]; int k2 = 0; for (int i = 0x28; i < 0x3a; i++) k2 += snprintf(b2 + k2, sizeof b2 - k2, "%02x", kc[i]);
                         gh_log("keytrace: t=%u head/tail/cnt[524..529]=%s buf[502..]=%02x%02x%02x%02x%02x%02x%02x%02x state[52a..]=%s CS:IP=%04x:%04x", since, b, kc[0], kc[1], kc[2], kc[3], kc[4], kc[5], kc[6], kc[7], b2, (unsigned)SegValue(cs), (unsigned)reg_eip); } memcpy(kprev, kc, sizeof kc); kinit = true; }
@@ -231,9 +234,9 @@ void GFX_Events(void) {
                 gh_log("audio: dev='%s' freq=%d blk=%d cb=%u underrun=%u drop=%u", gensei_audio_dev ? gensei_audio_dev : "(default)", gensei_audio_obt_freq, gensei_audio_obt_samples, gensei_mix_cb, gensei_mix_under, gensei_mix_drop); gh_log("OUTRMS samples=%llu rms=%.2f (창 시작 %u ms)", gensei_out_n, gensei_out_n ? sqrt(gensei_out_sumsq / (double)gensei_out_n) : 0.0, gApp.rms_from); if (dsn::S.inited) gh_log("DSN mode=%d vol=%d ev=%u,%u,%u,%u,%u,%u started=%u,%u,%u,%u,%u merged=%u dropped=%u poll=%u chg=%u", dsn::S.mode, dsn::S.vol, dsn::S.ev[1], dsn::S.ev[2], dsn::S.ev[3], dsn::S.ev[4], dsn::S.ev[5], dsn::S.ev[6], dsn::S.started[0], dsn::S.started[1], dsn::S.started[2], dsn::S.started[3], dsn::S.started[4], dsn::S.merged, dsn::S.dropped, dsn::S.polled, dsn::S.chg);
                 if (dsn::S.inited) { unsigned dpk; double drms; dsn::lvl_take(dpk, drms); gh_log("DSN out pk=%u rms=%.1f all=%u files=%u,%u,%u,%u,%u,%u,%u have=%d%d%d%d%d", dpk, drms, dsn::S.pk_all, dsn::S.lpk[0], dsn::S.lpk[1], dsn::S.lpk[2], dsn::S.lpk[3], dsn::S.lpk[4], dsn::S.lpk[5], dsn::S.lpk[6], (int)dsn::S.have[0], (int)dsn::S.have[1], (int)dsn::S.have[2], (int)dsn::S.have[3], (int)dsn::S.have[4]); } }
             if (gApp.run_ms && since + 100 >= gApp.run_ms) { static bool dsn_fl = false; if (!dsn_fl) { dsn_fl = true; dsn::flush(); } }   /* 641: write the audio log / dump just before quit */
-            if (gApp.run_ms && since >= gApp.run_ms) { gh_log("run time reached"); GH_QUITSET(); }
+            if (gApp.run_ms && since >= gApp.run_ms) { gh_log("run time reached"); kh_wavdump_close(); GH_QUITSET(); }
         }
-        if (gApp.inwin_wait) {   /* t51a: 창 안 전환 뒤 부팅 도달 신호(g_boot_tick) 대기 — 8초 안에 없으면 실패로 보고 나간다(폴백은 gh_inwin_cycle) */
+        if (gApp.inwin_wait) {   /* t51a: 창 안 전환 뒤 부팅 도달 신호(g_boot_tick) 대기 - 8초 안에 없으면 실패로 보고 나간다(폴백은 gh_inwin_cycle) */
             if (gApp.boot_tick) { gApp.inwin_wait = false; }
             else if (SDL_GetTicks() - gApp.inwin_t0 > 8000u) { gApp.inwin_wait = false; gApp.inwin_timeout = true; GH_QUITSET(); }
         }

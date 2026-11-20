@@ -20,7 +20,7 @@
 #include "dos_inc.h"
 #include "ide.h"
 #include "dos/cdrom.h"   /* hanacd: CDROM_Interface_Image */
-static bool (*g_has_cmd_fn)(const std::string &) = 0;   /* hanacd: 편집 화면이 「이 폴더에 .cmd 있음」을 묻는 고리 — res_prof.h 가 채움 */
+static bool (*g_has_cmd_fn)(const std::string &) = 0;   /* hanacd: 편집 화면이 「이 폴더에 .cmd 있음」을 묻는 고리 - res_prof.h 가 채움 */
 #include "inout.h"
 #include "dma.h"
 #include "keyboard.h"
@@ -89,7 +89,7 @@ DOS_Block dos;
 #endif
 bool dos_kernel_disabled = true;
 #ifdef GH_DOSKERNEL
-extern int bootdrive; extern bool bootguest;   /* t37cd: dos_programs.obj 가 정의 — 한쪽 정의만 (LNK4006 정리) */
+extern int bootdrive; extern bool bootguest;   /* t37cd: dos_programs.obj 가 정의 - 한쪽 정의만 (LNK4006 정리) */
 #else
 int bootdrive = -1;
 bool bootguest = false;
@@ -106,7 +106,7 @@ DOS_Drive * Drives[DOS_DRIVES];
 /* t36cd: 0 으로 채운 std::string/std::map 은 유효하지 않다 — DOS::DOS 가 prefix_overlay.substr(3) 을 호출하므로 실물로 정의 */
 std::string prefix_overlay = ".DBOVERLAY~1";
 std::map<int,int> lowboxdrawmap;
-std::map<int,int> pc98boxdrawmap;   /* t37cd(#285): 0 으로 채운 std::map 은 유효하지 않다 — 실물 정의 */
+std::map<int,int> pc98boxdrawmap;   /* t37cd(#285): 0 으로 채운 std::map 은 유효하지 않다 - 실물 정의 */
 std::vector<unsigned char> boot_code_image;
 /* 값으로 std::string/vector/map 을 돌려주는 함수는 자동 스텁(rax=0)이면 쓰레기 객체가 나온다 — 실물 정의 */
 std::string configfile, savefilename, working_dir;
@@ -168,6 +168,9 @@ void MAPPER_AddHandler(MAPPER_Handler *, MapKeys, Bitu, char const * const event
 }
 
 #include "app/boot.h"   /* S9a */
+#include "app/wavdump.h"   /* t832: 장치별 파형 덤프 */
+#include "app/linediag.h"   /* t836: 줄 진단(PCM86 chunk 지문, 기본 꺼짐) */
+#include "app/linekey.h"   /* t841: 줄(키) 음량 */
 #include "app/state_io.h"   /* S9a */
 #include "app/kbd_event.h"   /* S9b */
 #include "app/ui_env.h"   /* S9b */

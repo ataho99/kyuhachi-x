@@ -50,24 +50,24 @@ static inline void slow_init(bool on) {            /* 에뮬 스레드(RunMachin
 #if defined(__ANDROID__)
     long fr[64]; long mn = -1, mxf = -1; int n = 0;   /* 코어 수 = cpu0.. 에서 cpuinfo_max_freq 가 읽히는 만큼(앞에서부터, 끊기면 거기까지) */
     for (int i = 0; i < 64; i++) { char p[96]; snprintf(p, sizeof p, "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i); FILE * f = fopen(p, "r"); if (!f) break; fclose(f); n++; }
-    if (n < 2) { g_note = "slowcpu: 코어 속도 파일을 못 읽음 — 무시"; return; }
+    if (n < 2) { g_note = "slowcpu: 코어 속도 파일을 못 읽음 - 무시"; return; }
     for (int i = 0; i < n; i++) { char p[96]; snprintf(p, sizeof p, "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i); long v = -1; FILE * f = fopen(p, "r"); if (f) { if (fscanf(f, "%ld", &v) != 1) v = -1; fclose(f); } fr[i] = v; if (v > 0) { if (mn < 0 || v < mn) mn = v; if (v > mxf) mxf = v; } }
-    if (mn < 0) { g_note = "slowcpu: 코어 속도를 못 읽음 — 무시"; return; }
-    if (mn == mxf) { g_note = "slowcpu: 모든 코어 속도가 같음 — 무시"; return; }
+    if (mn < 0) { g_note = "slowcpu: 코어 속도를 못 읽음 - 무시"; return; }
+    if (mn == mxf) { g_note = "slowcpu: 모든 코어 속도가 같음 - 무시"; return; }
     memset(g_mask, 0, sizeof g_mask); int cnt = 0; std::string lst;
     for (int i = 0; i < n && cnt < 2; i++) if (fr[i] == mn) { g_mask[i / (8 * (int)sizeof(unsigned long))] |= 1ul << (i % (8 * (int)sizeof(unsigned long))); cnt++; lst += std::to_string(i) + " "; }
     g_have = true; const bool ok = bind_self(); g_slow.store(ok ? 1 : 0);
     g_note = std::string("slowcpu: 코어 ") + lst + "(최저 " + std::to_string(mn / 1000) + " MHz, 최고 " + std::to_string(mxf / 1000) + " MHz)에 에뮬 스레드 묶기 " + (ok ? "성공" : "실패");
 #else
-    g_note = "slowcpu: 안드로이드 전용 — 무시";
+    g_note = "slowcpu: 안드로이드 전용 - 무시";
 #endif
 }
-static inline void gl_tick() {                      /* GL 스레드 루프 맨 위 — 켜졌으면 자기 자신을 한 번 묶는다 */
+static inline void gl_tick() {                      /* GL 스레드 루프 맨 위 - 켜졌으면 자기 자신을 한 번 묶는다 */
     if (g_gl_bound || g_slow.load(std::memory_order_relaxed) == 0) return;
     g_gl_bound = true; g_glres.store(bind_self() ? 1 : 2);
 }
 /* ---- #P4: GFX_Events 구간 재기 + 훅 가르기(evdiv) ---- */
-static std::atomic<int> g_evdiv{1};                 /* user.ini [game] evdiv=N (디버그 전용, 설정 화면에 없음) — 세 훅을 N 틱에 한 번만 부른다. 1 = 지금 동작 그대로 */
+static std::atomic<int> g_evdiv{1};                 /* user.ini [game] evdiv=N (디버그 전용, 설정 화면에 없음) - 세 훅을 N 틱에 한 번만 부른다. 1 = 지금 동작 그대로 */
 static inline void evdiv_init(int n) { g_evdiv.store(n < 1 ? 1 : n > 1000 ? 1000 : n); }
 static inline bool run_hooks(unsigned & c) { const int d = g_evdiv.load(std::memory_order_relaxed); if (d <= 1) return true; return (++c % (unsigned)d) == 0; }
 struct HkAcc { std::atomic<uint64_t> n{0}, us{0}; };

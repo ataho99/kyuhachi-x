@@ -55,6 +55,8 @@ static void gh_boost_osd_draw(ov::Canvas & oc, const std::string & other_osd, bo
 #include "ui/kh_kbov_draw.h"   /* S6: kbov drawing half */
 #include "input/kh_vpad.h"
 #include "ui/kh_vpad_draw.h"
+#include "input/kh_tlay.h"   /* t862a */
+#include "ui/kh_tlay_draw.h"
 #include "ui/kh_touchfx.h"   /* kx-touch */
 /* ------------------------------------------------------------------ r020 (#247정정·#248): 공용 자원 run\res\fonts · run\res\rhythm */
 static bool gh_exists(const std::string & p) { return plat::exists(p.c_str()); }
@@ -85,7 +87,8 @@ static std::string gh_nofont_path(void) {
     if (fclose(f) != 0) ok = false; if (!ok) plat::remove_file(p.c_str()); else gh_log("blank font file created: %s", p.c_str());
     return p;
 }
-static std::string gh_default_font_path(void) { std::string p = gh_res_font_path("kyuhachi_font"); if (gh_font_bmp_ok(p)) return p; std::string p0 = gh_res_font_path("pc98player_font"); if (gh_font_bmp_ok(p0)) return p0; std::string f; if (gh_any_font_bmp(&f)) return f; return gh_nofont_path(); }   /* t52g: 새 이름 → 옛 이름 → 아무 글꼴 */
+static std::string gh_default_font_path(void) { { std::string pm = gh_res_font_path("kr_mg15"); if (gh_font_bmp_ok(pm)) return pm; }   /* t855 (#1732): 게임 기본 한글 글꼴 = M갈무리 15 (kr_mg15) */
+    std::string p = gh_res_font_path("kyuhachi_font"); if (gh_font_bmp_ok(p)) return p; std::string p0 = gh_res_font_path("pc98player_font"); if (gh_font_bmp_ok(p0)) return p0; std::string f; if (gh_any_font_bmp(&f)) return f; return gh_nofont_path(); }   /* t52g: 새 이름 → 옛 이름 → 아무 글꼴 */
 static bool gh_font_guard(void) { if (gh_any_font_bmp(NULL)) return true; gh_log("WARN: 글꼴 BMP 없음 -> 막지 않고 빈 글꼴로 시작 (%s\\res\\fonts) [#500]", gApp.exedir.c_str()); gApp.note = phr_("res/fonts 에 anex86 형식 글꼴 BMP 를 넣어 주세요"); gApp.note_until = SDL_GetTicks() + 8000u; return true; }   /* #500: 막는 건 디스크 이미지가 없을 때뿐 */
 static std::string gh_sha1_buf(const std::vector<uint8_t> & b) { prof::Sha1 s; if (!b.empty()) s.add(&b[0], b.size()); return s.hex(); }
 static bool gh_read_all(const std::string & p, std::vector<uint8_t> & out) {
@@ -108,17 +111,17 @@ static void gh_res_put(const std::string & from, const std::string & bn, const s
     if (lb.size() > 4 && lb.compare(lb.size() - 4, 4, ".wav") == 0) {
         if (lb.compare(0, 5, "2608_") != 0) return;
         aw::make_dir(root); std::string rd = root + "\\rhythm"; aw::make_dir(rd); std::string dst = rd + "\\" + lb; std::vector<uint8_t> old;
-        if (gh_read_all(dst, old) && gh_sha1_buf(old) == gh_sha1_buf(buf)) { gh_log("자원 가져오기: 리듬 %s — 같은 해시가 이미 있음, 건너뜀", lb.c_str()); return; }
-        if (gh_exists(dst)) { gh_log("자원 가져오기: 리듬 %s — 다른 파일이 이미 있어 덮어쓰지 않음 (%s)", lb.c_str(), from.c_str()); return; }
+        if (gh_read_all(dst, old) && gh_sha1_buf(old) == gh_sha1_buf(buf)) { gh_log("자원 가져오기: 리듬 %s - 같은 해시가 이미 있음, 건너뜀", lb.c_str()); return; }
+        if (gh_exists(dst)) { gh_log("자원 가져오기: 리듬 %s - 다른 파일이 이미 있어 덮어쓰지 않음 (%s)", lb.c_str(), from.c_str()); return; }
         if (gh_write_all(dst, buf)) gh_log("자원 가져오기: 리듬 %s → res\\rhythm\\%s (출처 %s)", lb.c_str(), lb.c_str(), from.c_str());
         return;
     }
     if (lb == "font.bmp" || lb == "anex86.bmp") {
         std::string sha = gh_sha1_buf(buf); aw::make_dir(root); std::string fd = root + "\\fonts"; aw::make_dir(fd);
         std::vector<std::string> fl; aw::list_dir(fd, fl, NULL);
-        for (auto & f : fl) { std::string l = aw::lower(f); if (l.size() < 5 || l.compare(l.size() - 4, 4, ".bmp") != 0) continue; std::vector<uint8_t> o; if (gh_read_all(fd + "\\" + f, o) && o.size() == buf.size() && gh_sha1_buf(o) == sha) { gh_log("자원 가져오기: 글꼴 %s — 같은 해시가 이미 있음(%s), 건너뜀", lb.c_str(), f.c_str()); return; } }
+        for (auto & f : fl) { std::string l = aw::lower(f); if (l.size() < 5 || l.compare(l.size() - 4, 4, ".bmp") != 0) continue; std::vector<uint8_t> o; if (gh_read_all(fd + "\\" + f, o) && o.size() == buf.size() && gh_sha1_buf(o) == sha) { gh_log("자원 가져오기: 글꼴 %s - 같은 해시가 이미 있음(%s), 건너뜀", lb.c_str(), f.c_str()); return; } }
         std::string nm = gh_font_name_for(sha); if (nm.empty()) nm = "imp_" + sha.substr(0, 8);
-        std::string dst = fd + "\\" + nm + ".bmp"; if (gh_exists(dst)) { gh_log("자원 가져오기: 글꼴 %s — 이름 %s 이(가) 이미 다른 파일로 있어 건너뜀", lb.c_str(), nm.c_str()); return; }
+        std::string dst = fd + "\\" + nm + ".bmp"; if (gh_exists(dst)) { gh_log("자원 가져오기: 글꼴 %s - 이름 %s 이(가) 이미 다른 파일로 있어 건너뜀", lb.c_str(), nm.c_str()); return; }
         if (gh_write_all(dst, buf)) gh_log("자원 가져오기: 글꼴 %s → res\\fonts\\%s.bmp (sha1 %s, 출처 %s)", lb.c_str(), nm.c_str(), sha.c_str(), from.c_str());
     }
 }
@@ -168,7 +171,7 @@ static bool gh_parse_bootkeys(const std::string & s, std::vector<GKey> & out) { 
     return !out.empty();
 }
 static void gh_list_dir(const std::string & dir, std::vector<std::string> & files, std::vector<std::string> * subdirs) {
-    aw::list_dir(dir, files, subdirs);   /* r018: 와이드(UTF-16) API 로 열거 — 한글 폴더·파일 이름 */
+    aw::list_dir(dir, files, subdirs);   /* r018: 와이드(UTF-16) API 로 열거 - 한글 폴더·파일 이름 */
 }
 static void gh_nk_load_once(void);
 /* t43c (#330 C1): 설치 대상 호스트 폴더 훑기 — 깊이 2 까지 EXE/COM/BAT 중 설치기·압축 도구 이름을 뺀 것. 반환 = 개수, run/dirp = 하나 고를 때의 파일·폴더(루트면 빈칸) */
@@ -226,7 +229,39 @@ static bool gh_dir_has_cmd(const std::string & d8) {
 }
 static const bool g_has_cmd_set = (g_has_cmd_fn = &gh_dir_has_cmd, true);
 /* hanacd: 작품 폴더에 .cmd(np2kai "a.hdm" "b.hdi" "c.ccd") 가 있으면 슬롯을 그대로 따른다(game.ini·자동 판정보다 우선).
-   .cmd 가 여럿이면 파일명 정렬 첫 것, 안에 쓸 만한 파일이 하나도 없으면 다음 .cmd. 찾는 폴더 = 이미지 폴더 → 게임 폴더 → srcdir. */
+   * .cmd 가 여럿이면 파일명 정렬 첫 것, 안에 쓸 만한 파일이 하나도 없으면 다음 .cmd. 찾는 폴더 = 이미지 폴더 → 게임 폴더 → srcdir. */
+/* t831 hanacd: .cue 보정 — BOM 제거 + FILE 이름을 폴더 안 실제 이름(대소문자 무시·하위 폴더 포함)으로 맞춘 사본을 saves 쪽에 만든다. 원본 폴더는 건드리지 않는다. */
+static bool gh_cue_fix(const std::string & cue, const std::string & id, std::string & outp, std::string & note) {
+    size_t sp = cue.find_last_of("\\/"); std::string dir = sp == std::string::npos ? std::string(".") : cue.substr(0, sp);
+    std::vector<uint8_t> raw; if (!gh_read_all(cue, raw) || raw.empty()) { note = T("읽기 실패"); return false; }
+    std::string txt((const char *)&raw[0], raw.size()); int nfix = 0, nmiss = 0;
+    if (txt.size() >= 3 && (uint8_t)txt[0] == 0xEF && (uint8_t)txt[1] == 0xBB && (uint8_t)txt[2] == 0xBF) { txt.erase(0, 3); nfix++; }
+    std::string out; size_t i = 0;
+    while (i < txt.size()) {
+        size_t e = txt.find('\n', i); std::string ln = e == std::string::npos ? txt.substr(i) : txt.substr(i, e - i); i = e == std::string::npos ? txt.size() : e + 1;
+        while (!ln.empty() && (ln.back() == '\r')) ln.pop_back();
+        size_t a = 0; while (a < ln.size() && (ln[a] == ' ' || ln[a] == '\t')) a++;
+        if (ln.size() >= a + 5 && prof::lower_s(ln.substr(a, 4)) == "file" && (ln[a + 4] == ' ' || ln[a + 4] == '\t')) {
+            size_t b = a + 4; while (b < ln.size() && (ln[b] == ' ' || ln[b] == '\t')) b++;
+            std::string nm, rest;
+            if (b < ln.size() && ln[b] == '"') { size_t q = ln.find('"', b + 1); if (q == std::string::npos) q = ln.size(); nm = ln.substr(b + 1, q - b - 1); rest = q < ln.size() ? ln.substr(q + 1) : std::string(); }
+            else { size_t q = b; while (q < ln.size() && ln[q] != ' ' && ln[q] != '\t') q++; nm = ln.substr(b, q - b); rest = ln.substr(q); }
+            std::vector<std::string> comp; { std::string c; for (char ch : nm) { if (ch == '\\' || ch == '/') { if (!c.empty()) comp.push_back(c); c.clear(); } else c += ch; } if (!c.empty()) comp.push_back(c); }
+            std::string cur = dir; bool okp = !comp.empty();
+            for (size_t k = 0; k < comp.size() && okp; k++) {
+                std::vector<std::string> fl, sd; gh_list_dir(cur, fl, &sd); const std::vector<std::string> & L = (k + 1 < comp.size()) ? sd : fl; const std::string * h = NULL;
+                for (auto & f : L) if (prof::lower_s(f) == prof::lower_s(comp[k])) { h = &f; break; }
+                if (!h) okp = false; else cur += "\\" + *h;
+            }
+            if (okp) { out += ln.substr(0, a) + "FILE \"" + cur + "\"" + rest + "\n"; nfix++; continue; }
+            nmiss++;
+        }
+        out += ln + "\n";
+    }
+    std::string d2 = gApp.savedir + "\\" + id; plat::mkdir(gApp.savedir.c_str()); plat::mkdir(d2.c_str()); outp = d2 + "\\cue_fixed.cue";
+    std::vector<uint8_t> ob(out.begin(), out.end()); if (!gh_write_all(outp, ob)) { note = T("사본 쓰기 실패"); return false; }
+    char nb[96]; snprintf(nb, sizeof nb, T("고친 줄 %d · 못 찾은 FILE %d"), nfix, nmiss); note = nb; return true;
+}
 static bool gh_apply_cmd(prof::Profile & q, const std::vector<std::string> & dirs, const std::string & imgdir) {
     for (auto & d : dirs) {
         if (d.empty()) continue;
@@ -237,11 +272,13 @@ static bool gh_apply_cmd(prof::Profile & q, const std::vector<std::string> & dir
             std::string txt; FILE * f = fopen((d + "\\" + c).c_str(), "rb"); if (!f) continue;
             char b[4096]; size_t n; while ((n = fread(b, 1, sizeof b, f)) > 0 && txt.size() < 65536) txt.append(b, n);
             fclose(f);
+            if (txt.size() >= 3 && (uint8_t)txt[0] == 0xEF && (uint8_t)txt[1] == 0xBB && (uint8_t)txt[2] == 0xBF) txt.erase(0, 3);   /* t831: BOM */
             prof::CmdSlots cs = prof::cmd_parse(txt, fl);
-            if (cs.fd.empty() && cs.hd.empty() && cs.cd.empty()) { gh_log(".cmd 무시(쓸 파일 없음): %s\\%s", d.c_str(), c.c_str()); continue; }
-            q.kv["cmdfile"] = c;   /* 메뉴가 「.cmd 있음」을 알 수 있게 — 쓰든 안 쓰든 기록 */
+            for (auto & dr : cs.dropped) gh_log(T(".cmd 토큰 무시: %s  [%s]"), dr.c_str(), c.c_str());   /* t831 */
+            if (cs.fd.empty() && cs.hd.empty() && cs.cd.empty()) { gh_log(T(".cmd 무시(쓸 파일 없음): %s\\%s"), d.c_str(), c.c_str()); continue; }
+            q.kv["cmdfile"] = c;   /* 메뉴가 「.cmd 있음」을 알 수 있게 - 쓰든 안 쓰든 기록 */
             if (q.kv.count("slot_rule") && q.kv["slot_rule"] == "ini") {   /* 사용자가 game.ini 규칙을 골랐다 */
-                q.kv["slot_rule_eff"] = "ini"; gh_log("슬롯 규칙: ini (.cmd %s 가 있으나 사용자가 ini 규칙을 골라 건너뜀)", c.c_str()); return false; }
+                q.kv["slot_rule_eff"] = "ini"; gh_log(T("슬롯 규칙: ini (.cmd %s 가 있으나 사용자가 ini 규칙을 골라 건너뜀)"), c.c_str()); return false; }
             q.kv["slot_rule_eff"] = "cmd";
             for (auto & x : q.disk) x.clear(); q.swap.clear(); q.kv.erase("cd"); q.kv.erase("keys");
             for (size_t i = 0; i < cs.fd.size(); i++) { if (i < 2) q.disk[i] = cs.fd[i]; else q.swap.push_back(cs.fd[i]); }
@@ -250,7 +287,7 @@ static bool gh_apply_cmd(prof::Profile & q, const std::vector<std::string> & dir
             q.bootletter = !cs.fd.empty() ? 'A' : (!cs.hd.empty() ? 'C' : q.bootletter);
             if (d != imgdir) q.kv["srcdir"] = d;
             q.reason += " + .cmd " + c;
-            gh_log("슬롯 규칙: cmd — .cmd 적용: %s\\%s -> FD %d · HDD %d · CD %d", d.c_str(), c.c_str(), (int)cs.fd.size(), (int)cs.hd.size(), (int)cs.cd.size());
+            gh_log(T("슬롯 규칙: cmd - .cmd 적용: %s\\%s -> FD %d · HDD %d · CD %d"), d.c_str(), c.c_str(), (int)cs.fd.size(), (int)cs.hd.size(), (int)cs.cd.size());
             return true;
         }
     }
@@ -279,7 +316,7 @@ static bool gh_profile(const std::string & id, GProfile & p, bool quick = false)
     { std::vector<std::string> cd_; cd_.push_back(imgdir); if (dir != imgdir) cd_.push_back(dir);
       if (q.kv.count("srcdir") && !q.kv["srcdir"].empty()) cd_.push_back(aw::sys_from_ini(q.kv["srcdir"]));
       gh_apply_cmd(q, cd_, imgdir); }   /* hanacd: .cmd 가 있으면 최우선 */
-    for (auto & dk : q.disk) dk = aw::sys_from_ini(dk);          /* game.ini 는 UTF-8 — 시스템 문자열로 */
+    for (auto & dk : q.disk) dk = aw::sys_from_ini(dk);          /* game.ini 는 UTF-8 - 시스템 문자열로 */
     for (auto & sw : q.swap) sw = aw::sys_from_ini(sw);
     if (q.kv.count("srcdir")) q.kv["srcdir"] = aw::sys_from_ini(q.kv["srcdir"]);
     if (!q.dbhit_title.empty() && !q.kv.count("dbhit")) q.kv["dbhit"] = q.dbhit_title;
@@ -302,7 +339,7 @@ static bool gh_profile(const std::string & id, GProfile & p, bool quick = false)
 
 /* #451 step 1: pre-flight. Every disk / CD image the chosen work needs must open; otherwise stay in the menu and say why (same slot as gh_font_guard). */
 /* screen phrase via the phrase table (key = original Korean text); thin wrapper so the T11 literal check sees keyed phrases */
-static inline const char * T(const char * s) { return phr_(s); }
+/* T() 는 text/kh_phrase.h 로 옮김 (t831) */
 static bool gh_disk_guard(const std::string & id) {
     GProfile p; if (id.empty() || !gh_profile(id, p, true)) return true;   /* unknown profile: the normal path reports it */
     std::string dir = gApp.imgdir_given ? gApp.imgdir : (p.imgdir.empty() ? gApp.imgdir : p.imgdir);

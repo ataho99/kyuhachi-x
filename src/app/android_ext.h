@@ -130,7 +130,7 @@ static void kha_font_rescan(void) {   /* E3R: 목록 다시 찾기 + 한 줄 안
         if (sdn.empty() && kha_is_sd(f.path)) sdn = f.name;
     }
     if (!ov::g_kha_fontdir.empty() && okf == 0) {
-        gApp.note = T("글꼴 폴더를 못 찾음 — 직접 지정하세요"); gApp.note_until = SDL_GetTicks() + 8000u;
+        gApp.note = T("글꼴 폴더를 못 찾음 - 직접 지정하세요"); gApp.note_until = SDL_GetTicks() + 8000u;
     } else if (!sdn.empty()) {
         gApp.note = std::string(T("SD카드에서 글꼴 찾음: ")) + sdn; gApp.note_until = SDL_GetTicks() + 6000u;
     }
@@ -201,6 +201,9 @@ static void kha_seed_assets(void) {
         { "kha/rhythm/2608_bd.wav", "res\\rhythm\\2608_bd.wav" }, { "kha/rhythm/2608_sd.wav", "res\\rhythm\\2608_sd.wav" }, { "kha/rhythm/2608_top.wav", "res\\rhythm\\2608_top.wav" },
         { "kha/rhythm/2608_hh.wav", "res\\rhythm\\2608_hh.wav" }, { "kha/rhythm/2608_tom.wav", "res\\rhythm\\2608_tom.wav" }, { "kha/rhythm/2608_rim.wav", "res\\rhythm\\2608_rim.wav" },
         { "kha/shaders/pc98_sharp.glsl", "res\\shaders\\pc98_sharp.glsl" }, { "kha/shaders/pc98_crt.glsl", "res\\shaders\\pc98_crt.glsl" },
+        { "kha/fonts/menu/galmuri14.bmp", "res\\fonts\\menu\\galmuri14.bmp" }, { "kha/fonts/menu/galmuri14b.bmp", "res\\fonts\\menu\\galmuri14b.bmp" }, { "kha/fonts/menu/galmuri11.bmp", "res\\fonts\\menu\\galmuri11.bmp" }, { "kha/fonts/menu/galmuri11bold.bmp", "res\\fonts\\menu\\galmuri11bold.bmp" }, { "kha/fonts/menu/galmurimono11.bmp", "res\\fonts\\menu\\galmurimono11.bmp" }, { "kha/fonts/menu/LICENSE_Galmuri_OFL.md", "res\\fonts\\menu\\LICENSE_Galmuri_OFL.md" },   /* t852: 메뉴 글꼴 4종 + OFL 라이선스 */   /* t858: galmuri14b 합성 Bold 추가 */
+        { "kha/fonts/menu/mg10.bmp", "res\\fonts\\menu\\mg10.bmp" }, { "kha/fonts/menu/mg10b.bmp", "res\\fonts\\menu\\mg10b.bmp" }, { "kha/fonts/menu/mg12.bmp", "res\\fonts\\menu\\mg12.bmp" }, { "kha/fonts/menu/mg12b.bmp", "res\\fonts\\menu\\mg12b.bmp" }, { "kha/fonts/menu/mg15.bmp", "res\\fonts\\menu\\mg15.bmp" }, { "kha/fonts/menu/mg15b.bmp", "res\\fonts\\menu\\mg15b.bmp" }, { "kha/fonts/menu/OFL_MGalmuri.txt", "res\\fonts\\menu\\OFL_MGalmuri.txt" }, { "kha/fonts/menu/README_MGalmuri.md", "res\\fonts\\menu\\README_MGalmuri.md" },   /* t855: M갈무리 계열 18종 + OFL */
+        { "kha/fonts/kr_mg15.bmp", "res\\fonts\\kr_mg15.bmp" }, { "kha/fonts/kr_maruminya.bmp", "res\\fonts\\kr_maruminya.bmp" }, { "kha/fonts/jp_maruminya.bmp", "res\\fonts\\jp_maruminya.bmp" },   /* t852: 게임 기본 글꼴(마루미냐 한글·일본어) */
         { "kha/dsn/fdd_insert.wav", "res\\disk-noises\\fdd_insert.wav" }, { "kha/dsn/fdd_eject.wav", "res\\disk-noises\\fdd_eject.wav" }, { "kha/dsn/fdd_read.wav", "res\\disk-noises\\fdd_read.wav" },
         { "kha/dsn/fdd_spin.wav", "res\\disk-noises\\fdd_spin.wav" },
         { "kha/dsn/hdd_spin.wav", "res\\disk-noises\\hdd_spin.wav" }, { "kha/dsn/hdd_spinup.wav", "res\\disk-noises\\hdd_spinup.wav" }, { "kha/dsn/fdd_seek1.wav", "res\\disk-noises\\fdd_seek1.wav" }, { "kha/dsn/fdd_seek2.wav", "res\\disk-noises\\fdd_seek2.wav" },
@@ -212,15 +215,15 @@ static void kha_seed_assets(void) {
         { "kha/dsn/hum_loop.wav", "res\\disk-noises\\hum_loop.wav" },
         { "kha/dsn/boot_noise.wav", "res\\disk-noises\\boot_noise.wav" },
         { "kha/dsn/boot_beep.wav", "res\\disk-noises\\boot_beep.wav" },
-        { "kha/dsn/crt_on.wav", "res\\disk-noises\\crt_on.wav" }, { "kha/dsn/crt_off.wav", "res\\disk-noises\\crt_off.wav" },   /* t714: CRT 켜짐/꺼짐 소리 — 풀기 목록에 빠져 노바에서 「CRT sfx 없음」 */
+        { "kha/dsn/crt_on.wav", "res\\disk-noises\\crt_on.wav" }, { "kha/dsn/crt_off.wav", "res\\disk-noises\\crt_off.wav" },   /* t714: CRT 켜짐/꺼짐 소리 - 풀기 목록에 빠져 노바에서 「CRT sfx 없음」 */
         { "kha/dsn/CREDITS_boot.txt", "res\\disk-noises\\CREDITS_boot.txt" },
         { "kha/flags.ini", "res\\flags.ini" }, { "kha/gamecontrollerdb.txt", "res\\gamecontrollerdb.txt" },
         { "kha/strings_ko.txt", "strings_ko.txt" }, { "kha/strings_en.txt", "strings_en.txt" }, { "kha/strings_ja.txt", "strings_ja.txt" },
         { "kha/gamedb.ini", "gamedb.ini" }, { "kha/gamedb_nk.tsv", "gamedb_nk.tsv" }, { "kha/gamedb_nk_boot.tsv", "gamedb_nk_boot.tsv" }, { "kha/gamedb_nk_stem.tsv", "gamedb_nk_stem.tsv" } };   /* #L5: 기동 상태표(빌드 때 assets/kha 에 복사) */
-    plat::mkdir(gApp.exedir + "\\res"); plat::mkdir(gApp.exedir + "\\res\\fonts"); plat::mkdir(gApp.exedir + "\\res\\rhythm"); plat::mkdir(gApp.exedir + "\\res\\shaders"); plat::mkdir(gApp.exedir + "\\res\\disk-noises");
+    plat::mkdir(gApp.exedir + "\\res"); plat::mkdir(gApp.exedir + "\\res\\fonts"); plat::mkdir(gApp.exedir + "\\res\\rhythm"); plat::mkdir(gApp.exedir + "\\res\\shaders"); plat::mkdir(gApp.exedir + "\\res\\disk-noises"); plat::mkdir(gApp.exedir + "\\res\\fonts\\menu");
     int made = 0, have = 0, miss = 0;
     for (auto & p : T) {
-        std::string dst = gApp.exedir + "\\" + p[1]; if (plat::exists(dst) && strncmp(p[1], "strings_", 8) != 0 && strncmp(p[1], "gamedb_nk_boot", 14) != 0 && strncmp(p[1], "gamedb_nk_stem", 14) != 0) { have++; continue; }   /* 4: 문구 파일은 APK 것으로 매번 갱신(사용자 덮어쓰기는 strings.txt) */
+        std::string dst = gApp.exedir + "\\" + p[1]; if (plat::exists(dst) && strncmp(p[1], "strings_", 8) != 0 && strncmp(p[1], "gamedb_nk_boot", 14) != 0 && strncmp(p[1], "gamedb_nk_stem", 14) != 0 && strncmp(p[1], "res\\shaders\\pc98_crt", 20) != 0 && strncmp(p[1], "res\\fonts\\menu\\", 15) != 0 && strncmp(p[1], "res\\fonts\\kr_mg15", 17) != 0) { have++; continue; }   /* 4: 문구 파일은 APK 것으로 매번 갱신(사용자 덮어쓰기는 strings.txt) */
         SDL_RWops * r = SDL_RWFromFile(p[0], "rb"); if (!r) { miss++; continue; }
         Sint64 n = SDL_RWsize(r); std::vector<char> b; if (n > 0) { b.resize((size_t)n); size_t got = SDL_RWread(r, b.data(), 1, (size_t)n); b.resize(got); } SDL_RWclose(r);
         FILE * f = fopen(dst.c_str(), "wb"); if (f) { fwrite(b.data(), 1, b.size(), f); fclose(f); made++; } else miss++;
