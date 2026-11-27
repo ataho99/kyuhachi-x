@@ -203,7 +203,7 @@ static bool gh_inwin_cycle(void) {
         DispatchVMEvent(VM_EVENT_RESET);
         MAPPER_ReleaseAllKeys(); MAPPER_LosingFocus();
         /* 호스트 쪽 부팅 상태 되돌림(설계 §4) */
-        gApp.boot_tick = 0; gApp.pon_tick = SDL_GetTicks() | 1u; gApp.pon_pic = PIC_Ticks; gApp.loading = true;
+        gApp.boot_tick = 0; tlay::g_show = 0; gApp.pon_tick = SDL_GetTicks() | 1u; gApp.pon_pic = PIC_Ticks; gApp.loading = true;
         gApp.next_bk = 0; gApp.bk_started = false; gApp.bk_t = 0; gApp.bk_paused = false; gApp.bk_last = SDL_GetTicks(); gApp.bkp_a = gApp.bkp_b = false;
         gApp.next_key = 0; gApp.play_last = 0; gApp.menu_open = false; gApp.key_down = KBD_NONE; gApp.swap_done = false; kbov::wake();
         gensei_out_sumsq = 0.0; gensei_out_n = 0ull;

@@ -39,7 +39,7 @@ inline void Ui::k_touch(UKey k, Act & a) {
                 if (scope == 0) { for (int i = 0; i < TOUCH_N; i++) gpad.erase(touch_key(i)); }
                 else if (cur >= 0 && cur < (int)games.size() && env.touch_set) { for (int i = 0; i < TOUCH_N; i++) env.touch_set(cur, touch_key(i), std::string()); }
                 dirty = true; save_now = true; a.t = A_APPLY;
-            } else if (k == UK_CANCEL) { go(S_PAD, PAD_N + 7); }   /* S_PAD 맨 끝(터치 진입 줄)로 */
+            } else if (k == UK_CANCEL) { go(S_PAD, PAD_N + 2); }   /* S_PAD 맨 끝(터치 진입 줄)로 */
             break; }
     } while (0);
 }

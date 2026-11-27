@@ -296,7 +296,9 @@ static void gh_rebuild_fds(const GProfile & p, ui::UiGame & g) {   /* 디스크 
     for (int i = 0; i < 2; i++) if (p.disk[i]) g.cur_fd[i] = flb(p.disk[i]);
     gApp.fdfiles[p.id] = files;
 }
-static void gh_font_rebuild(void) {   /* E3R: 글꼴 목록 합집합(①fontdir ②내부 ③SD ④등록 ⑤앱, 이름 중복은 먼저 것만) */
+static void gh_fontmk_bind(void);   /* t865 */
+static void gh_font_rebuild(void) {
+    gh_fontmk_bind();   /* E3R: 글꼴 목록 합집합(①fontdir ②내부 ③SD ④등록 ⑤앱, 이름 중복은 먼저 것만) */
     ui::Ui & U = gApp.ui_;
     std::vector<std::string> ds; kha_font_dirs(ds);
     std::string exd = aw::dir_of(gh_res_font_path("kyuhachi_font"));
@@ -331,6 +333,8 @@ static void gh_font_rebuild(void) {   /* E3R: 글꼴 목록 합집합(①fontdir
       for (int q = 0; q < 4; q++) for (size_t k = 0; k < mf.size(); k++) { std::string n = mf[k]; size_t d = n.find_last_of('.'); if (d == std::string::npos || n.substr(d) != ".bmp") continue; std::string st = n.substr(0, d); if (st != ord[q]) continue; ui::UiFont u; u.name = st; u.group = "menu"; u.path = md + msp_ + n; u.ok = true; U.mfonts.push_back(u); }
       for (size_t k = 0; k < mf.size(); k++) { std::string n = mf[k]; size_t d = n.find_last_of('.'); if (d == std::string::npos || n.substr(d) != ".bmp") continue; std::string st = n.substr(0, d); bool known = false; for (int q = 0; q < 4; q++) if (st == ord[q]) known = true; if (known) continue; ui::UiFont u; u.name = st; u.group = "menu"; u.path = md + msp_ + n; u.ok = true; U.mfonts.push_back(u); }
     }
+    for (auto & x_ : U.fonts) if (x_.ok && x_.name.compare(0, 2, "u_") == 0) fontbake::load_side(x_.name, x_.path);   /* t866: 내 글꼴 표시 이름 */
+    for (auto & x_ : U.mfonts) if (x_.ok && x_.name.compare(0, 2, "u_") == 0) fontbake::load_side(x_.name, x_.path);
     U.mbmp_name.clear(); U.menu_font_apply();
     gh_log("MENUFONT found_in=%s exd=%s sep=%c mfonts=%d font_ui=%s ok=%d half=%d cell=%d", md_dir_used.c_str(), exd.c_str(), (exd.find_last_of("/\\") != std::string::npos ? exd[exd.find_last_of("/\\")] : char(92)), (int)U.mfonts.size(), U.font_ui.c_str(), U.mbmp.ok ? 1 : 0, ov::g_menu_half, ov::g_menu_full);   /* t854: 메뉴 글꼴 로드 결과 1줄 */
 }
@@ -410,7 +414,7 @@ static void gh_ui_init_games(void) {
             if (lr) { e.g.title_jp = lr->title_jp; for (int q = 0; q < 3; q++) e.g.intro[q] = lr->intro[q]; if (e.g.company.empty()) e.g.company = lr->publisher; if (e.g.year.empty()) e.g.year = lr->year; if (e.g.genre.empty()) e.g.genre = lr->genre; } }
           if (e.g.devices.empty()) { std::string dv; auto add = [&](const char * s) { if (!dv.empty()) dv += " · "; dv += s; }; std::string mo = kvs("mouse"), so = kvs("sound"), jo = kvs("joystick");
               if (so.find("86") != std::string::npos) add(phr_("86 보드")); if (so.find("rhythm") != std::string::npos) add(phr_("리듬 WAV"));
-              if (mo == "required") { std::map<std::string, std::string> kk = p.kv; kk["__id"] = d; add(aw::mouse_released(kk) ? phr_("마우스 지원(시험)") : phr_("마우스 필수")); } else if (mo == "pointer") add(phr_("마우스 지원")); else if (mo == "optional") add(phr_("마우스 선택"));
+              if (mo == "required" || mo == "pointer" || mo == "optional") add(phr_("마우스"));   /* t869: 필수/지원/선택 구별은 동작에 영향이 없어 한 라벨로. flags.ini mouse_support* 는 읽기만 하고 무시 */
               if (jo.find("opn") != std::string::npos) add(phr_("OPN 조이스틱")); e.g.devices = dv; }
           std::string demo = kvs("demo"); e.g.has_demo = !demo.empty();
           {   /* r017: 판정 등급 · 출처 · 실행 불가 사유(목록을 만들 때마다 계산 - 지원이 늘면 다시 등록하지 않아도 풀린다) */
@@ -560,6 +564,21 @@ static bool gh_pick_files(std::vector<std::string> & out) {   /* 시스템(ANSI)
 #if defined(__ANDROID__)
 static bool gh_folder_explorer(const char * title_u8, std::string & out);   /* app/folder_pick.h */
 #endif
+static void gh_fontmk_bind(void) {   /* t865: 내 글꼴 가져오기 — 파일 고르기·저장 폴더·목록 다시 읽기 */
+    ui::Env & E = gApp.ui_.env;
+    E.fontmk_pick = [](std::string & out) -> bool {
+        std::string t = aw::u8_to_acp(phr_("글꼴 파일을 고르세요 (TTF · OTF)")); std::string f1 = aw::u8_to_acp(phr_("글꼴 파일")), f2 = aw::u8_to_acp(phr_("모든 파일"));
+        std::string flt = f1 + std::string(1, '\0') + "*.ttf;*.otf;*.ttc" + std::string(1, '\0') + f2 + std::string(1, '\0') + "*.*" + std::string(2, '\0');
+        std::vector<std::string> parts; if (!plat::pick_files_a(gh_hwnd(), t, flt, parts) || parts.empty()) return false;
+        out = parts.size() == 1 ? parts[0] : aw::join(parts[0], parts[1]); return true;
+    };
+    E.fontmk_dirs = [](std::string & gd, std::string & md) -> bool {
+        std::string exd = aw::dir_of(gh_res_font_path("kyuhachi_font")); if (exd.empty()) return false;
+        gd = exd; md = exd + std::string(1, '\\') + "menu"; plat::make_dir(md); return true;
+    };
+    E.acp_u8 = [](const std::string & s) -> std::string { return aw::acp_to_u8(s); };
+    E.fontmk_rescan = []() { gh_font_rebuild(); };
+}
 static bool gh_pick_folder(const char * title_u8, std::string & out) {
 #if defined(__ANDROID__)
     return gh_folder_explorer(title_u8, out);

@@ -49,6 +49,7 @@
 #include "ui/screens/hot.h"
 #include "ui/screens/ext.h"
 #include "ui/screens/font.h"
+#include "ui/screens/fontmk.h"   /* t865 */
 #include "ui/screens/osk.h"
 #include "ui/screens/exepick.h"
 #include "ui/screens/touch.h"   /* t859-K: S_TOUCH */

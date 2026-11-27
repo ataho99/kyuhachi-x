@@ -97,27 +97,3 @@ stb_image.h 외부 공개 도메인 단일 헤더(nothings/stb v2.32) — 사용
 diag_host.h lines=128 bytes=8638 long=7 — v0.7.3 신규 설정>진단(진동 시험·컨트롤러 정보) host 쪽: 줄 길이는 기존 host 파일과 같은 한 줄 꼴. 분리는 v0.7.4 정리 때.
 diag.h lines=29 bytes=2470 long=3 — v0.7.3 신규 진단 화면: 같은 사유. 분리는 v0.7.4 정리 때.
 tags.h lines=22 bytes=1724 long=2 — v0.7.3 신규 작품 분류(태그) 화면: 같은 사유. 분리는 v0.7.4 정리 때.
-linediag.h lines=139 bytes=13310 long=22 — v0.7.4 줄 진단(--linediag) 신규: 기존 app 파일과 같은 한 줄 꼴.
-linekey.h lines=184 bytes=16263 long=30 — v0.7.4 줄 음량 본체 신규: 같은 사유.
-wavdump.h lines=90 bytes=8564 long=18 — v0.7.4 장치별 파형 덤프(디버그 전용) 신규: 같은 사유.
-kh_ctlzone.h lines=116 bytes=7895 long=2 — v0.7.4 터치 조작 영역 신규.
-kh_tlay.h lines=292 bytes=21313 long=26 — v0.7.4 터치 배치·방향 입력·키 추가 신규.
-kh_cmd.h lines=47 bytes=2981 long=1 — v0.7.4 명령 처리 변경분.
-kh_tlay_draw.h lines=89 bytes=8080 long=19 — v0.7.4 터치 배치 그리기 신규.
-kbpick.h lines=69 bytes=4357 long=1 — v0.7.4 터치 키 추가용 화면 키보드 고르기.
-lines.h lines=28 bytes=1909 long=1 — v0.7.4 설정 > 소리 > 줄 음량 화면 신규.
-set.h lines=56 bytes=3359 long=2 — v0.7.4 설정 허브·글꼴·화면 효과 개편.
-shim.h lines=34 bytes=2149 long=1 — v0.7.4 설정 화면 개편 연동.
-touch.h lines=45 bytes=3445 long=5 — v0.7.4 터치 설정 화면 신규.
-linediag.h lines=139 bytes=13310 long=22 — v0.7.4 줄 진단(--linediag) 신규: 기존 app 파일과 같은 한 줄 꼴.
-linekey.h lines=184 bytes=16263 long=30 — v0.7.4 줄 음량 본체 신규: 같은 사유.
-wavdump.h lines=90 bytes=8564 long=18 — v0.7.4 장치별 파형 덤프(디버그 전용) 신규: 같은 사유.
-kh_ctlzone.h lines=116 bytes=7895 long=2 — v0.7.4 터치 조작 영역 신규.
-kh_tlay.h lines=292 bytes=21313 long=26 — v0.7.4 터치 배치·방향 입력·키 추가 신규.
-kh_cmd.h lines=47 bytes=2981 long=1 — v0.7.4 명령 처리 변경분.
-kh_tlay_draw.h lines=89 bytes=8080 long=19 — v0.7.4 터치 배치 그리기 신규.
-kbpick.h lines=69 bytes=4357 long=1 — v0.7.4 터치 키 추가용 화면 키보드 고르기.
-lines.h lines=28 bytes=1909 long=1 — v0.7.4 설정 > 소리 > 줄 음량 화면 신규.
-set.h lines=56 bytes=3359 long=2 — v0.7.4 설정 허브·글꼴·화면 효과 개편.
-shim.h lines=34 bytes=2149 long=1 — v0.7.4 설정 화면 개편 연동.
-touch.h lines=45 bytes=3445 long=5 — v0.7.4 터치 설정 화면 신규.

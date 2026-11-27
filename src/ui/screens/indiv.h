@@ -8,6 +8,7 @@ inline unsigned Ui::indiv_bit(Scr s, int id) {
                                      1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u }; /*E1R*/
     if (s == S_SCREEN) return (id >= 0 && id < 14) ? sc[id] : 0u;
     if (s == S_CONF && id == 36) return 1u << 29;   /* t831: 음성·PCM */
+    if (s == S_CONF && id >= 62 && id <= 66) return id == 62 ? (1u << 17) : id == 63 ? (1u << 18) : id == 64 ? (1u << 21) : id == 65 ? (1u << 19) : (1u << 20);   /* t869: 마우스 페이지 스틱 줄 */
     if (s == S_CONF) return (id >= 0 && id < 27) ? cf[id] : 0u; /*E1R*/
     return 0u;
 }

@@ -55,6 +55,10 @@ struct Env {   /* 호스트(또는 하니스)가 채우는 입출력 */
     std::function<std::string(int, const std::string &)> khx_read;
     char sep = '/';
     std::function<std::vector<FileItem>(const std::string &)> list_dir;
+    std::function<bool(std::string &)> fontmk_pick;   /* t865: 내 글꼴 파일 고르기(ANSI 경로) */
+    std::function<bool(std::string &, std::string &)> fontmk_dirs;   /* t865: (게임 글꼴 폴더, 메뉴 글꼴 폴더) */
+    std::function<std::string(const std::string &)> acp_u8;   /* t866: ANSI → UTF-8 */
+    std::function<void()> fontmk_rescan;   /* t865: 글꼴 목록 다시 읽기 */
     std::function<std::vector<std::string>()> roots;
     std::function<bool(int, const std::string &)> has_img;
     std::function<bool(int, const std::string &, const ent::Kv &, const std::string &)> save;   /* (작품, 항목, 값, 기본 지정할 항목 이름 또는 빈칸) */

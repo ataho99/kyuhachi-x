@@ -21,6 +21,7 @@
 #include "input/kh_ukey.h"   /* S6 */
 #include "input/kh_ctlzone.h"   /* t859-K: 터치 행 이름 = 조종 바 라벨(LABELS) 재사용 */
 #include "text/kh_fontreg.h"
+#include "text/kh_fontbake.h"   /* t865: 내 글꼴 가져오기 */
 #include "text/kh_hangul_t48.h"   /* t48b: 한글 조합기 */
 
 #include "ui/kh_ui_types.h"   /* S7: ui data types */
@@ -111,17 +112,17 @@ struct Ui {
         return r; }
     /* #1478 메뉴 개편: 설정 페이지 트리. conf_grp 1 사운드(옛 방식) · 2 조작 · 3 실행환경 · 4 컨트롤러 · 5 터치 조작 · 6 오버레이 · 7 성능 설정 · 8 글꼴 설정 · 9 배속 설정 · 10 표시.
        폴더 줄 id 38 컨트롤러 39 터치 조작 40 오버레이 42 표시 43 성능 설정 44 글꼴 설정 45 배속 설정 · 41 맵핑(S_PAD) 46 진단(S_DIAG) 47 부팅 시퀀스 다시 보기. 줄 id·개별값 비트는 그대로 (저장 키 무변경) */
-    static int conf_child(int f) { return f == 38 ? 4 : f == 39 ? 5 : f == 40 ? 6 : f == 42 ? 10 : f == 43 ? 7 : f == 44 ? 8 : f == 45 ? 9 : 0; }
-    static int conf_par(int pg) { return (pg == 4 || pg == 5 || pg == 6) ? 2 : (pg == 7 || pg == 8 || pg == 9) ? 3 : pg == 10 ? 5 : 0; }
-    static int conf_folder_of(int pg) { return pg == 4 ? 38 : pg == 5 ? 39 : pg == 6 ? 40 : pg == 10 ? 42 : pg == 7 ? 43 : pg == 8 ? 44 : pg == 9 ? 45 : 0; }
+    static int conf_child(int f) { return f == 61 ? 11 : f == 38 ? 4 : f == 39 ? 5 : f == 40 ? 6 : f == 42 ? 10 : f == 43 ? 7 : f == 44 ? 8 : f == 45 ? 9 : 0; }
+    static int conf_par(int pg) { return (pg == 4 || pg == 5 || pg == 6 || pg == 11) ? 2 : (pg == 7 || pg == 8 || pg == 9) ? 3 : pg == 10 ? 5 : 0; }
+    static int conf_folder_of(int pg) { return pg == 11 ? 61 : pg == 4 ? 38 : pg == 5 ? 39 : pg == 6 ? 40 : pg == 10 ? 42 : pg == 7 ? 43 : pg == 8 ? 44 : pg == 9 ? 45 : 0; }
     std::vector<int> pg_leaf(int pg) const {   /* 페이지 안 줄 id (0 적용 범위·14 개별 설정 초기화 제외). 비는 폴더는 숨김 */
         std::vector<int> r; const bool w = scope == 1;
         switch (pg) {
-        case 2: { static const int f[3] = { 38, 39, 40 }; for (int q = 0; q < 3; q++) if (!pg_leaf(conf_child(f[q])).empty()) r.push_back(f[q]); if (!w) { r.push_back(52); r.push_back(53); r.push_back(54); if (in_game) r.push_back(55); } break; }   /* t860: 터치 키 표시 */
+        case 2: { static const int f[4] = { 38, 39, 61, 40 }; for (int q = 0; q < 4; q++) if (!pg_leaf(conf_child(f[q])).empty()) r.push_back(f[q]); if (!w) { r.push_back(52); r.push_back(53); r.push_back(54); if (in_game) r.push_back(55); } break; }   /* t860: 터치 키 표시 */
         case 3: { r.push_back(8); if (!in_game && cur >= 0 && cur < (int)games.size()) r.push_back(47); if (!w) r.push_back(13);
             static const int f[3] = { 43, 44, 45 }; for (int q = 0; q < 3; q++) if (!pg_leaf(conf_child(f[q])).empty()) r.push_back(f[q]); if (!w) r.push_back(46); break; }
         case 4: r.push_back(4); r.push_back(41); break;
-        case 5: if (!pg_leaf(10).empty()) r.push_back(42); if (!w) r.push_back(32); break;
+        case 5: if (!pg_leaf(10).empty()) r.push_back(42); break;   /* t869: 32(게임 마우스 터치)는 마우스 페이지로 */
         case 6: r.push_back(10); if (!w) { r.push_back(22); r.push_back(23); r.push_back(g.ovpos_mode == 0 ? 24 : 25); r.push_back(48); r.push_back(49); r.push_back(50); } r.push_back(9); if (!w) { r.push_back(15); r.push_back(33); } break;
         case 7: r.push_back(18);
 #if defined(__ANDROID__)
@@ -134,7 +135,9 @@ struct Ui {
 #endif
             if (!w) { r.push_back(51); r.push_back(11); r.push_back(12); } break;
         case 9: r.push_back(5); r.push_back(6); r.push_back(7); break;
-        case 10: if (!w) { r.push_back(29); r.push_back(30); r.push_back(31); } break;
+        case 10: if (!w) { r.push_back(29); r.push_back(30); } break;   /* t869: 31(마우스 클릭 표시)은 마우스 페이지로 */
+        case 11: if (!w) { r.push_back(32); r.push_back(57); r.push_back(59); r.push_back(58); r.push_back(60); r.push_back(56); r.push_back(31); }
+            r.push_back(62); r.push_back(63); r.push_back(64); r.push_back(65); r.push_back(66); break;   /* t869: 마우스 페이지 — 터치(전역) 7줄 + 패드 스틱 5줄(전역·이 작품) */
         default: break; }
         return r; }
     std::vector<int> pg_rowids() const { std::vector<int> r; r.push_back(0); const std::vector<int> l = pg_leaf(conf_grp); r.insert(r.end(), l.begin(), l.end()); if (scope == 1 && (conf_grp == 2 || conf_grp == 3)) r.push_back(14); return r; }
@@ -639,7 +642,7 @@ struct Ui {
     }
     int menu_ent = 0;
     void d_tpl(Canvas & c);
-    static const char * mouse_label(const std::string & m) { if (m == "none") return phr_("없음"); if (m == "optional") return phr_("선택 사항"); if (m == "pointer") return phr_("포인터"); if (m == "required") return phr_("필수"); return phr_("기본"); }
+    static const char * mouse_label(const std::string & m) { if (m == "none") return phr_("사용 안 함"); if (m == "optional" || m == "pointer" || m == "required") return phr_("사용"); return phr_("기본"); }   /* t869: 3값 → 사용 안 함 / 사용 / 기본 */
     std::string font_label(const std::string & f, const std::string & fk) const { if (!f.empty()) return f; if (fk == "jp") return phr_("일본어 (목록 기본)"); if (fk == "kr") return phr_("한글 (목록 기본)"); return phr_("자동 (목록 기본)"); }
     void d_edit(Canvas & c);
     int fl_filter() const { if (fl_key == "disk_c" || fl_key == "disk_d") return 2; if (fl_key == "cd") return 3; return 1; }
@@ -658,7 +661,9 @@ struct Ui {
         xp_nd = xp_dk[1].empty() ? 1 : 2; xp_drv = 0; xp_dir.clear(); xp_load(); sel = 0; scr = S_EXEPICK;
     }
     void d_font(Canvas & c);
-    static std::string fnt_nice_(const std::string & n) { if (n == "kr_mg15") return phr_("M갈무리 15"); if (n == "kr_maruminya") return phr_("마루미냐(한글)"); if (n == "jp_maruminya") return phr_("마루미냐(일본어)"); return n; }   /* #1729 ③: 내부 파일 이름 대신 사용자용 이름 */
+    void d_fontmk(Canvas & c); void k_fontmk(UKey k, Act & a); void mk_open(int from_mode); void mk_close(); void mk_rebake(); void mk_save();   /* t865: screens/fontmk.h */
+    fontbake::State mk; fontbake::Baker mk_b; ov::BmpFont mk_pv, mk_pv2; fontbake::Info mk_info2; std::string mk_del; void mk_delete(const std::string & o, Act & a); std::vector<uint8_t> mk_base_g, mk_base_m;
+    static std::string fnt_nice_(const std::string & n) { if (n == "kr_mg15") return phr_("M갈무리 15"); if (n == "kr_maruminya") return phr_("마루미냐(한글)"); if (n == "jp_maruminya") return phr_("마루미냐(일본어)"); if (n.compare(0, 2, "u_") == 0) return std::string(phr_("내 글꼴")) + ": " + fontbake::label(n); return n; }   /* #1729 ③: 내부 파일 이름 대신 사용자용 이름 */
     std::string fnt_default_name() const { if (fnt_mode == 3) return "galmuri14"; if (fnt_mode == 1) return font_jp.empty() ? "kyuhachi_font" : font_jp; return font_kr.empty() ? "kr_mg15" : font_kr; }   /* t52g: 임시 이름 pc98player_font → kyuhachi_font */
     void jp_refresh() { const ov::BmpFont * bf = font_jp.empty() ? NULL : fnt_font(font_jp); ov::jp_set(lang == 2, bf); }   /* t858 (#1857): 일본어 글꼴을 따로 고르지 않았으면 BMP 를 쓰지 않는다 - kyuhachi_font.bmp 는 한글이 한자 칸에 들어 있어 言語 가 밋몄로 찍혔다. 비면 동봉 Shinonome FONTX2 가 쓰인다 · t52h (#134): 일본어 글꼴 BMP · 언어를 글자 그리기에 알림 */
     /* t855 (#1711): 메뉴 글꼴 = M갈무리(MonadABXY, OFL) 계열. 이름 = <계열 mg|dg|gg><크기 10|12|15>[b = 진짜 Bold 판]. quiple 갈무리(galmuri14 …)는 뒤쪽 선택지 */
@@ -669,13 +674,15 @@ struct Ui {
         sz = v; return true;
     }
     static std::string mf_make(const std::string & fam, int sz, bool bd) { return fam + std::to_string(sz) + (bd ? "b" : ""); }
-    static int mf_full(const std::string & n) { std::string f; int s; bool b; if (mf_split(n, f, s, b)) return s; return (n == "galmuri14" || n == "galmuri14b") ? 14 : 11; }   /* 전각 칸 폭 = 글꼴 크기 */   /* t858: galmuri14b = 14 (합성 Bold 시트) */
-    static int mf_half(const std::string & n) { std::string f; int s; bool b; if (mf_split(n, f, s, b)) return s / 2 + 2; return 8; }   /* 반각 칸 폭 (10→7 · 12→8 · 15→9) */
-    bool menu_tall() const { return font_ui == "mg15" || font_ui == "mg15b" || font_ui == "galmuri14" || font_ui == "galmuri14b"; }   /* t858: 14·15px급 메뉴 글꼴 - 목록·값 열 줄 피치 18 */
+    static int mf_usz(const std::string & n) { size_t p = n.find_last_of('_'); if (p == std::string::npos || p < 2 || p + 1 >= n.size()) return 0; int v = 0; for (size_t i = p + 1; i < n.size(); i++) { if (!isdigit((unsigned char)n[i])) return 0; v = v * 10 + (n[i] - '0'); } return (v >= 8 && v <= 16) ? v : 0; }   /* t865: 내 글꼴 메뉴용 u_<이름>_<칸폭> */
+    static bool mf_user(const std::string & n) { return n.size() > 4 && n.compare(0, 2, "u_") == 0 && mf_usz(n) > 0; }
+    static int mf_full(const std::string & n) { std::string f; int s; bool b; if (mf_user(n)) return mf_usz(n); if (mf_split(n, f, s, b)) return s; return (n == "galmuri14" || n == "galmuri14b") ? 14 : 11; }   /* 전각 칸 폭 = 글꼴 크기 */   /* t858: galmuri14b = 14 (합성 Bold 시트) */
+    static int mf_half(const std::string & n) { std::string f; int s; bool b; if (mf_user(n)) return mf_usz(n) / 2 + 2; if (mf_split(n, f, s, b)) return s / 2 + 2; return 8; }   /* 반각 칸 폭 (10→7 · 12→8 · 15→9) */
+    bool menu_tall() const { return (mf_user(font_ui) && mf_usz(font_ui) >= 14) || font_ui == "mg15" || font_ui == "mg15b" || font_ui == "galmuri14" || font_ui == "galmuri14b"; }   /* t858: 14·15px급 메뉴 글꼴 - 목록·값 열 줄 피치 18 */
     bool mf_have(const std::string & n) const { for (auto & x : mfonts) if (x.ok && x.name == n) return true; return false; }
     std::map<std::string, std::vector<int> > adv_cache;   /* t855: M갈무리 시트 열 1 → 글자 폭표 */
     const int * mf_adv(const std::string & name, const ov::BmpFont * b) {
-        std::string f_; int s_; bool b_; if (!b || !b->ok || !mf_split(name, f_, s_, b_)) return NULL;
+        std::string f_; int s_; bool b_; if (!b || !b->ok || !(mf_split(name, f_, s_, b_) || mf_user(name))) return NULL;
         auto it = adv_cache.find(name); if (it == adv_cache.end()) { std::vector<int> v(128, 0); bool any = false; const int hw_ = mf_half(name); for (int ch = 32; ch < 127; ch++) { int n = 0; for (int i = 0; i < 16; i++) if (b->ink(1600 + i, ch * 16)) n++; v[ch] = n ? n : hw_; if (n) any = true; } if (!any) v.clear(); it = adv_cache.insert(std::make_pair(name, v)).first; }
         return it->second.empty() ? NULL : it->second.data();
     }
@@ -686,7 +693,7 @@ struct Ui {
         ov::g_menu_bmp = mbmp.ok ? &mbmp : NULL; ov::g_menu_advp = mbmp.ok ? mf_adv(fu, &mbmp) : NULL; ov::g_menu_half = mbmp.ok ? mf_half(fu) : 8; ov::g_menu_full = mbmp.ok ? mf_full(fu) : 16;
     }
     const ov::BmpFont * mfont_get(const std::string & name) { for (auto & x : mfonts) if (x.name == name && x.ok) { auto it = fnt_cache.find("\x01" + name); if (it == fnt_cache.end()) { ov::BmpFont & f = fnt_cache["\x01" + name]; f.load(x.path); return f.ok ? &f : NULL; } return it->second.ok ? &it->second : NULL; } return NULL; }
-    static std::string mfont_label(const std::string & n) { { std::string f_; int s_; bool b_; if (mf_split(n, f_, s_, b_)) return std::string(f_ == "mg" ? phr_("M갈무리") : f_ == "dg" ? phr_("둥근갈무리") : phr_("굴린갈무리")) + " " + std::to_string(s_) + (b_ ? " Bold" : ""); } if (n == "galmuri14") return phr_("갈무리14"); if (n == "galmuri14b") return phr_("갈무리14 굵게"); if (n == "galmuri11") return phr_("갈무리11"); if (n == "galmuri11bold") return phr_("갈무리11 굵게"); if (n == "galmurimono11") return phr_("갈무리 모노11"); if (n == "builtin") return phr_("옛 메뉴 글꼴"); return n; }
+    static std::string mfont_label(const std::string & n) { { std::string f_; int s_; bool b_; if (mf_split(n, f_, s_, b_)) return std::string(f_ == "mg" ? phr_("M갈무리") : f_ == "dg" ? phr_("둥근갈무리") : phr_("굴린갈무리")) + " " + std::to_string(s_) + (b_ ? " Bold" : ""); } if (mf_user(n)) return std::string(phr_("내 글꼴")) + ": " + fontbake::label(n); if (n == "galmuri14") return phr_("갈무리14"); if (n == "galmuri14b") return phr_("갈무리14 굵게"); if (n == "galmuri11") return phr_("갈무리11"); if (n == "galmuri11bold") return phr_("갈무리11 굵게"); if (n == "galmurimono11") return phr_("갈무리 모노11"); if (n == "builtin") return phr_("옛 메뉴 글꼴"); return n; }
     std::string fnt_cur() const { if (fnt_mode == 3) return font_ui; if (fnt_mode == 0) return font_kr; if (fnt_mode == 1) return font_jp; return kv_get("font"); }
     const ov::BmpFont * fnt_font(const std::string & name) {
         if (name.empty()) return NULL; auto it = fnt_cache.find(name); if (it != fnt_cache.end()) return it->second.ok ? &it->second : NULL;
@@ -898,7 +905,11 @@ struct Ui {
         if (mode == 3) {   /* t852: 메뉴 글꼴 - 갈무리 시트만(게임 글꼴은 섞지 않는다). 맨 끝 builtin = 옛 메뉴 글꼴 */
             fnt_opts.clear(); { static const char * fm[1] = { "mg" }; for (const char * q : fm) { bool any = false; for (auto & f : mfonts) { std::string f_; int s_; bool b_; if (f.ok && mf_split(f.name, f_, s_, b_) && f_ == q) any = true; } if (any) fnt_opts.push_back(std::string("#") + q); } }   /* t855: M갈무리 계열 3 → quiple 갈무리 → 옛 글꼴 → 크기 · 굵기 줄 */
             /* #1729: 메뉴 글꼴 선택지 = M갈무리만(크기 10·12·15 · Bold). quiple 갈무리·옛 글꼴·둥근·굴린은 뺌 */
-            if (mf_have("galmuri14")) fnt_opts.push_back("galmuri14"); if (mf_have("galmuri14b")) fnt_opts.push_back("galmuri14b"); fnt_opts.push_back("builtin"); fnt_opts.push_back("#sz"); fnt_opts.push_back("#bd");   /* t857: 슨상 「14」 - quiple 갈무리14 복원 */   /* t858: galmuri14b (합성 Bold 시트) */
+            if (mf_have("galmuri14")) fnt_opts.push_back("galmuri14"); if (mf_have("galmuri14b")) fnt_opts.push_back("galmuri14b"); for (auto & x_ : mfonts) if (x_.ok && mf_user(x_.name)) fnt_opts.push_back(x_.name); fnt_opts.push_back("builtin"); fnt_opts.push_back("#sz"); fnt_opts.push_back("#bd");
+#if !defined(__ANDROID__)
+            fnt_opts.push_back("#mk");   /* t865: 내 글꼴 가져오기 (윈도 먼저) */
+#endif
+   /* t857: 슨상 「14」 - quiple 갈무리14 복원 */   /* t858: galmuri14b (합성 Bold 시트) */
             sel = 0; { std::string f_; int s_; bool b_; const std::string want = mf_split(font_ui, f_, s_, b_) ? std::string("#") + f_ : font_ui; for (size_t i = 0; i < fnt_opts.size(); i++) if (fnt_opts[i] == want) sel = (int)i; } scr = S_FONT; return;
         }
         if (mode == 2) {
@@ -907,6 +918,9 @@ struct Ui {
             for (auto & f : fonts) if (f.ok && f.group == fnt_need) fnt_opts.push_back(f.name);   /* t52c: 이 작품의 묶음 글꼴을 먼저, 그다음 다른 묶음·전용 글꼴도 고를 수 있다(전용 글꼴 작품용) */
             for (auto & f : fonts) if (f.ok && f.group != fnt_need) fnt_opts.push_back(f.name);
         } else { std::string grp = mode == 0 ? "ks2350" : "jis"; fnt_need = grp; for (auto & f : fonts) if (f.ok && f.group == grp) fnt_opts.push_back(f.name); for (auto & f : fonts) if (f.ok && f.group != grp) fnt_opts.push_back(f.name); }   /* t52c: 다른 묶음도 고를 수 있다 */
+#if !defined(__ANDROID__)
+        if (mode == 0) fnt_opts.push_back("#mk");   /* t865: 내 글꼴 가져오기 */
+#endif
         sel = 0; std::string cv = fnt_cur(); for (size_t i = 0; i < fnt_opts.size(); i++) if (fnt_opts[i] == cv) sel = (int)i; scr = S_FONT;
     }
     int fnt_prev_sel = 0;

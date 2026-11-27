@@ -270,10 +270,10 @@ static void gl_rect_raw(int dw, int dh, int w, int h, int fit, int & x, int & y,
     x = (dw - rw) / 2; y = (dh - rh) / 2;
     if (fit == FIT_1610) { const int vp = (int)gApp.vpos; if (vp == 1) y = 0; else if (vp == 2) y = dh - rh; }   /* t848: 남는 검은 줄을 위/아래로 몰기 */
 }
-/* t857: 화면 둘레 테두리(실기 CRT 틀) — 그림이 놓이는 사각형을 사방 같은 폭(m)만큼 안으로 들인다. 정수배·16:10·4:3 모두 같은 규칙이라 여백이 0 이 되는 경우가 없다(m >= 6 px). android.ini bezel=0..100(천분율, 기본 40 = 짧은 변의 4%, 0 = 끔) */
+/* t857: 화면 둘레 테두리(실기 CRT 틀) — 그림이 놓이는 사각형을 사방 같은 폭(m)만큼 안으로 들인다. 정수배·16:10·4:3 모두 같은 규칙이라 여백이 0 이 되는 경우가 없다(m >= 6 px). android.ini bezel=0..100(천분율, 40 = 짧은 변의 4%, 기본 0 = 끔 — t868: 슨상 결정 없이 기본으로 켜지 않는다) */
 static int g_bezel_cfg = -2;
 static int gl_bezel_m(int dw, int dh) {
-    if (g_bezel_cfg == -2) { g_bezel_cfg = 40; FILE * f = fopen((gApp.exedir + "\\android.ini").c_str(), "r"); if (f) { char ln[300]; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bezel=", 6)) { int v = atoi(ln + 6); if (v >= 0 && v <= 100) g_bezel_cfg = v; } fclose(f); } }
+    if (g_bezel_cfg == -2) { g_bezel_cfg = 0; FILE * f = fopen((gApp.exedir + "\\android.ini").c_str(), "r"); if (f) { char ln[300]; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bezel=", 6)) { int v = atoi(ln + 6); if (v >= 0 && v <= 100) g_bezel_cfg = v; } fclose(f); } }
     if (g_bezel_cfg <= 0) return 0;
     const int sh = dw < dh ? dw : dh; int m = sh * g_bezel_cfg / 1000; if (m < 6) m = 6; if (m * 4 > sh) m = sh / 4; return m;
 }
@@ -387,7 +387,7 @@ static int SDLCALL gl_thread(void *) {
                 glDisable(GL_BLEND); glBindTexture(GL_TEXTURE_2D, gApp.tex_gl);
             }
         }
-        if (tlay::g_show && dw > 0 && dh > 0 && gApp.prog_ov.ok) {   // t862a: 터치 배치(창 좌표)
+        if (tlay::g_show && gApp.boot_tick && dw > 0 && dh > 0 && gApp.prog_ov.ok) {   // t862a: 터치 배치(창 좌표) · t870: 게스트가 안 도는 구간(런처 등)엔 stale g_show 여도 안 그림
             tlay::Geo tg; tlay::layout(dw, dh, TLAY_MODE(), TLAY_DIR(), tg);
             if (tg.on) {
                 unsigned tm = tlay::g_mask; int tmd = TLAY_MODE(), td = TLAY_DIR(), ton = tlay::g_stk_on, tsx = tlay::g_stk_x, tsy = tlay::g_stk_y, tdx = tlay::g_stk_dx, tdy = tlay::g_stk_dy;

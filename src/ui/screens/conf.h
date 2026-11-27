@@ -1,16 +1,16 @@
 #pragma once
 /* screens/conf.h -- S8b: S_CONF screen. #587: 범위 둘(전역/이 작품) · 이 작품에서는 전역 전용 줄(소리 버퍼·글꼴·언어)을 숨기고 맨 아래 「개별 설정 초기화」 · 개별 값 줄 앞 ● */
 inline void Ui::d_conf(Canvas & c) {
-    const std::string pgt = conf_grp == 1 ? std::string(phr_("사운드")) : conf_grp == 2 ? std::string(phr_("조작")) : conf_grp == 3 ? std::string(phr_("실행환경")) : conf_grp == 4 ? std::string(phr_("컨트롤러")) : conf_grp == 5 ? std::string(phr_("터치 조작")) : conf_grp == 6 ? std::string(phr_("오버레이")) : conf_grp == 7 ? std::string(phr_("성능 설정")) : conf_grp == 8 ? std::string(phr_("글꼴 설정")) : conf_grp == 9 ? std::string(phr_("배속 설정")) : conf_grp == 10 ? std::string(phr_("표시")) : std::string(phr_("소리/패드/배속 설정"));   /* #1478: 페이지 이름 */
+    const std::string pgt = conf_grp == 1 ? std::string(phr_("사운드")) : conf_grp == 2 ? std::string(phr_("조작")) : conf_grp == 3 ? std::string(phr_("실행환경")) : conf_grp == 4 ? std::string(phr_("컨트롤러")) : conf_grp == 5 ? std::string(phr_("터치 조작")) : conf_grp == 6 ? std::string(phr_("오버레이")) : conf_grp == 7 ? std::string(phr_("성능 설정")) : conf_grp == 8 ? std::string(phr_("글꼴 설정")) : conf_grp == 9 ? std::string(phr_("배속 설정")) : conf_grp == 10 ? std::string(phr_("표시")) : conf_grp == 11 ? std::string(phr_("마우스")) : std::string(phr_("소리/패드/배속 설정"));   /* #1478: 페이지 이름 */
     if (!tmini) titlebar(c, pgt.c_str());
     Settings & s = eff();
     if (!tmini) rbox(c, 16, 24, 288, 296, WH, conf_grp >= 2 ? pgt.c_str() : phr_("동작 환경 설정"));
     const std::vector<int> ri = rowids(S_CONF);
     const bool own = scope == 1 && cur >= 0 && cur < MAXG; const bool ind = own && ovm[cur] != 0u;
-    static const unsigned rb[56] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
+    static const unsigned rb[67] = { /*E1R*/ /* E3R */ 0u, 1u << 7, 1u << 8, 0u, (1u << 9) | (31u << 17),
         1u << 10, 1u << 11,   /* E3R */ 1u << 14, 1u << 12, 1u << 13, 1u << 15,
         0u, 0u, 0u, 0u, 0u, 1u << 23,   /* E3R */ 1u << 24, 1u << 25, 1u << 26, 1u << 27, 1u << 28, 0u, 0u, 0u, 0u,
-        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u << 29, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u }; /* t831: 36 = 음성·PCM(vo) */ /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
+        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u << 29, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u << 17, 1u << 18, 1u << 21, 1u << 19, 1u << 20 }; /* t831: 36 = 음성·PCM(vo) */ /* t869: 49~61 = 0 · 62 sk_l 63 sk_r 64 sk_sp 65 dz_l 66 dz_r */ /*E1R: 23-25 reserved, 26 mclick global */ /* E3R: 27 fontdir */ /* t733: 28 cpucore */
     if (tmini) {   /* t862f: 오버레이 TK 길게 누름 → 터치 설정 작은 창(게임 일시정지 위) */
         const int H_ = 20 * (int)ri.size() + 74;
         c.rect(120, 16, 400, H_ + 24, K); rbox(c, 128, 24, 384, H_ + 8, WH, T("터치 설정"));
@@ -34,7 +34,7 @@ inline void Ui::d_conf(Canvas & c) {
         return;
     }
     std::vector<std::string> n;
-    { const std::string nm[56] = { /*E1R*/ /* E3R */ T("적용 범위"), T("BGM 음량"), T("효과음 음량"),   /* E2R */
+    { const std::string nm[67] = { /*E1R*/ /* E3R */ T("적용 범위"), T("BGM 음량"), T("효과음 음량"),   /* E2R */
       KH_SNDLABEL,   /* E3R */
         (conf_grp ? phr_("pad_decide") : phr_("조작 설정")), phr_("배속 배율"), phr_("배속 방식"), phr_("배속 중 소리"),
       phr_("부팅 시퀀스"), phr_("배속 표시"), phr_("오버레이 버튼 표시"),
@@ -45,12 +45,12 @@ inline void Ui::d_conf(Canvas & c) {
       phr_("오버레이 정렬"), phr_("오버레이 직접 위치"), phr_("메뉴 클릭음"),
         phr_("글꼴 폴더"), phr_("cpu_core"),
         phr_("touchfx"), phr_("tfxsz"), phr_("tfxmouse"), phr_("tmouse"), phr_("backpos"), phr_("set_vibe"), T("진동 세기"), phr_("snd_voice"), T("줄 음량 설정"),
-      std::string(phr_("컨트롤러")) + "  >", std::string(phr_("터치 조작")) + "  >", std::string(phr_("오버레이")) + "  >", std::string(phr_("맵핑")) + "  >", std::string(phr_("표시")) + "  >", std::string(phr_("성능 설정")) + "  >", std::string(phr_("글꼴 설정")) + "  >", std::string(phr_("배속 설정")) + "  >", std::string(phr_("진단")) + "  >", phr_("부팅 시퀀스 다시 보기"), T("오버레이 크기"), T("오버레이 평소 진하기"), T("패드 연결 시 숨김"), phr_("메뉴 글꼴"), T("터치 키 표시"), T("터치 모드"), T("방향 입력"), T("터치 배치 편집") };   /* E3R / t733 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
+      std::string(phr_("컨트롤러")) + "  >", std::string(phr_("터치 조작")) + "  >", std::string(phr_("오버레이")) + "  >", std::string(phr_("맵핑")) + "  >", std::string(phr_("표시")) + "  >", std::string(phr_("성능 설정")) + "  >", std::string(phr_("글꼴 설정")) + "  >", std::string(phr_("배속 설정")) + "  >", std::string(phr_("진단")) + "  >", phr_("부팅 시퀀스 다시 보기"), T("오버레이 크기"), T("오버레이 평소 진하기"), T("패드 연결 시 숨김"), phr_("메뉴 글꼴"), T("터치 키 표시"), T("터치 모드"), T("방향 입력"), T("터치 배치 편집"), T("터치 스틱 조종"), T("마우스 방식"), T("마우스 가속"), T("마우스 감도"), T("두 손가락 우클릭"), std::string(phr_("마우스")) + "  >", phr_("pad_stk_l"), phr_("pad_stk_r"), phr_("pad_msp"), phr_("pad_dz_l"), phr_("pad_dz_r") };   /* E3R / t733 / t869: 56~66 */ /*E1R: 26 mclick */ /* E2R: 22-25 overlay */
       for (int id : ri) n.push_back(id == 15 ? std::string("FPS / Speed") : ((own && (ovm[cur] & rb[id])) ? std::string("● ") + nm[id] : nm[id])); }
     const int rs = (sel >= 0 && sel < (int)ri.size()) ? ri[sel] : 0;
     const int NR = (int)ri.size(), CAP = 14; const int top = lst_win(NR, sel, CAP);   /* kx-nova: 상자에 안 들어가면 스크롤 */
     { std::vector<std::string> n2(n.begin() + top, n.begin() + std::min(NR, top + CAP)); items(c, 40, 44, 256, n2, sel - top, 19); }
-    { const int e2_ = std::min(NR, top + CAP); for (int q_ = top; q_ < e2_; q_++) { const int id_ = ri[q_]; if (id_ == 0 || id_ == 37 || id_ == 51 || (id_ >= 38 && id_ <= 47)) continue;   /* 정리안 A안: 줄마다 값 출처 꼬리표 (전역 = 회색 · 이 작품이 따로 가진 값 = 노랑) */
+    { const int e2_ = std::min(NR, top + CAP); for (int q_ = top; q_ < e2_; q_++) { const int id_ = ri[q_]; if (id_ == 0 || id_ == 37 || id_ == 51 || id_ == 61 || (id_ >= 38 && id_ <= 47)) continue;   /* 정리안 A안: 줄마다 값 출처 꼬리표 (전역 = 회색 · 이 작품이 따로 가진 값 = 노랑) */
         const bool ov_ = own && (ovm[cur] & rb[id_]) != 0u; const bool sl_ = q_ == sel;
         int ex_ = 0; if (scope == 0 && rb[id_]) for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[id_]) ex_++;   /* t822: 예외 N작품 */
         const bool fa_ = !ov_ && ex_ == 0 && kh_factory_row(false, id_, s);   /* t822: 출하값 */
@@ -94,6 +94,19 @@ inline void Ui::d_conf(Canvas & c) {
     { const char * tz[] = { phr_("tfx_small"), phr_("tfx_large") }; choices(c, 344, ry(30), tz, 2, s.tfxsz, WH, row(30)); }
     { const char * tm[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(31), tm, 2, s.tfxmouse, WH, row(31)); }
     { const char * tq[] = { phr_("tmouse_pad"), phr_("tmouse_abs") }; choices(c, 344, ry(32), tq, 2, s.tmouse, WH, row(32)); }
+    {   /* t869: 마우스 페이지 — 종속 줄(트랙패드일 때만 / 아날로그일 때만 / 마우스 역할일 때만)은 값을 회색으로 */
+      const auto tc_ = s.tmouse == 0 ? WH : GY; const auto sk_ = (s.touchmode && s.touchdir2) ? WH : GY;
+      const char * a57[] = { T("트랙패드"), T("길게 누름") }; choices(c, 344, ry(57), a57, 2, s.tmmode, tc_, row(57));
+      const char * a58[] = { phr_("끔"), T("약"), T("강") }; choices(c, 344, ry(58), a58, 3, s.taccel, tc_, row(58));
+      const char * a59[] = { T("낮음"), T("보통"), T("높음") }; choices(c, 344, ry(59), a59, 3, s.tsens, WH, row(59));
+      const char * a60[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(60), a60, 2, s.trclick, tc_, row(60));
+      const char * a56[] = { T("방향키"), T("마우스") }; choices(c, 344, ry(56), a56, 2, s.tstick, sk_, row(56));
+      const char * rl_[] = { phr_("pad_stk_off"), phr_("pad_stk_on"), phr_("pad_role_mouse") }, * ms_[] = { phr_("pad_msp1"), phr_("pad_msp2"), phr_("pad_msp3") }, * dz_[] = { phr_("pad_dz0"), phr_("pad_dz1"), phr_("pad_dz2"), phr_("pad_dz3") };
+      choices(c, 344, ry(62), rl_, 3, s.stk_l < 0 ? 0 : s.stk_l > 2 ? 2 : s.stk_l, WH, row(62));
+      choices(c, 344, ry(63), rl_, 3, s.stk_r < 0 ? 0 : s.stk_r > 2 ? 2 : s.stk_r, WH, row(63));
+      choices(c, 344, ry(64), ms_, 3, s.stk_sp < 1 ? 0 : s.stk_sp > 3 ? 2 : s.stk_sp - 1, (s.stk_l == 2 || s.stk_r == 2) ? WH : GY, row(64));
+      choices(c, 344, ry(65), dz_, 4, s.dz_l < 0 ? 0 : s.dz_l > 3 ? 3 : s.dz_l, s.stk_l != 0 ? WH : GY, row(65));
+      choices(c, 344, ry(66), dz_, 4, s.dz_r < 0 ? 0 : s.dz_r > 3 ? 3 : s.dz_r, s.stk_r != 0 ? WH : GY, row(66)); }
     { const char * bp[] = { phr_("bp_tl"), phr_("bp_tr"), phr_("bp_bl"), phr_("bp_br"), phr_("끔") }; choices(c, 344, ry(33), bp, 5, s.backpos, WH, row(33)); }
     const char * bt[] = { phr_("켬"), phr_("끔") }; choices(c, 344, ry(8), bt, 2, s.boot, WH, row(8));
     { const char * bo[] = { phr_("끔"), phr_("켬") }; choices(c, 344, ry(9), bo, 2, s.bosd, WH, row(9)); }
@@ -134,8 +147,8 @@ inline void Ui::d_conf(Canvas & c) {
 #else
     static const char * dd[] = { "desc_scope", "desc_bgm", "desc_se", "desc_snddev", "desc_pad", "desc_bmult", "desc_bmode", "desc_bsound", "desc_boot", "desc_bosd", "desc_ovbtn", "desc_fontkr", "desc_fontjp", "desc_lang", "desc_indiv_reset", "desc_fps", "desc_dsnd", "desc_dvol" };
 #endif
-    static const char * const fd[10] = { T("컨트롤러: 결정 버튼(○×)과 패드 버튼 맵핑을 정합니다."), T("터치 조작: 화면 터치 표시와 터치 마우스 방식을 정합니다."), T("오버레이: 화면 위 버튼의 표시·위치·뒤로가기 버튼 위치를 정합니다."), T("맵핑: 패드 버튼마다 키·기능을 배정합니다."), T("표시: 터치할 때 나오는 표시의 종류·크기·마우스 모드 표시를 정합니다."), T("성능 설정: CPU 속도와 (안드로이드) CPU 코어를 정합니다."), T("글꼴 설정: 한글·일본어 글꼴과 글꼴 폴더를 정합니다."), T("배속 설정: 배속 배율·방식·배속 중 소리를 정합니다."), T("진단: 진동 시험·컨트롤러 정보·진단 로그를 만듭니다."), T("이 작품의 부팅 연출을 다시 봅니다.") };
-    std::string dt = dkey(phr_((rs >= 38 && rs <= 47) ? fd[rs - 38] : rs == 48 ? T("오버레이 크기: 화면 위 버튼 줄의 크기. 작게 80% · 보통 100% · 크게 125% · 아주 크게 150%.") : rs == 49 ? T("오버레이 평소 진하기: 만지지 않을 때 버튼 줄의 진하기. 연하게·보통·진하게·항상 진하게.") : rs == 50 ? T("패드 연결 시 숨김: 켜면 게임패드가 연결돼 있는 동안 버튼 줄을 숨깁니다.") : rs == 37 ? T("줄 음량: 이 작품의 소리를 줄(음성·효과음·음악 등)별로 따로 조절합니다. ○ 로 들어갑니다.") : rs == 36 ? "desc_vo" : rs == 33 ? "desc_backpos" : rs == 32 ? "desc_tmouse" : rs == 31 ? "desc_tfxmouse" : rs == 30 ? "desc_tfxsz" : rs == 29 ? "desc_touchfx" : rs == 28 ? "desc_cpucore" : rs == 27   /* E3R */
+    static const char * const fd[10] = { T("컨트롤러: 결정 버튼(○×)과 패드 버튼 맵핑을 정합니다."), T("터치 조작: 터치할 때 나오는 표시를 정합니다."), T("오버레이: 화면 위 버튼의 표시·위치·뒤로가기 버튼 위치를 정합니다."), T("맵핑: 패드 버튼마다 키·기능을 배정합니다."), T("표시: 터치할 때 나오는 표시의 종류와 크기를 정합니다."), T("성능 설정: CPU 속도와 (안드로이드) CPU 코어를 정합니다."), T("글꼴 설정: 한글·일본어 글꼴과 글꼴 폴더를 정합니다."), T("배속 설정: 배속 배율·방식·배속 중 소리를 정합니다."), T("진단: 진동 시험·컨트롤러 정보·진단 로그를 만듭니다."), T("이 작품의 부팅 연출을 다시 봅니다.") };
+    std::string dt = dkey(phr_((rs >= 38 && rs <= 47) ? fd[rs - 38] : rs == 61 ? T("마우스: 터치 방식·가속·감도, 터치 스틱, 패드 스틱 마우스, 클릭 표시를 한곳에서 정합니다.") : rs == 56 ? T("터치 스틱 조종: 방향 입력이 아날로그일 때 화면 스틱으로 방향키 대신 마우스를 움직입니다. 터치 모드가 키보드+마우스이고 방향 입력이 아날로그일 때만 적용됩니다.") : rs == 57 ? T("마우스 방식: 트랙패드에서 커서를 움직이는 방법. 트랙패드 = 손가락을 끌면 바로 움직입니다. 길게 누름 = 0.3초 가만히 누른 뒤 끌어야 움직입니다. 게임 마우스 터치가 트랙패드일 때만 적용됩니다.") : rs == 58 ? T("마우스 가속: 손가락을 빠르게 끌수록 커서가 더 멀리 갑니다. 끔·약·강. 게임 마우스 터치가 트랙패드일 때만 적용됩니다.") : rs == 59 ? T("마우스 감도: 트랙패드 이동량과 터치 스틱 속도를 정합니다. 낮음·보통·높음.") : rs == 60 ? T("두 손가락 우클릭: 켜면 두 손가락 탭이 오른쪽 클릭이 됩니다. 게임 마우스 터치가 트랙패드일 때만 적용됩니다.") : (rs == 62 || rs == 63) ? "pad_stk_help" : rs == 64 ? "pad_msp_help" : (rs == 65 || rs == 66) ? "pad_dz_help" : rs == 48 ? T("오버레이 크기: 화면 위 버튼 줄의 크기. 작게 80% · 보통 100% · 크게 125% · 아주 크게 150%.") : rs == 49 ? T("오버레이 평소 진하기: 만지지 않을 때 버튼 줄의 진하기. 연하게·보통·진하게·항상 진하게.") : rs == 50 ? T("패드 연결 시 숨김: 켜면 게임패드가 연결돼 있는 동안 버튼 줄을 숨깁니다.") : rs == 37 ? T("줄 음량: 이 작품의 소리를 줄(음성·효과음·음악 등)별로 따로 조절합니다. ○ 로 들어갑니다.") : rs == 36 ? "desc_vo" : rs == 33 ? "desc_backpos" : rs == 32 ? "desc_tmouse" : rs == 31 ? "desc_tfxmouse" : rs == 30 ? "desc_tfxsz" : rs == 29 ? "desc_touchfx" : rs == 28 ? "desc_cpucore" : rs == 27   /* E3R */
         ? "desc_fontdir" : rs == 22 ? "desc_ovpos_mode" : rs == 23 ?   /* E2R */
       "desc_ovpos_edge" : rs == 24 ? "desc_ovpos_align" : rs == 25 ? "desc_ovpos_free" :
       rs == 19 ? "desc_pwrseq" : rs == 20 ? "desc_hddhum" : rs == 21 ? "desc_hvol" :
@@ -149,7 +162,7 @@ inline void Ui::d_conf(Canvas & c) {
     else if (scope == 0 && rs > 0 && rs < 36 && rb[rs]) { int n_ = 0; for (int gi_ = 0; gi_ < (int)games.size() && gi_ < MAXG; gi_++) if (ovm[gi_] & rb[rs]) n_++;   /* t822: 예외 N작품 설명줄 */
         if (n_ > 0) { char eb_[96]; snprintf(eb_, sizeof eb_, "%s %d%s", T("예외"), n_, T("작품: 이 줄 값을 따로 씀")); text(c, 344, 302, fit(eb_, 270), OR, K); } }   /* 정리안: 저장함 한 줄 */
     if (scope == 0 && (rs == 11 || rs == 12)) { const std::string & fl = font_now(); if (!fl.empty()) text(c, 344, 288, fit(fl, 270), CY, K); }   /* build 5b-3: font now applied to the current work */
-    const bool ibk = own && rs < 38 && (ovm[cur] & indiv_bit(S_CONF, rs));
+    const bool ibk = own && (rs < 38 || (rs >= 62 && rs <= 66)) && (ovm[cur] & indiv_bit(S_CONF, rs));
     helpline(c, ibk ? phr_("indiv_help") : phr_("↑↓:선택, ←→:값, ○:결정, ×:뒤로, △:출하 시 설정"));
 }
 /* build 5b-3: "now applied: <font> (source)" for the current work. priority: launch method (font=) > work language default (font_kind) > system. */

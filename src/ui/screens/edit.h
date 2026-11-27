@@ -42,7 +42,7 @@ inline void Ui::k_edit(UKey k, Act & a) {
             if (k == UK_LEFT || k == UK_RIGHT) {
                 int d = k == UK_RIGHT ? 1 : -1; msg.clear();
                 if (sel == 6) { static const char * bs[] = { "", "A", "B", "C", "D" }; int cu = 0; std::string b = kv_get("boot"); for (int i = 0; i < 5; i++) if (b == bs[i]) cu = i; cu = (cu + d + 5) % 5; kv_set("boot", bs[cu]); }
-                else if (sel == 10) { static const char * ms[] = { "", "none", "optional", "pointer", "required" }; int cu = 0; std::string m = kv_get("mouse"); for (int i = 0; i < 5; i++) if (m == ms[i]) cu = i; cu = (cu + d + 5) % 5; kv_set("mouse", ms[cu]); }
+                else if (sel == 10) { static const char * ms[] = { "", "none", "required" }; int cu = 0; std::string m = kv_get("mouse"); if (m == "optional" || m == "pointer") m = "required"; for (int i = 0; i < 3; i++) if (m == ms[i]) cu = i; cu = (cu + d + 3) % 3;   /* t869: 기본 / 사용 안 함 / 사용 (옛 optional·pointer 는 사용으로 읽음) */ kv_set("mouse", ms[cu]); }
                 else if (sel == 11) { if (kv_get("install") == "hdd_new") { ed.erase("install"); ed.erase("hdd_mb"); } else { ed["install"] = "hdd_new"; if (!ed.count("hdd_mb")) ed["hdd_mb"] = "40"; } }
                 break;
             }

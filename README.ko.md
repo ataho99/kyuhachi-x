@@ -9,14 +9,14 @@
 
 **게임을 고르고 바로 시작.** 설정 파일도, 매퍼 메뉴도 없습니다.
 
-![version](https://img.shields.io/badge/version-v0.7.4-ff4d6d)
+![version](https://img.shields.io/badge/version-v0.7.5-ff4d6d)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-0078d4)
 ![engine](https://img.shields.io/badge/engine-DOSBox--X%20core-6c5ce7)
 ![license](https://img.shields.io/badge/license-GPL--2.0-2ea44f)
 
 [English](README.md) · 한국어
 
-**[⬇ v0.7.4 내려받기 (윈도 zip · 안드로이드 APK · 설명서)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
+**[⬇ v0.7.5 내려받기 (윈도 zip · 안드로이드 APK · 설명서)](https://github.com/ataho99/kyuhachi-x/releases/latest)**
 
 **[💖 후원](https://litt.ly/smash99)** — 도구 개발 후원입니다. 게임 파일은 배포하지 않습니다.
 
@@ -35,7 +35,7 @@
 | 기기 | 비고 |
 |---|---|
 | 윈도우 10 / 11 (x64) | `KyuhachiX.exe`, 폴더 하나로 동작하는 포터블. 레지스트리에 쓰지 않음 |
-| 안드로이드 | `KyuhachiX-v0.7.4-android.apk` (패키지 `io.github.ataho99.kyuhachix`). 레트로이드 포켓 노바에 맞춰 다듬었고 다른 패드 기기에서도 동작 |
+| 안드로이드 | `KyuhachiX-v0.7.5-android.apk` (패키지 `io.github.ataho99.kyuhachix`). 레트로이드 포켓 노바에 맞춰 다듬었고 다른 패드 기기에서도 동작 |
 | 리눅스 | 예정 |
 | 스팀덱 | 예정 |
 
@@ -57,7 +57,7 @@
 
 **프런트엔드 연동 (ES-DE / Daijisho)** - 프런트엔드에서 게임을 바로 실행하는 방법: [docs/frontends.ko.md](docs/frontends.ko.md) · [English](docs/frontends.md) (zip 안에도 `docs\` 폴더로 들어 있습니다).
 
-## 주요 기능 (v0.7.4)
+## 주요 기능 (v0.7.5)
 
 - **터치 조작** — 터치 모드 두 가지(키보드 / 키보드+마우스), 십자 또는 떠다니는 아날로그 스틱, 마우스 방식 세 가지와 가속 · 감도, 터치 키 이동 · 추가 · 숨기기, 게임 중 배치 편집(화면 키보드를 눌러 키 추가), 전역 / 작품별 키 재배정.
 - **메뉴** — 메인 메뉴 정리, 시작 팝업의 세이브 관리, 설정 허브, 뒤로 가기 한 단계씩. 메뉴 글꼴은 갈무리 14 굵게(기본) / M갈무리 10 · 12 · 15 / 갈무리 14, 게임 기본 한글 글꼴은 M갈무리 15.

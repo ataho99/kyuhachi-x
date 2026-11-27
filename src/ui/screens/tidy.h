@@ -54,8 +54,8 @@ inline void Ui::d_tidy(Canvas & c) {
         text(c, 444, y, std::string(phr_("상태")) + ": " + st, r.st == 1 && !r.hidden ? OR : WH, K); y += 22;
         text(c, 444, y, std::string(phr_("세이브")) + ": " + (r.saves ? phr_("있음") : phr_("없음")), WH, K);
     }
-    const std::vector<std::string> m = { phr_("빼기 (세이브 유지)"), phr_("빼기 (세이브 _old)"), phr_("합치기"), phr_("다시 찾기"), phr_("보기 바꾸기"), phr_("숨긴 항목 되살리기"), phr_("표시 모두 해제"), phr_("tidy_purge_keep"), phr_("tidy_purge_bak"), phr_("tidy_purge_all") };
-    const std::vector<bool> dm = { tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, false, tidy_filt != 2, tidy_nmark() == 0, false, false, false };
+    const std::vector<std::string> m = { phr_("빼기 (세이브 유지)"), phr_("빼기 (세이브 _old)"), phr_("합치기"), phr_("다시 찾기"), phr_("보기 바꾸기"), phr_("숨긴 항목 되살리기"), phr_("표시 모두 해제"), phr_("tidy_purge_all") };
+    const std::vector<bool> dm = { tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, false, tidy_filt != 2, tidy_nmark() == 0, false };
     if (tidy_lvl == 1) items(c, 444, 128, 176, m, tidy_ms, 18, &dm);
     else for (size_t i = 0; i < m.size(); i++) text(c, 444, 128 + (int)i * 18, fit(m[i], 168), dm[i] ? GY : CY, K);
     if (tidy_lvl == 2 && tidy_ia >= 0 && tidy_ib >= 0) {
@@ -82,7 +82,7 @@ inline void Ui::tidy_menu_do(int mi, Act & a) {
     }
     if (mi >= 7) {   /* t798: 완전삭제 - 큐하치 작품 폴더(설정)를 지운다. 원본 이미지는 건드리지 않는다. mi 7 유지(세이브 남김) · 8 세이브·설정 백업 후 · 9 세이브까지 전부 */
         tidy_ids.clear(); for (int i : pk) tidy_ids.push_back(tidy_rows[i].id);
-        const int dk = mi - 7;
+        const int dk = 2;   /* t871: 완전삭제는 한 가지(작품 폴더+세이브, 원본 이미지 그대로) */
         yn_open(S_TIDY, YN_TIDYDEL, dk == 2 ? phr_("tidy_del_all") : dk == 1 ? phr_("tidy_del_bak") : phr_("tidy_del_keep"), dk == 1 ? phr_("tidy_del_bakpath") : phr_("tidy_del_noimg"), std::string(phr_("tidy_count")) + ": " + std::to_string((int)tidy_ids.size()), dk);
         return;
     }
@@ -116,8 +116,8 @@ inline void Ui::k_tidy(UKey k, Act & a) {
         return;
     }
     if (tidy_lvl == 1) {
-        if (k == UK_UP) tidy_ms = (tidy_ms + 9) % 10; else if (k == UK_DOWN) tidy_ms = (tidy_ms + 1) % 10;
-        else if (k == UK_OK) { const bool dim[10] = { tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, false, tidy_filt != 2, tidy_nmark() == 0, false, false, false }; if (!dim[tidy_ms]) tidy_menu_do(tidy_ms, a); }
+        if (k == UK_UP) tidy_ms = (tidy_ms + 7) % 8; else if (k == UK_DOWN) tidy_ms = (tidy_ms + 1) % 8;
+        else if (k == UK_OK) { const bool dim[8] = { tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, tidy_filt == 2, false, tidy_filt != 2, tidy_nmark() == 0, false }; if (!dim[tidy_ms]) tidy_menu_do(tidy_ms, a); }
         else if (k == UK_CANCEL || k == UK_TRI) tidy_lvl = 0;
         return;
     }

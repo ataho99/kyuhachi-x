@@ -79,7 +79,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
     if (scr == S_SCREEN && bgfx_pg) return k_bgfx(k, a);   /* t662 (#635) */
     const Scr scr0 = scr; const std::vector<int> ri = rowids(scr0); const int sidx = sel; const int sid = (sidx >= 0 && sidx < (int)ri.size()) ? ri[sidx] : 0;
     if (k == UK_TRI && scope == 1 && cur >= 0 && cur < MAXG) {   /* build 9: triangle on a marked line = that line back to the global value */
-        const unsigned ib = (sid < (scr0 == S_SCREEN ? 15 : 38)) ? indiv_bit(scr0, sid) : 0u;
+        const unsigned ib = (sid < (scr0 == S_SCREEN ? 15 : 38) || (scr0 == S_CONF && sid >= 62 && sid <= 66)) ? indiv_bit(scr0, sid) : 0u;
         if (ib && (ovm[cur] & ib)) { ov_set(cur, ovm[cur] & ~ib); sync_t(cur); dirty = true; a.t = A_APPLY; return a; }
     }
     struct Gd { Ui & u; Scr s0; int sidx, sid, gi; bool have; Settings pre;   /* #587: 줄 위치 ↔ 실제 줄 번호 · 이 작품 범위에서 바뀐 줄만 개별 값으로 */
@@ -88,13 +88,13 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
     if (scope == 1 && cur >= 0 && cur < MAXG) { sync_t(cur); gd.pre = t[cur]; gd.have = true; }
     sel = sid;
     do { {
-        if (k == UK_CANCEL && (((scr == S_SCREEN) && sel >= 11 && sel <= 15) || ((scr == S_CONF) && (sel == 14 || (sel >= 38 && sel <= 47))))) { if (!(scr == S_SCREEN)) { cb_has = false; a.t = A_APPLY; dirty = true; }   /* t52i: × = 뒤로. 값은 바뀐 순간부터 저장 대상 */ if ((scr == S_SCREEN) && backup_has) { eff() = backup; if (bk_cur >= 0 && bk_cur < MAXG) { ov_set(bk_cur, bk_ovm); sync_t(bk_cur); } backup_has = false; a.t = A_APPLY; if (wmult != bk_wmult || winw != bk_winw || winh != bk_winh) { wmult = bk_wmult; winw = bk_winw; winh = bk_winh; a.t = A_WINMULT; a.arg = wmult; } } leave_cfg(); break; }   /* t853 (#1646): 뒤로(×)를 삼키던 줄들 - 개별 초기화 · 폴더 줄 · 화면 설정 11~15 - 186줄과 같은 동작 */
+        if (k == UK_CANCEL && (((scr == S_SCREEN) && sel >= 11 && sel <= 15) || ((scr == S_CONF) && (sel == 14 || sel == 61 || (sel >= 38 && sel <= 47))))) { if (!(scr == S_SCREEN)) { cb_has = false; a.t = A_APPLY; dirty = true; }   /* t52i: × = 뒤로. 값은 바뀐 순간부터 저장 대상 */ if ((scr == S_SCREEN) && backup_has) { eff() = backup; if (bk_cur >= 0 && bk_cur < MAXG) { ov_set(bk_cur, bk_ovm); sync_t(bk_cur); } backup_has = false; a.t = A_APPLY; if (wmult != bk_wmult || winw != bk_winw || winh != bk_winh) { wmult = bk_wmult; winw = bk_winw; winh = bk_winh; a.t = A_WINMULT; a.arg = wmult; } } leave_cfg(); break; }   /* t853 (#1646): 뒤로(×)를 삼키던 줄들 - 개별 초기화 · 폴더 줄 · 화면 설정 11~15 - 186줄과 같은 동작 */
         if ((scr == S_SCREEN && sel == 11) || (scr == S_CONF && sel == 14)) { if (k == UK_OK) { sel = sidx; yn_open(scr0, YN_INDIVRESET, phr_("indiv_q1"), phr_("indiv_q2")); } break; }   /* 개별 설정 초기화 */
         if (scr == S_CONF && sel == 13 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT)) { int dl = (k == UK_LEFT) ? -1 : 1; lang = (lang + dl + 3) % 3; phr_set_lang(lang); lang_chg = true; dirty = true; break; }   /* t52g (#133): 언어 - 문구 칸이 제자리에서 바뀌어 바로 보인다 */
         if (scr == S_CONF && sel == 51 && k == UK_OK) { open_font(3, S_CONF); break; }
         if (scr == S_CONF && sel >= 11 && sel <= 12 && (k == UK_OK || k == UK_LEFT || k == UK_RIGHT || k == UK_TRI)) { if (k == UK_OK) open_font(sel - 11, S_CONF); break; }   /* t52f: 글꼴 행이 11·12 로 한 칸씩 내려감 */
         if (scr == S_CONF && sel == 37 && (k == UK_OK || k == UK_RIGHT)) { go(S_LINES, 0); break; }   /* t844: 줄 음량 */
-        if (scr == S_CONF && sel >= 38 && sel <= 47) {   /* #1478: 폴더 줄 · 맵핑(41) · 진단(46) · 부팅 시퀀스 다시 보기(47) */
+        if (scr == S_CONF && ((sel >= 38 && sel <= 47) || sel == 61)) {   /* #1478: 폴더 줄 · 맵핑(41) · 진단(46) · 부팅 시퀀스 다시 보기(47) */
             if (k == UK_OK || k == UK_RIGHT) {
                 const int ch = conf_child(sel);
                 if (ch) { conf_grp = ch; go(S_CONF, 0); nav_skip = true; }
@@ -138,7 +138,7 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
         Settings & s = (sel == 0) ? eff() : edit();
         UKey kk = k;   /* kx-touch: 선택지 없는 값 줄을 탭(○)하면 오른쪽 절반 = 오른쪽 키, 왼쪽 절반 = 왼쪽 키 */
         if (k == UK_OK && ov::g_tap_half != 0) { const int th = ov::g_tap_half; const bool fresh = ov::tap_now_ms() - ov::g_tap_ms < 400; ov::g_tap_half = 0;
-            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = (sel >= 1 && sel <= 8) || sel == 16; else sl = (sel >= 1 && sel <= 2) || (sel >= 48 && sel <= 50) || sel == 52 || sel == 53 || sel == 54 || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || sel == 34 || sel == 35 || (sel >= 29 && sel <= 32); }
+            bool sl = false; if (fresh && sel != 0) { if (scr_s) sl = (sel >= 1 && sel <= 8) || sel == 16; else sl = (sel >= 1 && sel <= 2) || (sel >= 48 && sel <= 50) || sel == 52 || sel == 53 || sel == 54 || (sel >= 5 && sel <= 10) || (sel >= 16 && sel <= 26) || sel == 34 || sel == 35 || (sel >= 29 && sel <= 32) || (sel >= 56 && sel <= 60) || (sel >= 62 && sel <= 66); }
             if (sl) kk = th > 0 ? UK_RIGHT : UK_LEFT; }
         if (kk == UK_LEFT || kk == UK_RIGHT) {
             int d = (kk == UK_RIGHT) ? 1 : -1;
@@ -186,6 +186,16 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 if (sel == 52) { s.touchbar = s.touchbar ? 0 : 1; save_now = true; }
                 if (sel == 53) { s.touchmode = s.touchmode ? 0 : 1; save_now = true; }   /* t862a */
                 if (sel == 54) { if (s.touchmode) s.touchdir2 = s.touchdir2 ? 0 : 1; else s.touchdir = s.touchdir ? 0 : 1; save_now = true; }   /* t860: 터치 키 표시 - 고르는 즉시 저장 */
+                if (sel == 56) { s.tstick = s.tstick ? 0 : 1; save_now = true; }   /* t869: 마우스 페이지 */
+                if (sel == 57) { s.tmmode = s.tmmode ? 0 : 1; save_now = true; }
+                if (sel == 58) { s.taccel = (s.taccel + d + 3) % 3; save_now = true; }
+                if (sel == 59) { s.tsens = (s.tsens + d + 3) % 3; save_now = true; }
+                if (sel == 60) { s.trclick = s.trclick ? 0 : 1; save_now = true; }
+                if (sel == 62) s.stk_l = clampi(s.stk_l + d, 0, 2);   /* t869: 패드 스틱 (옛 맵핑 화면 줄) */
+                if (sel == 63) s.stk_r = clampi(s.stk_r + d, 0, 2);
+                if (sel == 64) s.stk_sp = clampi(s.stk_sp + d, 1, 3);
+                if (sel == 65) s.dz_l = clampi(s.dz_l + d, 0, 3);
+                if (sel == 66) s.dz_r = clampi(s.dz_r + d, 0, 3);
                 a.t = A_APPLY;
             }
             dirty = true; (void)nrow;
@@ -200,6 +210,8 @@ inline Act Ui::k_screen_conf(UKey k, Act & a) {
                 e.touchfx = def.touchfx; e.tfxsz = def.tfxsz; e.tfxmouse = def.tfxmouse; e.tmouse = def.tmouse; e.backpos = def.backpos;   /* kx-touch */ }
             e.ovbtn = def.ovbtn; e.ovpos_mode = def.ovpos_mode; e.ovpos_edge = def.ovpos_edge;
             e.ovpos_align = def.ovpos_align; e.ovpos_free = def.ovpos_free; e.ovsize = def.ovsize; e.ovalpha = def.ovalpha; e.ovauto = def.ovauto; e.touchbar = def.touchbar; e.touchmode = def.touchmode; e.touchdir = def.touchdir; e.touchdir2 = def.touchdir2;
+            if (conf_grp == 11) { e.stk_l = def.stk_l; e.stk_r = def.stk_r; e.dz_l = def.dz_l; e.dz_r = def.dz_r; e.stk_sp = def.stk_sp;   /* t869: 마우스 페이지 출하 값 */
+                if (scope == 0) { e.tmouse = def.tmouse; e.tfxmouse = def.tfxmouse; e.tmmode = def.tmmode; e.taccel = def.taccel; e.tsens = def.tsens; e.trclick = def.trclick; e.tstick = def.tstick; } }
             if (scope == 0) g.fpsd = def.fpsd; } dirty = true; a.t = A_APPLY; }
         else if (k == UK_CANCEL) { if (!scr_s) { cb_has = false; a.t = A_APPLY; dirty = true; }   /* t52i: × = 뒤로. 값은 바뀐 순간부터 저장 대상 */ if (scr_s && backup_has) { eff() = backup; if (bk_cur >= 0 && bk_cur < MAXG) { ov_set(bk_cur, bk_ovm); sync_t(bk_cur); } backup_has = false; a.t = A_APPLY; if (wmult != bk_wmult || winw != bk_winw || winh != bk_winh) { wmult = bk_wmult; winw = bk_winw; winh = bk_winh; a.t = A_WINMULT; a.arg = wmult; } } leave_cfg(); }
         else if (k == UK_OK) { backup_has = false; cb_has = false; dirty = true; a.t = A_APPLY; leave_cfg(); }
